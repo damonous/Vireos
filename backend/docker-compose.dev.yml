@@ -1,0 +1,120 @@
+version: "3.9"
+
+# =============================================================================
+# Vireos Backend — Docker Compose Development Override
+# =============================================================================
+# Usage:
+#   docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# This override adds:
+#   - ts-node-dev hot reload for the app service
+#   - Source code volume mount (no rebuild required on code changes)
+#   - pgAdmin 4 for database inspection
+#   - Redis Commander for queue/cache inspection
+#   - Development-friendly env overrides (verbose logging, etc.)
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # App — development mode with hot reload
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      # Use builder stage which includes devDependencies (ts-node-dev)
+      target: builder
+    command:
+      - "npx"
+      - "ts-node-dev"
+      - "--respawn"
+      - "--transpile-only"
+      - "--exit-child"
+      - "--watch"
+      - "src"
+      - "src/server.ts"
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+      DATABASE_URL: postgresql://vireos:vireos_dev@postgres:5432/vireos?schema=public
+      REDIS_URL: redis://redis:6379
+    volumes:
+      # Mount source code for hot reload — changes reflect instantly
+      - ./src:/app/src:delegated
+      # Mount tests directory
+      - ./tests:/app/tests:delegated
+      # Mount tsconfig and package.json for ts-node-dev
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      # Persist node_modules (use container's installed version, not host's)
+      - /app/node_modules
+    ports:
+      - "${PORT:-3000}:3000"
+
+  # ---------------------------------------------------------------------------
+  # Worker — development mode with hot reload
+  # ---------------------------------------------------------------------------
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: builder
+    command:
+      - "npx"
+      - "ts-node-dev"
+      - "--respawn"
+      - "--transpile-only"
+      - "--exit-child"
+      - "src/queues/workers/index.ts"
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+      DATABASE_URL: postgresql://vireos:vireos_dev@postgres:5432/vireos?schema=public
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - ./src:/app/src:delegated
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - /app/node_modules
+
+  # ---------------------------------------------------------------------------
+  # pgAdmin 4 — PostgreSQL web GUI
+  # ---------------------------------------------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: vireos_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@vireos.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - vireos_network
+
+  # ---------------------------------------------------------------------------
+  # Redis Commander — Redis web GUI (queue and cache inspection)
+  # ---------------------------------------------------------------------------
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: vireos_redis_commander
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: "local:redis:6379"
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - vireos_network
+
+# ---------------------------------------------------------------------------
+# Additional dev volumes
+# ---------------------------------------------------------------------------
+volumes:
+  pgadmin_data:
+    driver: local

@@ -1,0 +1,840 @@
+// =============================================================================
+// Vireos — Advisor-Marketing Platform
+// Prisma Schema (Production)
+// =============================================================================
+// Multi-tenant SaaS platform for financial advisors.
+// Every record is scoped to organizationId for tenant isolation.
+// Row-level security enforced at the application layer via orgId on every query.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  ADVISOR
+  COMPLIANCE
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  INVITED
+  LOCKED
+}
+
+enum ContentStatus {
+  DRAFT
+  PENDING_REVIEW
+  NEEDS_CHANGES
+  APPROVED
+  REJECTED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ContentChannel {
+  LINKEDIN
+  FACEBOOK
+  EMAIL
+  AD_COPY
+}
+
+enum PublishJobStatus {
+  QUEUED
+  PROCESSING
+  PUBLISHED
+  FAILED
+  CANCELLED
+}
+
+enum SocialPlatform {
+  LINKEDIN
+  FACEBOOK
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  ENGAGED
+  MEETING_SCHEDULED
+  CLIENT
+  LOST
+}
+
+enum LeadSource {
+  PROSPECT_FINDER
+  FACEBOOK_ADS
+  WEBSITE
+  MANUAL_IMPORT
+  LINKEDIN
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum ProspectRequestStatus {
+  PENDING
+  PROCESSING
+  FULFILLED
+  CANCELLED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  TRIALING
+  INCOMPLETE
+}
+
+enum CreditTransactionType {
+  PURCHASE
+  DEBIT
+  REFUND
+  ADJUSTMENT
+}
+
+enum AuditAction {
+  CREATED
+  UPDATED
+  DELETED
+  STATUS_CHANGED
+  SUBMITTED
+  APPROVED
+  REJECTED
+  PUBLISHED
+  LOGGED_IN
+  LOGGED_OUT
+  PASSWORD_RESET
+}
+
+enum EmailSequenceStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum EmailEnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  UNSUBSCRIBED
+  BOUNCED
+  PAUSED
+}
+
+enum NotificationType {
+  CONTENT_SUBMITTED
+  CONTENT_APPROVED
+  CONTENT_REJECTED
+  CONTENT_NEEDS_CHANGES
+  PAYMENT_FAILED
+  PROSPECT_LIST_READY
+  CAMPAIGN_PAUSED
+}
+
+enum AgentConversationStatus {
+  ACTIVE
+  COMPLETED
+  FAILED
+  ARCHIVED
+}
+
+enum AgentActionStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+// =============================================================================
+// MODELS
+// =============================================================================
+
+/// Tenant record — every other model scopes to this via organizationId.
+model Organization {
+  id                   String             @id @default(uuid())
+  name                 String
+  slug                 String             @unique
+  icpType              String             @default("financial_advisor")
+  complianceRules      Json               @default("{}")
+  prohibitedTerms      String[]
+  requiredDisclosures  Json               @default("{}")
+  logoUrl              String?
+  website              String?
+  subscriptionStatus   SubscriptionStatus @default(TRIALING)
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?
+  creditBalance        Int                @default(0)
+  settings             Json               @default("{}")
+  isActive             Boolean            @default(true)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  // Relations
+  users                User[]
+  socialConnections    SocialConnection[]
+  drafts               Draft[]
+  publishJobs          PublishJob[]
+  auditTrails          AuditTrail[]
+  leads                Lead[]
+  leadActivities       LeadActivity[]
+  linkedInCampaigns    LinkedInCampaign[]
+  linkedInEnrollments  LinkedInCampaignEnrollment[]
+  facebookAdCampaigns  FacebookAdCampaign[]
+  prospectListRequests ProspectListRequest[]
+  emailTemplates       EmailTemplate[]
+  emailSequences       EmailSequence[]
+  emailSequenceSteps   EmailSequenceStep[]
+  emailEnrollments     EmailEnrollment[]
+  emailSends           EmailSend[]
+  subscription         Subscription?
+  creditTransactions   CreditTransaction[]
+  notifications        Notification[]
+  featureFlags         FeatureFlag[]
+  agentConversations   AgentConversation[]
+
+  @@map("organizations")
+}
+
+/// Platform user — belongs to exactly one organization.
+model User {
+  id                     String     @id @default(uuid())
+  organizationId         String
+  email                  String     @unique
+  passwordHash           String
+  firstName              String
+  lastName               String
+  role                   UserRole   @default(ADVISOR)
+  status                 UserStatus @default(INVITED)
+  avatarUrl              String?
+  phone                  String?
+  failedLoginAttempts    Int        @default(0)
+  lockedUntil            DateTime?
+  lastLoginAt            DateTime?
+  passwordResetToken     String?
+  passwordResetExpiresAt DateTime?
+  emailVerifiedAt        DateTime?
+  settings               Json       @default("{}")
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+
+  // Relations
+  organization              Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  socialConnections         SocialConnection[]
+  draftsCreated             Draft[]               @relation("DraftCreator")
+  draftsReviewed            Draft[]               @relation("DraftReviewer")
+  publishJobs               PublishJob[]
+  auditTrails               AuditTrail[]
+  leadsAssigned             Lead[]
+  leadActivities            LeadActivity[]
+  linkedInCampaigns         LinkedInCampaign[]
+  facebookAdCampaigns       FacebookAdCampaign[]
+  prospectListRequestsBy    ProspectListRequest[] @relation("ProspectRequester")
+  prospectListRequestsFulBy ProspectListRequest[] @relation("ProspectFulfiller")
+  emailTemplates            EmailTemplate[]
+  emailSequences            EmailSequence[]
+  emailEnrollmentsBy        EmailEnrollment[]
+  creditTransactions        CreditTransaction[]
+  notifications             Notification[]
+  agentConversations        AgentConversation[]
+
+  @@index([organizationId, role])
+  @@index([organizationId, status])
+  @@map("users")
+}
+
+/// OAuth tokens per user per social platform. Access/refresh tokens are
+/// stored AES-256 encrypted at the application layer.
+model SocialConnection {
+  id               String         @id @default(uuid())
+  userId           String
+  organizationId   String
+  platform         SocialPlatform
+  accessToken      String
+  refreshToken     String?
+  tokenExpiresAt   DateTime?
+  platformUserId   String
+  platformUsername String?
+  scopes           String[]
+  isActive         Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  // Relations
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform])
+  @@map("social_connections")
+}
+
+/// Multi-ICP configuration record — managed by super admins only.
+/// Allows Vireos to onboard different advisor types (financial, insurance, etc.)
+/// with distinct prompt prefixes, compliance rules, and terminology.
+model IcpConfiguration {
+  id                  String   @id @default(uuid())
+  name                String
+  slug                String   @unique
+  contentPromptPrefix String?
+  complianceRules     Json     @default("{}")
+  prohibitedTerms     String[]
+  requiredDisclosures Json     @default("{}")
+  workflowTerminology Json     @default("{}")
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("icp_configurations")
+}
+
+/// AI-generated content draft. Tracks the full content workflow from
+/// initial generation through compliance review to publication.
+model Draft {
+  id                String           @id @default(uuid())
+  organizationId    String
+  creatorId         String
+  reviewerId        String?
+  title             String
+  originalPrompt    String
+  linkedinContent   String?
+  facebookContent   String?
+  emailContent      String?
+  adCopyContent     String?
+  variantsJson      Json             @default("{}")
+  flagsJson         Json             @default("{}")
+  status            ContentStatus    @default(DRAFT)
+  reviewNotes       String?
+  publishedChannels ContentChannel[]
+  aiModel           String?
+  tokensUsed        Int              @default(0)
+  version           Int              @default(1)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator      User         @relation("DraftCreator", fields: [creatorId], references: [id], onDelete: Restrict)
+  reviewer     User?        @relation("DraftReviewer", fields: [reviewerId], references: [id])
+  publishJobs  PublishJob[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, creatorId])
+  @@map("drafts")
+}
+
+/// Scheduled or immediately-executed social media publish job.
+/// Workers consume this queue and post to LinkedIn/Facebook APIs.
+model PublishJob {
+  id             String           @id @default(uuid())
+  organizationId String
+  draftId        String
+  advisorId      String
+  channel        ContentChannel
+  platform       SocialPlatform
+  status         PublishJobStatus @default(QUEUED)
+  scheduledAt    DateTime?
+  publishedAt    DateTime?
+  platformPostId String?
+  platformUrl    String?
+  errorMessage   String?
+  retryCount     Int              @default(0)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  draft        Draft        @relation(fields: [draftId], references: [id], onDelete: Restrict)
+  advisor      User         @relation(fields: [advisorId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, status])
+  @@index([scheduledAt])
+  @@map("publish_jobs")
+}
+
+/// Immutable audit log. Records are only ever inserted — never updated or deleted.
+/// Captures every significant state change across the platform.
+model AuditTrail {
+  id             String      @id @default(uuid())
+  organizationId String
+  actorId        String?
+  entityType     String
+  entityId       String
+  action         AuditAction
+  previousState  Json?
+  newState       Json?
+  metadata       Json        @default("{}")
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime    @default(now())
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actor        User?        @relation(fields: [actorId], references: [id])
+
+  @@index([organizationId, entityType, entityId])
+  @@index([organizationId, actorId])
+  @@index([createdAt])
+  @@map("audit_trails")
+}
+
+/// Contact/prospect in the advisor's pipeline. Sourced from Prospect Finder,
+/// Facebook lead ads, website forms, or manual import.
+model Lead {
+  id                String     @id @default(uuid())
+  organizationId    String
+  assignedAdvisorId String?
+  firstName         String
+  lastName          String
+  email             String
+  phone             String?
+  company           String?
+  title             String?
+  linkedinUrl       String?
+  source            LeadSource
+  status            LeadStatus @default(NEW)
+  campaignId        String?
+  prospectRequestId String?
+  customFields      Json       @default("{}")
+  notes             String?
+  isUnsubscribed    Boolean    @default(false)
+  unsubscribedAt    DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  // Relations
+  organization        Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignedAdvisor     User?                        @relation(fields: [assignedAdvisorId], references: [id])
+  prospectRequest     ProspectListRequest?         @relation(fields: [prospectRequestId], references: [id])
+  leadActivities      LeadActivity[]
+  enrollments         EmailEnrollment[]
+  emailSends          EmailSend[]
+  linkedInEnrollments LinkedInCampaignEnrollment[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId, status])
+  @@index([organizationId, source])
+  @@index([organizationId, assignedAdvisorId])
+  @@map("leads")
+}
+
+/// Activity log entry for a specific lead. Tracks notes, status changes,
+/// emails sent, calls logged, and meetings scheduled.
+model LeadActivity {
+  id             String   @id @default(uuid())
+  leadId         String
+  organizationId String
+  actorId        String?
+  type           String
+  description    String
+  metadata       Json     @default("{}")
+  createdAt      DateTime @default(now())
+
+  // Relations
+  lead         Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actor        User?        @relation(fields: [actorId], references: [id])
+
+  @@map("lead_activities")
+}
+
+/// LinkedIn automated messaging campaign. Steps define the outreach
+/// sequence with per-step delay days and message templates.
+model LinkedInCampaign {
+  id                String         @id @default(uuid())
+  organizationId    String
+  advisorId         String
+  name              String
+  description       String?
+  status            CampaignStatus @default(DRAFT)
+  steps             Json
+  targetCriteria    Json           @default("{}")
+  dailyLimit        Int            @default(20)
+  pauseOnReply      Boolean        @default(true)
+  businessHoursOnly Boolean        @default(true)
+  totalEnrolled     Int            @default(0)
+  totalCompleted    Int            @default(0)
+  totalReplied      Int            @default(0)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  // Relations
+  organization Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  advisor      User                         @relation(fields: [advisorId], references: [id], onDelete: Restrict)
+  enrollments  LinkedInCampaignEnrollment[]
+
+  @@map("linkedin_campaigns")
+}
+
+/// Tracks a specific lead's progress through a LinkedIn messaging campaign.
+model LinkedInCampaignEnrollment {
+  id             String                @id @default(uuid())
+  campaignId     String
+  leadId         String
+  organizationId String
+  currentStep    Int                   @default(1)
+  status         EmailEnrollmentStatus @default(ACTIVE)
+  nextSendAt     DateTime?
+  repliedAt      DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  // Relations
+  campaign     LinkedInCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  lead         Lead             @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, leadId])
+  @@map("linkedin_campaign_enrollments")
+}
+
+/// Facebook paid ad campaign linked to a specific advisor.
+/// Stores Facebook's own campaign/adset/ad IDs for API sync.
+model FacebookAdCampaign {
+  id             String         @id @default(uuid())
+  organizationId String
+  advisorId      String
+  name           String
+  status         CampaignStatus @default(DRAFT)
+  objective      String
+  fbCampaignId   String?
+  fbAdSetId      String?
+  fbAdId         String?
+  budget         Decimal?
+  budgetCurrency String         @default("USD")
+  startDate      DateTime?
+  endDate        DateTime?
+  targetingJson  Json           @default("{}")
+  impressions    Int            @default(0)
+  clicks         Int            @default(0)
+  leads          Int            @default(0)
+  spend          Decimal        @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  advisor      User         @relation(fields: [advisorId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, status])
+  @@map("facebook_ad_campaigns")
+}
+
+/// Advisor request for a curated prospect list. Super admins fulfill the request
+/// by uploading a CSV. Credits are deducted on advisor confirmation.
+model ProspectListRequest {
+  id             String                @id @default(uuid())
+  organizationId String
+  requestedById  String
+  fulfilledById  String?
+  criteria       Json
+  status         ProspectRequestStatus @default(PENDING)
+  requestedCount Int                   @default(0)
+  fulfilledCount Int                   @default(0)
+  creditCost     Int                   @default(0)
+  confirmedAt    DateTime?
+  fulfilledAt    DateTime?
+  notes          String?
+  csvKey         String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedBy  User         @relation("ProspectRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  fulfilledBy  User?        @relation("ProspectFulfiller", fields: [fulfilledById], references: [id])
+  leads        Lead[]
+
+  @@index([organizationId, status])
+  @@map("prospect_list_requests")
+}
+
+/// Reusable email template with Handlebars variable support.
+model EmailTemplate {
+  id             String   @id @default(uuid())
+  organizationId String
+  createdById    String
+  name           String
+  subject        String
+  htmlContent    String
+  textContent    String?
+  variables      String[]
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy          User                @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  emailSequenceSteps EmailSequenceStep[]
+
+  @@map("email_templates")
+}
+
+/// Multi-step email drip campaign definition.
+model EmailSequence {
+  id             String              @id @default(uuid())
+  organizationId String
+  createdById    String
+  name           String
+  description    String?
+  status         EmailSequenceStatus @default(DRAFT)
+  triggerType    String
+  totalSteps     Int                 @default(0)
+  totalEnrolled  Int                 @default(0)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  // Relations
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User                @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  steps        EmailSequenceStep[]
+  enrollments  EmailEnrollment[]
+
+  @@map("email_sequences")
+}
+
+/// Individual step within an email sequence.
+model EmailSequenceStep {
+  id             String   @id @default(uuid())
+  sequenceId     String
+  organizationId String
+  stepNumber     Int
+  templateId     String
+  delayDays      Int      @default(0)
+  delayHours     Int      @default(0)
+  subject        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  sequence     EmailSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  template     EmailTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  emailSends   EmailSend[]
+
+  @@unique([sequenceId, stepNumber])
+  @@map("email_sequence_steps")
+}
+
+/// Records a specific lead's enrollment into an email drip sequence.
+model EmailEnrollment {
+  id             String                @id @default(uuid())
+  sequenceId     String
+  leadId         String
+  organizationId String
+  enrolledById   String
+  currentStep    Int                   @default(1)
+  status         EmailEnrollmentStatus @default(ACTIVE)
+  nextSendAt     DateTime?
+  completedAt    DateTime?
+  unsubscribedAt DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  // Relations
+  sequence     EmailSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  lead         Lead          @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  enrolledBy   User          @relation(fields: [enrolledById], references: [id], onDelete: Restrict)
+  emailSends   EmailSend[]
+
+  @@unique([sequenceId, leadId])
+  @@map("email_enrollments")
+}
+
+/// Record of each individual transactional email sent to a lead.
+/// SendGrid webhook events update status, openedAt, clickedAt, etc.
+model EmailSend {
+  id             String    @id @default(uuid())
+  enrollmentId   String
+  organizationId String
+  leadId         String
+  stepId         String
+  sgMessageId    String?
+  status         String
+  openedAt       DateTime?
+  clickedAt      DateTime?
+  bouncedAt      DateTime?
+  sentAt         DateTime  @default(now())
+
+  // Relations
+  enrollment   EmailEnrollment   @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead         Lead              @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  step         EmailSequenceStep @relation(fields: [stepId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, leadId])
+  @@map("email_sends")
+}
+
+/// Stripe subscription record mirrored from Stripe webhooks.
+model Subscription {
+  id                   String             @id @default(uuid())
+  organizationId       String             @unique
+  stripeSubscriptionId String             @unique
+  stripePriceId        String
+  status               SubscriptionStatus
+  planName             String
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean            @default(false)
+  cancelledAt          DateTime?
+  trialEndsAt          DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+/// Immutable audit trail for credit balance changes. Every debit, purchase,
+/// refund, and adjustment is recorded with the resulting balance.
+model CreditTransaction {
+  id             String                @id @default(uuid())
+  organizationId String
+  userId         String?
+  type           CreditTransactionType
+  amount         Int
+  balanceAfter   Int
+  description    String
+  metadata       Json                  @default("{}")
+  createdAt      DateTime              @default(now())
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id])
+
+  @@map("credit_transactions")
+}
+
+/// In-app notification delivered to a specific user.
+model Notification {
+  id             String           @id @default(uuid())
+  userId         String
+  organizationId String
+  type           NotificationType
+  title          String
+  body           String
+  isRead         Boolean          @default(false)
+  readAt         DateTime?
+  metadata       Json             @default("{}")
+  createdAt      DateTime         @default(now())
+
+  // Relations
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+/// Per-organization feature flag. Controls availability of platform features
+/// such as AI guardrails, Facebook integration, and beta features.
+model FeatureFlag {
+  id             String   @id @default(uuid())
+  organizationId String
+  flag           String
+  isEnabled      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, flag])
+  @@map("feature_flags")
+}
+
+// =============================================================================
+// AGENT MODELS (Easy Mode — Agentic AI)
+// =============================================================================
+
+/// Represents a multi-turn conversation between a user and the Vireos AI agent.
+/// Tracks the GPT-5.2 `previous_response_id` for conversation continuity.
+model AgentConversation {
+  id              String                  @id @default(uuid())
+  organizationId  String
+  userId          String
+  title           String?
+  status          AgentConversationStatus @default(ACTIVE)
+  lastResponseId  String?
+  messageCount    Int                     @default(0)
+  totalTokensUsed Int                     @default(0)
+  metadata        Json                    @default("{}")
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  // Relations
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages     AgentMessage[]
+  actions      AgentAction[]
+
+  @@index([userId, status])
+  @@index([organizationId, userId])
+  @@map("agent_conversations")
+}
+
+/// Individual message within an agent conversation.
+model AgentMessage {
+  id             String   @id @default(uuid())
+  conversationId String
+  role           String
+  content        String
+  responseId     String?
+  tokensUsed     Int      @default(0)
+  metadata       Json     @default("{}")
+  createdAt      DateTime @default(now())
+
+  // Relations
+  conversation AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("agent_messages")
+}
+
+/// Records each tool/function call made by the agent during a conversation.
+model AgentAction {
+  id             String            @id @default(uuid())
+  conversationId String
+  organizationId String
+  userId         String
+  functionName   String
+  functionArgs   Json
+  status         AgentActionStatus @default(PENDING)
+  resultSummary  String?
+  resultData     Json?
+  errorMessage   String?
+  entityType     String?
+  entityId       String?
+  durationMs     Int?
+  createdAt      DateTime          @default(now())
+
+  // Relations
+  conversation AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([organizationId, userId])
+  @@map("agent_actions")
+}

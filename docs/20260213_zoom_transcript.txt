@@ -1,0 +1,349 @@
+Shea Werner - February 13
+VIEW RECORDING - 50 mins (No highlights): https://fathom.video/share/ePEoyUzh5oysjv5bJpWjM5S9EKo8mUav
+
+---
+
+0:00 - Shea
+  Robert, how's it going? Good, how you doing? Great, thanks. I'll put on my camera here. Where are you at, about in Colorado?  Yep. Wow, very nice.
+
+0:16 - Robert Brooks (MVP.dev  No)
+  I'm in Miami, down in sunny, crazy Florida.
+
+0:22 - Shea
+  Oh, great. Yeah, yeah.
+
+0:24 - Robert Brooks (MVP.dev  No)
+  How did you, I'm just curious, how did you end up finding me slash MVP? Just out of curiosity, did you find me on Google or?
+
+0:39 - Shea
+  No, I think you were, I saw you in an article on LinkedIn.
+
+0:45 - Robert Brooks (MVP.dev  No)
+  Okay.
+
+0:46 - Shea
+  What's the name of your firm? It's MVP.dev.
+
+0:52 - Robert Brooks (MVP.dev  No)
+  MVP.dev, that was, that was the original name of my agency. I actually sold it a couple of years ago.  I still own the rights to the name and everything, but I.
+
+1:04 - Shea
+  So there's an article, you're the third one that's recommended.
+
+1:15 - Robert Brooks (MVP.dev  No)
+  It's awesome. That's you guys, right? All this stuff ends up on the web and I don't even know it.  That's great. Yeah. Awesome. Yeah, that's me. Very cool. When was this posted? Recently?
+
+1:35 - Shea
+  Yeah.
+
+1:36 - Robert Brooks (MVP.dev  No)
+  Yeah, December. Wow. Yeah, it was pretty recent. That's pretty interesting. Well, very cool. I'm not going to complain one way or the other.  I'll always take a free shout out when I can get it here or there, right?
+
+1:50 - Shea
+  Do you know Lisa Aston?
+
+1:53 - Robert Brooks (MVP.dev  No)
+  I do not. Yeah, no, I do not. I have no idea who she is. Oh my God. Yeah.
+
+1:59 - Shea
+  And then. Man, you guys made the list and made her radar, I guess.
+
+2:04 - Robert Brooks (MVP.dev  No)
+  If I was to guess, this is for iCoder Solutions. So she's writing this for the number one slot, right?  Yeah. Yeah, right?
+
+2:14 - Shea
+  So it's an advertisement for them, I'm guessing.
+
+2:17 - Robert Brooks (MVP.dev  No)
+  But they make it look like a listicle by adding in other ones as well, if I was to take a guess.  Yeah. Either way, I'm not going to complain. So Shea, thank you. Let me get my sheet up here real quick.  I appreciate you hopping on a call with me. This is great. I don't get to do these calls as much as I used to anymore.  do a lot of consulting type of, like fractional CTO type of work and AI implementations and architecting and things like that.  So it's actually nice to be able to hop on a call with a founder and be able to talk through your project and what you're looking to do and things along.  Thank I used to do about 650 sales calls a year, and now I do about seven. So it's changed substantially from our peak back in 2022, 2023.  So this is great. What we'll do is I'll have you talk through your idea. Give me a background of what you're looking to have done.  One, I'll ask a few questions around that to make sure we're clear on what we're going to be building.  And then I'll have you ask any questions that you have about me and my background and what have you.  And then we'll see if we have a good fit. And if we do, we can talk about moving forward from there.  Okay?
+
+3:45 - Shea
+  Yeah. Yeah. Yeah. So I, this, this'll be like, I've been like co-founder and like, you know, CRO, head of sales for a few other.  it. No. No. No. Wealth Tech Startups. Do you have an exit?
+
+4:06 - Robert Brooks (MVP.dev  No)
+  Do you have an exit? Did you exit out of any of those?
+
+4:11 - Shea
+  Well, I left one. The company hasn't sold yet. I exited. And then recently, the last one, it's called Archive Intel.  It's a compliance and archiving system for wealth management firms. So I helped co-found that, was there for a few years and left.  I helped them get to their Series A, and I was ready to leave and kind of do my own thing.  And I was getting somewhat exhausted of working with the founder and the CEO. So I was like, it's just time, and the company is a good spot.  All my equity is vested. So that one will probably sell here in the next. I have this idea, and I also have a little experience with this at a prior firm I was at.  But I want to kind of build, in the beginning, it's going to be really highly focused on some core features that I know are highly marketable.  And I can go to market really quickly and acquire users with those features. But I'm also looking at building out a full marketing platform and suite specifically for the investment management space.  What's out there is like really old clunky legacy software or a lot of piecemeal tech stack that firms are point solutions that they're using that some of it's integrated.  Most. The wealth tech space is still like really far behind other industries. And then, you know, a lot of these firms, you know, they're investment people.  They're not marketers and they're not tech people. So, you know, they're just they're just kind of, you know, lagging.  So anyways, like where I want to start is with like making this a, you know, first workflow and feature is like an AI content generator.  That AI has to be run through like compliance language and compliance rules. So like the SEC marketing rule and the FINRA advertising rule.  And then I want it to be like the user. To be able to distribute it, you know, turn it into a Facebook post, LinkedIn post, a Facebook ad.  Also create like message sequencing on LinkedIn, as well as email sequencing and templating as well. And then I need to have compliance workflows.  So there'd be three user permissions, an admin, which has, you know, the admin has full access and can do every workflow and access every feature.  The basic user, that'd be like the person, the salesperson or the advisor that's creating the content or a marketing person.  But that person then has restrictions on what they can post. And then there's that compliance user and the compliance user is the one where they need to be able to go in, approve the content, make edits, send it back to the user with notes, approve or reject.  And then, you know, also having the ability to just like send it out to... Yeah. Like an email inbox, like PDF Word document as well.  So pretty simple. I have like a basic document I put together. There's a product that has a, like, it's this product.  It's a Canadian company. They have a lot of the workflows and features that I want.
+
+8:21 - Robert Brooks (MVP.dev  No)
+  But they're missing a huge piece, which is the compliance piece as well as the AI piece.
+
+8:29 - Shea
+  But they're in Canada, right?
+
+8:31 - Robert Brooks (MVP.dev  No)
+  So they don't have the same U.S. rules and laws that they have to follow up there necessarily, right? Yeah.  Yeah.
+
+8:37 - Shea
+  And, you know, like, they don't have the distribution either, which, as you know, you've been doing this forever. That's 50% of, you know, you could have a Golden Goose product, but if you don't have the distribution, it's going to go nowhere.
+
+8:56 - Robert Brooks (MVP.dev  No)
+  If no one knows about it, nobody can buy it, right? Right. Right. Yeah, exactly.
+  SCREEN SHARING: Shea started screen sharing - WATCH: https://fathom.video/share/ePEoyUzh5oysjv5bJpWjM5S9EKo8mUav?timestamp=545.157718
+
+9:01 - Shea
+  So I've got, like, you know, I've got, like, really basic. If we engage further, I would put together a detailed spec outline and feature outline for you.  This was, like, on the fly. And then I've also included, like, a demo of that competing product. Right. Because I just feel like it's always good to get, like, something.  And I've also included, like, some screenshots here of some of the features that they have within that platform. So I can share this with you.
+
+9:38 - Robert Brooks (MVP.dev  No)
+  Yeah, that'd be great.
+
+9:39 - Shea
+  You know, you can watch that video. Fast forward to, like, five minutes. It's, like, you'll have 10 minutes of demo.  And I think that gives you a pretty good kind of perspective. But I want feature parity and workflow parity to...  This product. I don't want it to work the same. I'm going to have UI tweaks and changes, and then there's going to be some other features, as I mentioned, that I'd want to bring in that this is missing.  But this is the core product, essentially, I'm trying to build in the beginning. This is what I want my standard for the MVP to look like.
+
+10:24 - Robert Brooks (MVP.dev  No)
+  Perfect. Makes my life a lot easier, because you have a good idea. There's already a kind of competing product, right?  So you're just looking to extend it with some different features and such. But it gives us a really good baseline to work from, right?  Because now we're not starting from zero.
+
+10:43 - Shea
+  Yeah. Yeah. And my vision is, like, I need it to be, you know, within these specs, and I need these features.  I need them to work. Mm-hmm. I've done this a few times. So I'm going to come in and give you the exact specs.  And then I need an exact cost. I'm not going to come back for revisions or changes. I know a lot of, especially non-technical founders, will be like, this is what I want.  And then halfway through the build, they're like, no, I don't want that.
+
+11:19 - Robert Brooks (MVP.dev  No)
+  I want this. And I've done this a few times.
+
+11:22 - Shea
+  So what I'm going to, like, again, I'm going to put together a detailed outline. And then I need, like, almost a fixed price because I'm going to self-fund this first build.
+
+11:33 - Robert Brooks (MVP.dev  No)
+  Sure.
+
+11:34 - Shea
+  I'd like to build it on a framework that we could scale. I'm also open to, like, doing a no-code bubble build, knowing that, like, once I start to get traction and get 100 users, I'm going to go have to, like, rebuild it.  I'm totally fine with that. If that means lower costs and faster, you know, I can get to market faster.  So I'm Flexible. But, you I also have like some definite sort of like, I don't want to say demands, but needs, you know.
+
+12:10 - Robert Brooks (MVP.dev  No)
+  Sure.
+
+12:11 - Shea
+  So that's kind of what I'm looking for in a nutshell for this MVP. Okay.
+
+12:20 - Robert Brooks (MVP.dev  No)
+  So a couple things. The market has changed substantially. The startup build market has changed substantially. Since AI was released about four years ago now, right?  ChatGPT, OpenAI, and the rest of them as they came in line with the LLMs and everything. Bubble was fantastic for MVPs, Minimum Viable Products, prior to 2023, I'd say.  Because of the advent of AI, they're in the way now, right? Because when you build an app there, you've got to run it through their...  mediary platform in order to get it to display. You can't take that code and put it anywhere else. You're locked, vendor locked into the bubble, right?  There is tons of platforms now where you can just, you know, stand it up and have React code and Node.js code, like real live scalable code that gets produced, right, using AI right out of the gate, right?  So scalability nowadays, especially in the last year or so, is really not an issue any longer. So when you build your MVP, we use the same architecture that we'll use when you go enterprise, right?  So what we build as the MVP, we'll continue to scale and build on top of that as far and as long as you need to, right?  With that same code base. We don't have those same challenges like we used to a few years ago. So that's one thing.  The other thing too, Shea, having the competitor platform. Is fantastic, because like I mentioned, that gives us a good base to work off of, right?  So we can talk the same language when we're understanding what feature. Well, no, I want it like what these guys do here or whatever, right?  When I build the requirements document before we even start, I'll base it off of there, right? And then you'll add in whatever additional features that you want, and then that's the blueprint that we'll use to actually build the application, which saves us a ton of time, ton of money, ton of resources across the board.  You get exactly what you're looking for, and it's scalable, right? We stick it on some low-end servers to start, right?  20, 40, 50 bucks a month to get you going, to get some pilot users on board, right? And then once you get some traction or what have you, we can start throwing load balancers in there and splitting responsibilities off to other servers and all those sorts of things.  But at least you still get that low cost of entry for the minimum viable product, but not throw away anymore, you know?  You still a couple couple years ago, I'd build something. Okay, yeah, you validated the idea. We found product market fit.  Awesome. Let's scrap it and build something in real code now, right? And you don't have to do that anymore, which is awesome, really.  It's not a whole bunch of wasted time and effort building things that you know at some point you've got to redo, right?  So that's perfect. Now, this is going to be a SaaS platform, right? I'm imagining like you're going to have multi-tenants.  You're going to have all these different companies using this, the platform, right?
+
+15:35 - Shea
+  Correct. Yeah, so we'll start out. Start out, it's going to be more like having those three permission levels. I want to have some kind of back, you know, like back office admin panel for us to like, you know, monitor, manage accounts.  Having experience too, like I'd like to have that there. So like, you know, when I hire CS people, they have...
+
+17:00 - Robert Brooks (MVP.dev  No)
+  I'm in the discussions and things along those lines. Personally, I use OpenAI on all my platforms. I code with Anthropic and Codex, which is OpenAI's coding tools.  But everything, all of my SaaS platforms that I build for myself, I'll use OpenAI for content generation or whatever they're doing.  What other integrations besides those, Shea? Anything else besides like Stripe and an AI integration?
+
+17:26 - Shea
+  LinkedIn. Yep.
+
+17:28 - Robert Brooks (MVP.dev  No)
+  Facebook, right?
+
+17:30 - Shea
+  Facebook, specifically LinkedIn for posting and then also the messaging, the message sequencing. Facebook for ad form. And so their ad form API and then their posting API.  And then having like a simple email sequencing. You know, I'm not going to go crazy. don't want like a full email marketing, but email sequencing to send, you know, pretty simple.  Google, you know, visor has to put their logo. Google,
+
+19:01 - Robert Brooks (MVP.dev  No)
+  So let me send you this.
+
+19:02 - Shea
+  This is the YouTube video. It's a demo. Like I said, the first five, you can see in the video when he actually goes in the platform.  So just skip through like the first five minutes of him yapping and you'll kind of see the UI.
+
+19:16 - Robert Brooks (MVP.dev  No)
+  Okay, perfect. Let me copy. It's a shame, too.
+
+19:19 - Shea
+  I talked to this guy a few years ago before we launched this archiving solution. And I was like, hey, I want to build something like this.  But I'm not going to be your employee. I would need to come in as like a 50-50 partner. And I was like, look, I can help you with distribution.  I can also help you. Like I have, I've spent my entire career. I worked at RIAs in the first part of my career.  Like I've been in fintech. I was like, I can unlock the gates to the castle for you. But like, I would need 50% of the company to like put in this work.  And he was like, nah, I'm just not really. You know, and I don't blame him. But you know what I mean?  Like, it wasn't worth my time to just be like, you know, go work for the guy. But so it's like it's like a shame.  But, you know, I mean, I'm sure you've seen a million times like a brilliant, amazing technology and a great concept.  It's just the person can't get out of their own way or they just don't have the distribution channels. They don't have access to capital.  You know, it's a Canadian company, like you said. So the market there is like is tiny compared to the, you know, the U.S.
+
+20:37 - Robert Brooks (MVP.dev  No)
+  So anyways, but it's a different mindset, right? It's like not the same sort of capitalistic mindset that Americans have, even though the Canadians are just over the border.  It's not the same. They're a lot more laid back when it comes to those sorts of things. Right. They're not as aggressive.  They are.
+
+20:53 - Shea
+  Right. They are. But also, I don't think this guy wants to take this thing any further. think that. that.  He's got a couple of employees. Yeah, yeah. He's happy. I think it's like he's generating a really nice income off the business for himself.  You know, he's not trying to build a suite of products or a platform.
+
+21:13 - Robert Brooks (MVP.dev  No)
+  Right. He's scaled as far as he wants to, right? He's happy with where he's at.
+
+21:17 - Shea
+  far as he wants. Yeah. Whereas like this is like a disruptor software where we could go in and I have like a roadmap of like the phase two and phase three kind of expansion.  But like there's a company called FMG Suite. You know, they easily do 200 mil a year in revenue and ARR and everything they have is like just old and a piece of .  So we can build features like, again, like I'm always mindset, get parity with the competitors and then just build a better mousetrap.
+
+21:58 - Robert Brooks (MVP.dev  No)
+  Right. That's what we did at.
+
+22:00 - Shea
+  At Archive Intel is, you know, we were like, this software is like 30 years old. Nobody likes it. We can come in really quickly and disrupt it.  And within a year, we hit 2 million in ARR after we launched. So, um, you know what I mean?  Right.
+
+22:18 - Robert Brooks (MVP.dev  No)
+  Yeah. I see, I see this as being a suite and a platform. Sure. Absolutely. Now design wise for you, how important, are you a design guy where it has to look slick, it has to look amazing, or you really care more about the functionality?  it work? Does it do what it's supposed to? You know, it needs to look, it needs to look professional, but it doesn't need to look like Apple, right?
+
+22:40 - Shea
+  In the beginning, I don't give a  about the design, as long as the workflows are logical and simple. I'm more, I more care about the workflow simplicity, because I'm going to be going for the SMB market.  And these people don't care about design, they care about, um, simplicity. Let's see, as well as like, does it work?  Because they need something simple. And they also have been burned by lots of tech. So you know what I mean?  Like that is a big concern. Down the road, like six, 12 months when I start to expand and go after enterprise, I need to clean it up, especially if I'm talking to like big compliance and marketing teams.  There is a standard that they'll just kind of scoff at in terms of design and workflow. But in the beginning, it's more utilitarian.
+
+23:37 - Robert Brooks (MVP.dev  No)
+  Yep, absolutely. Perfect. Timeframe, when are you hoping to have something besides tomorrow launched by? Like, you know, what's your hopes around there?
+
+23:47 - Shea
+  I know with a product like this, the big holdup is the integrations, like getting all the integrations working, but then also getting like access and getting approved.  Approval. Um, so like, I mean, I'd like to have something that I could at least start to put paying clients on, even if you're like, Hey, the LinkedIn messaging, we're still waiting for approval from LinkedIn.
+
+24:17 - Robert Brooks (MVP.dev  No)
+  Right. To, to, get access to this.
+
+24:20 - Shea
+  Like, that's fine. You know, but if I can get something that I can start selling within 30 days and actually bringing people on, you know, and, and, and, I've done this once or twice.  So it's like, Hey, come on now. I'll give you a discounted rate as an early adopter. And then we'll have X feature in two to four weeks.  You know, um, I'm okay with that, but I would like to get something that I can get in front of, uh, prospects.  And I can also start to get in front of investors.
+
+24:49 - Robert Brooks (MVP.dev  No)
+  Okay. Cool.
+
+24:51 - Shea
+  And then budget days, I'd like to have something I can start billing for and, you know, go to market on and, but understanding the to  The of the build might take another 60 days.
+
+25:02 - Robert Brooks (MVP.dev  No)
+  Well, and you're a sales guy too, right? So something you can sell, something you can demo and get people, hey, you know, so you can do actually a demo call with people, right?  And you're not just showing them vaporware, right? Or trying to explain things to them that they have to envision in their heads, right?  Which never works with tech. You have to show them something, right? Yeah, exactly.
+
+25:24 - Shea
+  And so I can start raising capital.
+
+25:28 - Robert Brooks (MVP.dev  No)
+  Yeah, absolutely. And then budget-wise, you said you're bootstrapping. So what's your range that you're looking to stay in with this, Shea?
+
+25:39 - Shea
+  If it's like a custom build, you know, I wanted to spend around $30 to $50, I can go higher.  And if somebody, like, blows me away and they're like, we can do this and we can do it, but, you know, it's going to be a little out of that budget, then, you know, I might be able to go.  But that was, like, what my target. Okay.
+
+26:02 - Robert Brooks (MVP.dev  No)
+  So we need to stay within somewhere within that range and we'll be good, huh?
+
+26:07 - Shea
+  Yeah. Okay.
+
+26:09 - Robert Brooks (MVP.dev  No)
+  All right. That is it for my questions that I have. What can I answer for you, Shea, in particular?
+
+26:17 - Shea
+  So I'm curious, like, just kind of give me a rundown about your dev team, you know, where are they from?  How many, you know, you use contract, full-time, mix of, you know, kind of give me that kind of run through.
+
+26:38 - Robert Brooks (MVP.dev  No)
+  Yeah, absolutely. In fact, let me give a little background about myself, too, so you know a little bit more about me as well, now that I think about it.  So I actually started programming when I was 12 on a Commodore 64 back in 1984. Nice. Yeah, and that's just something I've gravitated to my entire life.  My high school had a programming class in 1985. My buddy and I were the only ones in the class because nobody even knew what programming was really yet, right?  mean, computers were just starting to get into people's homes and things. I was in the Marine Corps from 94 to 98.  And while I was in, I wrote a garrison inventory application for 2nd Marine Division, which was unheard of for Marines to be doing in their spare time.  And then when I got out, it was the dot-com boom. 98, you know, all the dot-com stuff that was going on before the implosion and everything else.  So I just turned that into a 25-year career, senior software engineer, software architect. And then towards the end of my career, was a senior manager, worked at a lot of startups.  I was in fintech quite a bit, believe it or not. I worked at a place called Wealth Management Systems in New Jersey that was acquired back in 2012, I guess, or so.  I worked with them for a while. I worked at Janice Henderson subsidiary called Intech for eight years. And I had many, many fintech clients, probably.  30, 40 over the years. About 2016, I got tired of the whole corporate thing. I'm just making rich countries richer.  know our assets under management was like 100 billion. And our largest clients were like China, Japan, Australia, government pension funds and things like that.  I was like, there's just no satisfaction in this really. So I started an agency. And we talk about Bubble.  That's kind of where I started. I was a Microsoft guy. So we were Microsoft partners to start, but started playing more with Bubble and working more at Bubble.  And at one point, were Bubble's largest agency. I had 150 devs working for me. We were doing, I think, probably 100, 150 projects a year.  Just tons of volume, tons of scale. So AI came out, like I mentioned, I can see the writing on the wall.  One of the, one of the things I'm able to do is pretty well predict where technology is going to take us in the future and how it's going to get us there.  And once I. So started working with that, was like, yeah, we're screwed. So I looked to exit. So I sold in the beginning of 2024.  Majority of my whole client base, majority of my devs, a lot of the technology and stuff that I had built internally for us and everything.  I retained MVP. They were already an entity. They weren't interested in that part of it. And I liked MVP.  So I kept it. So I've scaled down now. So I do a lot of fractional CTO type work. I do one-off projects like here.  If I'm really comfortable with the founder and it looks like we're going to have a good fit, we're going to be able to build something fun together.  I have 10 people that still work for me full time. My team is in the Philippines. They've always been in the Philippines, all of my operations.  And the reason I do that is they start speaking or they start learning English first year of school. So as far as lower cost resources are concerned, they were the ones that fit the bill.  The best, quite honestly. I actually had a couple offices over there in Manila and Cebu when we were at our peak and such.  What else do I need to throw in there? AI. I'm huge with AI. I don't know if you saw any of my LinkedIn, but I just released Gaze QA earlier this year, which uses AI to test applications autonomously.  So it's got agency. It takes a look at what your app is, and then it figures everything out that it needs to about your application, just based on your marketing website and doing a full crawl through your application.  And then it creates all the tests for you automatically and goes through and does the testing, which was a huge pain in the neck and bubble and some other AI platforms and such.  So I'm really big in that space and still even to this day. 30 days for what you're looking for won't be a problem, honestly.  A lot of the builds I'm doing nowadays, you're looking in maybe two weeks, three weeks, not counting the approvals, right?  Approvals are going to take, you know, who knows, right? I mean, sometimes it's quick, sometimes it's not. Sometimes we have some back and forth.  If you're not doing SMS, in my experience, the SMS approvals are the ones that cause the biggest headaches right now.  The marketing SMS, not transactional ones. Anything else? So that's why, that's on the roadmap. Yeah.
+
+31:29 - Shea
+  But that's one of the reasons I put that on phase two.
+
+31:32 - Robert Brooks (MVP.dev  No)
+  It's a pain in the neck.
+
+31:34 - Shea
+  Yeah, because we had a text archiving solution. Yeah, that's the exact reason I kind of put that as like, all right, we'll tell people that's coming.  Um, you know, I know I can, I've got some, um, some juice with these other features. I know I can sell this.  We'll tell them SMS is on the way, but we're building it. So it's like. AI-empowered and better than what's out there.  You know, you get it, you know. Yep, yeah, exactly. But I knew that was going to be something that would take a little bit longer, yeah, because of the approvals and the complex and all that .
+
+32:15 - Robert Brooks (MVP.dev  No)
+  The thing that sucks is when they deny you, you have to start over again. So it's six weeks, right, to get approved, six to eight weeks.  And when they deny you, you go back to the beginning of the list again, right? And then you got to wait another six.  You know, I had a client a couple of years ago, huge platform, multi, multi, multi-million dollar platform. And we just couldn't get the stupid SMS approved.  We just kept going in circles and talking to whoever we could, you know, wherever we could. And he was in politics, right?  So he's pulling all his strings and everything to try to get this thing. And it was all new, right?  That who, the whole SMS approval thing was just getting released and people were. confused on what they were supposed to do and blah, blah, blah.  So anyway, everything else you're looking to do, though, is, I mean, totally within reason. I don't think we'll have any technical challenges that I can see.  I'll take a look through that platform and see if I have any questions for you, Shea. But that's, you I'm really happy that you found something that's kind of gives you the basis of what you're looking for.  Because like I said, we're not starting from scratch, right? And you've worked for startups, too, which really helps. Because one of the biggest challenges I had with founders was they don't understand that they're building a business.  The application is just part of it, right? You need, like you mentioned, you need distribution, right? You need marketing, you need sales, and you need operations.  You need those three things. I handle the operations piece of it, right? I build the platform, and I handle the technology and things along those lines.  But the founders are responsible for their own marketing and their own sales, right, at the end of the day.  And it's very hard for first-time founders to... That's what they're doing. They're building a business and they have to go out and sell, right?  So it's good that you've already been through that kind of understanding. Because at the end, I want you to be happy with what you got.  I don't want you to say, well, now I've got this, but I can't sell it. Well, you got to get out and knock on some doors, right?  And do some demo calls and things like that, you know?
+
+34:21 - Shea
+  So what's funny is like, that's what I'm like, that's the easy part for me. But yeah, I talk to these guys all the time.  To your point, a lot of times they can't get out of their own way. Like this guy built a survey tool geared towards wealth management.  I mean, it's SurveyMonkey for wealth management. It's not a great idea. The software and the tech was good. But the guy was in about $2 million of his own money.  And he wouldn't take any of my advice or my business partner's advice. And he hired another consultant. He paid that guy.
+
+35:08 - Robert Brooks (MVP.dev  No)
+  And the guy told him the same thing we told him for free.
+
+35:12 - Shea
+  And we're like, let's compare your business to our business. We launched two months ago with a really basic MVP.  And we've already got 100 firms and about $500,000 in revenue. You've been around for three years. You have no paying clients.  You've spent $2 million of your own money on a lot of . And you know what I mean? It was like that.  Absolutely. But he asked us to give it to him straight. We did. But you know how it is.
+
+35:43 - Robert Brooks (MVP.dev  No)
+  He hear it.
+
+35:44 - Shea
+  They don't want to hear it. Yeah.
+
+35:46 - Robert Brooks (MVP.dev  No)
+  A lot of times it's fear. And they don't even understand that it's fear that's holding them back a lot of times.  Right? It manifests itself in a lot of different ways. Oh, I'll more features. Right? Or the app needs to be perfect before I release it.  Or... You know, that's just somebody being scared to put something out in the wild, right? And it's really hard for some people to come to terms with that, because that's something that you've got to have a discussion with yourself about, right?  You know, you've got to be able to take feedback from anybody, and at least evaluate it and see if it makes your current situation better than where you are now.  If you don't have any clients, then you should be listening to everybody, right? Because you don't have any sales.  You're not even really a business yet, right? Until you start, you know, getting some revenue and getting some traction, you know, you're a hobby, right?  For the most part.
+
+36:37 - Shea
+  Yeah, it's, it's all and, and, and, and, like, we I've told people to like other entrepreneurs, I'm like, I've sold some  products.  But the sales, that's all that matters. Like, that's, that's all that matters is, is our consistent sales and revenue, especially if you're trying to go out and raise.
+
+36:59 - Robert Brooks (MVP.dev  No)
+  Yep. Zig Ziglar, right? You know, sales is the lifeblood of the company. Everything else is commentary, right? I mean, you don't have sales.
+
+37:07 - Shea
+  You don't got anything.
+
+37:09 - Robert Brooks (MVP.dev  No)
+  Yeah, and people don't understand, too.
+
+37:10 - Shea
+  Like, you got to get the sales and, like, you got to show some plan or strategy to get to, like, a break even quick, too.  Like, we're not a unicorn like the next Robin Hood or whatever. Right, right, Like, these are small niche WealthTech products.  They want to see that we can get to $5 million in revenue in a few years and sell it for a 10x multiple, you know?
+
+37:41 - Robert Brooks (MVP.dev  No)
+  Right, right. Not turn it into a unicorn.
+
+37:43 - Shea
+  Like, these, you know, and, you know, everybody's, like, you know, shooting for the stars. I'm like, no, no, no.  Like, you got to be practical. And a lot of VCs that are going to invest in WealthTech like this, that's what they want to see.  They don't want to see a stupid story or a crazy valuation. you know, like, like, They want to see a consistent growth, pragmatic founder, and realistic valuations.
+
+38:09 - Robert Brooks (MVP.dev  No)
+  Boring makes money, right? Especially in SaaS.
+
+38:12 - Shea
+  I mean, it really does.
+
+38:14 - Robert Brooks (MVP.dev  No)
+  Boring niches are where you can really kill it because nobody wants to... You got old dinosaurs that have been around forever doing things the way they've been doing it for 30 years.  It's ripe for the picking, but most people don't want to build in the space because it's boring. It's not .  It's not Uber. It's not Airbnb, right? And that's what they want. They want the recognition of building a unicorn.  They don't want a company. They don't want a startup. They don't want to put the effort in, right?
+  ACTION ITEM: Draft detailed MVP spec; send to Robert - WATCH: https://fathom.video/share/ePEoyUzh5oysjv5bJpWjM5S9EKo8mUav?timestamp=2323.9999
+
+38:44 - Shea
+  And what it really takes to do that, right?
+
+38:47 - Robert Brooks (MVP.dev  No)
+  Yeah. Exactly.
+
+38:49 - Shea
+  Yeah. Great. Well, hey. Yeah, Robert. I can put something... You know, I'm actually going to try to do that tomorrow morning.  Like a more highly detailed spec and outline list. But, yeah, I mean, I'll send you this document, too, that I have.  You know, the one that I just went through.
+
+39:19 - Robert Brooks (MVP.dev  No)
+  But I can put something more detailed together.
+
+39:23 - Shea
+  And then, you know, if you want to take a look at that demo of that competing product, you know, and then just let me know.
+  ACTION ITEM: Review Shea's docs + competitor demo; send go/no-go + fixed-price quote to Shea - WATCH: https://fathom.video/share/ePEoyUzh5oysjv5bJpWjM5S9EKo8mUav?timestamp=2372.9999  You know, kind of what you're feeling and what you think good next steps would be. And if it's a project you don't think you guys can work with, you know, I totally get it.  So no hard feelings if you decide it's not the right fit.
+
+39:43 - Robert Brooks (MVP.dev  No)
+  Yeah, absolutely. Yeah, I'll take a look. I usually get back relatively quickly. So you'll have something definitely before Monday so you can start making decisions.  You know, I don't like to let people be sitting on the burner too long waiting for this or that or what have you.  So I'll take a look at it over the weekend. And. I a decision one way or the other and send you over what I think.  At the very least, I'll send over my ideas and my thoughts on it as well so that you have that to go off of, seeing that I've been doing this for 10 years on the tech side.  You've got the sales side covered, but I can help a bit on the tech side of things.
+
+40:23 - Shea
+  I like that you have a lot of experience because I've got a friend that I do eventually want to bring on as a CTO.  He's a 25-year principal engineer because you're using Outsource. I'm not technical. I have a very surface-level understanding, but he's the guy that I'm going to have come in and do code reviews and checkpoints along the way just because we've been burned by Outsource dev shops.  Looking at your background. And, you know, gray hairs. I could probably send him your LinkedIn. He's like, oh, no, like this guy's going to build it the right way.  I'll still do some code reviews, but Robert probably knows more than I do. You know what I mean? So I'm also looking for that kind of relationship and not just like, oh, yeah, I'm going to pay this Indian dev shop 15 bucks an hour.  They're going to get something that is going to be kind of junky. But, like, I don't have I don't really have any oversight of what they're actually building and doing, you know?
+
+41:32 - Robert Brooks (MVP.dev  No)
+  Yeah.
+
+41:32 - Shea
+  So that's also like another sort of I know, like something I've learned. You know what I mean?
+
+41:39 - Robert Brooks (MVP.dev  No)
+  Yeah. So I actually just so you know, I'm involved in the builds, which is why I don't take on as many clients as I used to.  I actually architect and do a lot of the back end data schemas and things like that myself. So it's a little different in the way.  Usually founders and most dev agencies won't be doing. I mean, when we got 25 clients that were working with at once, it's not possible for me to be in every single project, right?  I mean, I don't have enough hours in the day plus two sales and everything else, right? One of the nice things about being this size is I can be involved in everything.  Everything my client wants to talk about, discuss, and, you know, hey, let's, you know, what about this? And hey, we were talking about this feature and whatever else, right?  And be able to really be, you know, like, intertwined in the team more so than just being an outside dev shop that's building something for you that's going to disappear when we're done.  know, I mean, the big thing I try to, you know, clients work with me for, like, years, and that's what I want.  I want that relationship that we have so that you can ping me five years from now and we can talk about, hey, we're ready for phase three, right?  And, you know, see what that's going to look like and those sorts of things, right? Not a one and done.
+
+42:55 - Shea
+  Yeah, I have a few other concepts, too. I think I think it's timely right now. The market is demanding an AI-driven marketing solution.  Every conference I go to, that's what they're asking for. All the surveys, everybody I talk to, they're like, this sucks.  These workflows suck. It's disjointed. It's good timing. I need to get into it now. And there's not really anybody going after that right now with AI in our space.  But I also have two other concepts. Again, I know there's, you know, I've already kind of sussed out the proof of concept.  And I know that there's a market in and TAM for it. So, you know, I, you know, my vision is to start to build out more platforms and even, you know, even like maybe someday just do like a wealth, have like a wealth tech fund in a studio.  But right now I want to start with this. Get this going. Try to get some users. Get it built.  Get some users. Get some money. Get some investors. Get some traction before I put the cart before the horse.
+
+44:09 - Robert Brooks (MVP.dev  No)
+  This is a good time for you because people are just starting to accept AI now. The first four years that it's been out, people were scared.  Either they didn't understand it, which was probably 95% of the people, or the 4% of the people were scared of it.  It's going to take my job. It's going to do this. It's going to do that. Now, that's possible 10 years or 15 years down the road.  Who knows? But for today, what it does is it provides a ton of productivity for business owners and even employees working in the company.  So they're not working on the boring, routine, mundane, day-to-day stuff, right? I mean, they can focus on higher value tasks for the company or for their customers or whoever they're working with, right?  And we're just starting to cross that corner now where people are like, okay, we're ready. How can AI actually help us versus...  We don't need it. Right. We'll just keep using Excel. We'll be fine. Right. Yeah. I met with my friend.
+
+45:07 - Shea
+  She's like a senior marketing director at a very large RIA. And she's like, it's becoming exhausting because every day when we have calls with the execs or meetings with the execs, they're just doing what execs do.  You know, they're following the buzz and they're like, you guys got to use more AI and incorporate AI. And like, so I heard that and I'm just like, you know, dollar signs.  And she's like, once you get this going, even if it is like understandable, like it's going to be an early stage MVP, we'll sign up just to start to pilot and use it.  So they can tell the execs, hey, we're using AI now.
+
+45:50 - Robert Brooks (MVP.dev  No)
+  Right. Look, we're using it.
+
+45:52 - Shea
+  Right.
+
+45:53 - Robert Brooks (MVP.dev  No)
+  And she's like, and then like, we'll give you a tremendous amount of feedback on like how you can replace these other platforms that we use.
+
+46:00 - Shea
+  And how, you know, you can scale it for like a large, you know, they've got 2,500 employees, you know, it's a huge firm.  So, you know, and I've got like 20 of those type of connections and relationships too. So it's like, all right, we'll get some little tiny pilot deals, but then I get enough data and feedback where I can then quickly, you know, start to build that enterprise platform, you know.  And so that's, that's like, you know, I'm kind of salivating at that.
+
+46:31 - Robert Brooks (MVP.dev  No)
+  That's awesome. All right, Shea. Great. Yeah, that sounds good. So let, I'll be on the lookout for that, that document.  In the meantime, I'll take a look at the YouTube video of the, the competitor platform. I'm actually going to go run through it myself as well.  See what kind of features it has and, and get familiar with, you know, what the expectations will be from you.  When we work on an application of that. Which is why I was saying that having the competitor platform is really beneficial because that gives us the basis to stack the other features on top of.  We're not starting from scratch, right? We're starting from their platform and building on top of that, you know?
+
+48:14 - Shea
+  That's how I've always, I mean, that's how like at first startup, that's how I always, because like they hired me and then I like became like an adjunct product manager.  Cause we didn't have one and they're like, I'm selling this, but, but they're like, well, you're the only one who knows like what features need to be and how they need to work.  And like, I was like building figmas for them and I'm like, what the ? Like I'm supposed to be, I'm like, you know, I'm, I'm bringing in like, you know, uh, a hundred K and ARR each month.  And I'm also on these, like, you know, um, like I'm, I'm PMing this whole product. And, uh, but like, I always, I'm like, look.  What we're doing is we're building a better mousetrap than the  technology out there. So these are the features we need because a prospect is going to say, well, this does this, this, and this.  So we need to have those features, but we need to make it better. And that's like a lot of this.  I'm like, we're not creating something new. We're not introducing.
+
+49:24 - Robert Brooks (MVP.dev  No)
+  You know, anyways, so that's like, I found like that is the best way to get exactly what I want.
+
+49:30 - Shea
+  You know, to get something that I know I can market. It's like have something that's like clear to benchmark.  So anyways, happy to go into more detail there if we do decide to kind of go down that and engage more.  So, but it's, it's been great. I'll let you go, Robert. I know it's late there. Appreciate the time.
+
+49:50 - Robert Brooks (MVP.dev  No)
+  I sent you that.
+
+49:51 - Shea
+  I just sent you that document. Okay.
+
+49:53 - Robert Brooks (MVP.dev  No)
+  Um, and then, uh, yeah, just, um, we'll, you know, I'll, keep my eyes peeled for your response. Thank Sounds good.  All right. Look forward to talking with you soon. Have a great weekend, Shea, okay? Yep, you too. Thanks. bye now.

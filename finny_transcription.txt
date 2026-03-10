@@ -1,0 +1,50 @@
+00:00 Hello and welcome to Finny. Today I'll give you an overview of what exactly Finny does and I'll walk you through the platform.
+00:07 So at a high level, the goal Finny is to help advisors with their organic growth, specifically with the client acquisition.
+00:13 And so the idea is how can we use data and machine learning models to make the process a lot more efficient and a lot less manual and frustrating, really enabling advisors to grow even when they're sleeping.
+00:24 That's the idea. And so the way we do this is starting with data. You've aggregated created, and created one of the most comprehensive and in-depth databases or consumers that exists in America right now.
+00:35 And so we have a database of 300 million potential profiles, nearly everyone in North America over the age of 18, and we're tracking things like intent signals, so we actually know what keywords, prospects are looking up online, we're also tracking things like government records, property records, social
+00:50 media, and so our database of 500 million profiles is actually updated every single day with about 6 billion data points.
+00:57 On top of the data, we've actually built these machine learning models that almost act like dating scores. And so it predicts the match between an advisor and a prospect.
+01:06 And so Finney can actually show an advisor out of the hundreds of millions of potential prospects who are the highest likelihood of getting along and the highest likelihood of converting to that specific advisor.
+01:18 On top of just the data and the prospects, we've actually built an entire outbound engine That enables the advisor to generate custom messages and custom content personalized every individual and then schedule and automate that out and so in about 10 minutes and I'll show you today.
+01:33 An advisor can actually go into any create an audience. Create custom messages carving that every single person that audience or months and they advise that it can just sit back and see interested responses and meetings coming in.
+01:52 So it's really, really powerful. Now, the way to get started on Fini is by creating an account. A process takes about 10 minutes and it's super simple.
+02:01 All the advisor we need to do is go into settings, account setup and then tell us about themselves. So they'll tell us about themselves, but key profiles and personas they'd like to prospect, so who their ideal client is, and what their key offerings are.
+02:14 Most of this data is actually pre-filled. Based off the website and LinkedIn, we've been talking about ideal clients. We actually have pre-built templates that can be used to edit.
+02:24 And so some examples of pre-built personas would be owners and accept recently-funded companies, people who are near and retirement and are actively looking up retirement keywords online with an hour for over a million dollars, people 
+02:36 who recently sold property. These are all which is an example of prospect types or niches that an advisor can go out and prospect.
+02:43 Once the advisor creates their personas, they're ready to go. And so this is what a full prospect card looks like.
+02:51 We have tons of information. On top of all, we have some of the intent signals and so we actually know what keywords this prospect was looking at online.
+02:58 If some general contact information beyond that be a financials, so we actually know, for example, some causes they donate to and the other financials employer benefits, basic demographics that we know when this person had a child, for example, we know their homeowner and their frequent traveler, professional
+03:13 information, and then tons of other great info. One of my favorite features is the ability to actually search the web.
+03:20 And so in real time, we can actually aggregate every single time this person's ever mentioned online and summarize that 
+03:32 for you. We can actually include the links for you to fact to check up here too, and anytime this person was mentioned, that link will be included up here.
+03:40 This prospect profile enables the advisor to spend instead of hours, just 30 seconds on researching a prospect and have all the different sources in one.
+03:51 Now, if you're wondering how you can actually go about and make these lists and run these searches, we give every advisor on the platform full access to all 300 million profiles off any, which means that any advisor can go in and create these really, really specific lists or audiences are hyper-segmented
+04:09 . There are literally hundreds of different And so we can say, find anyone up business and succession planning keywords on some other possible keywords could be around, for example, the Miami Heat or other sports team or any other press and so help me find people who are interested in golf recently.
+04:24 If you want to do some sort of client or prospecting event and on golfing, you can also surf on the location.
+04:32 And so I'd say people in the state of Florida, for example, some other demographic didn't search on our things like recently married or divorced or moneyed motion events like that, professionals.
+04:41 We can look up things like develop title. And so I can look up business owners here. Some recently changed jobs are got promoted.
+04:47 We can also search on things like education, financials, and so I can say maybe a network of over a million dollars in this case.
+04:55 raised around a Florida with the network of our business succession planning towards online. So I can just hit get results.
+05:03 Great. Now we have our list of Florida business owners with over a million dollar network who are interested in succession planning.
+05:09 What we can now do is quit with higher campaign targeting this demographic with personalized messages to every single individual. We can do that by going to the campaign center over here.
+05:24 So the campaign center is the one stop shop manager all out down through Finney. And so what you can do is open up the calendar review and actually see what sequences you have live in the schedule to cross LinkedIn and email.
+05:37 We can also go back into the table to see all live and completed sequences. And so if I wanted to open up an example sequence here, I can see a sequence that small business customers.
+06:08 in Miami with intent in succession planning. And if you want to say what's the key message, reach out to business owners in Florida who So I have questions about long-term tone can be casual and the call to action can simply be what can be meeting with me over coffee.
+06:52 Then what can you can actually do is just hit generate and it will generate a system sequence. And the default sequence that we're actually using is four nodes, four steps, a cross-linked email.
+07:05 And so based off all the interactions we've seen on Fini, we actually know that the best performing campaigns start with a LinkedIn invitation.
+07:12 And so it starts on day one with a friend connection request on LinkedIn, follow it up with an email, follow it up with a LinkedIn message only if that LinkedIn invitation was accepted, follow it up by a second email.
+07:23 So it's across 10 days and it's four touch points. We've seen that these four touch points are the most optimal flow from all the ones we've tested so far.
+07:31 Great. Now it's created. And so what you can actually do is click into every single node and discuss and click into every single node and actually decide on And so here's a great example.
+07:45 This is purely AI-generated, a potential template of what can be We would actually select an audience and see if you will find our Florida business owners and that was more of a million dollars in succession planning.
+08:02 We'll hit next, but we want to include anyone who has emails and LinkedIn available and make sure that we would remove anyone ready contact a preview for five random prospects within this niche and show you exactly what the campaign would look like if you're ready to send it out.
+08:19 Great, so now we actually have the preview ready. And what we can see is for each of these five example prospects, we can open up an example email that would be sent to them.
+08:27 And so remember the first, the first personization is the personizing, no based off their job. The second is a joke about the weather, and then it goes right into the incident.
+08:44 And so anything that was constant won't be changed prospect to prospect. So I'll open up another example here where we have a high leading an AI driven platform of Miami-Mess Keeper on your toes, only in Florida can you experience all four seasons one day in color typical Tuesday.
+08:59 Maybe we'll leave the jokes to the humans and not the AI, but this is a type of personalization that can change prospect to prospect.
+09:07 And so one other example I love if I've seen advisors say recommend a coffee shop near And so basically in the last five minutes, we've been able to run a search, finding a list find the highest likely to Finney to be working for me.
+09:21 And I can be in a client meeting or on the golf course and actually get these responses directly in my inbox or in my LinkedIn.
+09:28 A couple of other really cool features that Finnie has is website visitors. And so in real time, we actually can tell you exactly what prospects are on your website.
+10:18 If so, a prospect was already on the advisors website. That is a great signal. They're likely to reach in their services.
+10:24 And so you can very easily add everyone on your website to a live campaign and make sure they get their targeted wallet showing really high intents.

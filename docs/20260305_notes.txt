@@ -1,0 +1,56 @@
+Vireos product platform feature review and workflow optimization
+
+Prospect Finder Enhancements
+Add life events filtering section under search filters
+Newborn child, new address, new job title
+Data providers and Finney have this capability
+Email sequences need significant improvement
+Current trigger system too basic (only “sign up lead added manual”)
+Need more triggers and actual templating
+Reference Fintello product for better template structure
+Content Creation Updates
+Rebrand “AI Content generator” to “Create content”
+Remove AI terminology - advisors still wary of AI branding
+Add multi-platform selection option
+Build logic for LinkedIn, Facebook, and email formatting
+Save time by compiling content for all platforms simultaneously
+Rename “AI Assistant” to “Marketing Assistant”
+Avoid prominent AI labeling in user-facing features
+Compliance Workflow Automation
+Approved content needs automatic distribution
+Platform email should auto-send once approved
+LinkedIn posts should auto-publish
+Eliminate manual workflows advisors dislike
+Rejected content requires detailed feedback
+Add notes/highlights explaining rejection reasons
+Include edit button in compliance queue
+Allow direct editing and resubmission to pending status
+Publishing calendar integration
+Add date/time selection for content distribution
+Schedule future content deployment
+LinkedIn Outreach & Facebook Ads
+Review Fintello demo for LinkedIn outreach features
+Better setup, staging, and organization capabilities
+Scheduling for future outreach campaigns
+Facebook ads workflow improvements needed
+Current setup too sparse for production use
+Implement Fintello-style wizard approach
+Add AI-generated stock photos
+Include basic form creation tool initially
+Consider landing page generator for future development
+Automated lead nurturing
+Email sequences trigger immediately after form completion
+Future SMS integration for multi-channel drip campaigns
+Analytics & Admin Features
+Lead management integration with AUM (Assets Under Management)
+Track pipeline value and average deal size
+Critical for enterprise clients
+Team reporting enhancements
+Add “new AUM brought in” metrics
+Include AUM tracking across different scenarios
+Credit system implementation on hold
+Still evaluating data provider pricing
+Hide feature until backend economics clarified
+Super admin dashboard
+Add ARR tracking
+Include customizable metrics options

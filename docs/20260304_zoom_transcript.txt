@@ -1,0 +1,293 @@
+FIGMA Walkthrough  - March 04
+VIEW RECORDING - 35 mins (No highlights): https://fathom.video/share/wwCrzrtda9C4Ht6GZj2uCWpGJnBoy9M2
+
+---
+
+0:00 - Robert Brooks (MVP.dev  No)
+  I guess if it integrated a little better in this meeting is being recorded, like Google suite or Office 365, you know, it's not really great in that regard, honestly, but yeah, I was going to ask you which one you use.
+
+0:16 - shea werner (vireos.ai)
+  I've been trying this one called granola, which a few people recommended, but it's I'm just on a trial anyways.
+  SCREEN SHARING: Shea started screen sharing - WATCH: https://fathom.video/share/wwCrzrtda9C4Ht6GZj2uCWpGJnBoy9M2?timestamp=26.798018  Okay, so, so first of all, I know this is like, just a couple things like I know this is pretty, this is just kind of basic mock up Figma, you know, kind of design mock up.  So like, I guess my question for you is, like, there's stuff like the AI content creator, I mean, whatever you type in here, like say Roth, backdoor Roth, it's always the same.  Like, yeah, assuming this is there's nothing there's no you haven't piped in the LLM or anything like that yet.  So it's strictly so you can look at the design shape.
+
+1:12 - Robert Brooks (MVP.dev  No)
+  So you can look at like the UI UX, make sure that everything and I know that's not as important to you, but making sure that we've hit everything that you're wanting to see in the application.  That's really more about what what this is more about, less about, hey, you know, the functionality isn't quite working yet or this and that.  Nothing's been tied from the front end to the back end yet. It's all strictly design.
+
+1:38 - shea werner (vireos.ai)
+  Okay, so this is like design and layout. That's kind of what I thought I wanted to make sure. So yeah, I guess.  Yeah, the other thing is like, so this is like the beginning design, right? And then you guys are going to take feedback like, oh, I want this here, I want this here, I want this to look like this, I want this workflow to be this way.  So this is like, because it's really funny, because this actually looks very similar to the marketing review product that we built at Archive Intel.  I imagine it's because our front-end guy went into Figma, and then our CEO, who didn't include me in anything, was like, oh yeah, that's fine.  Anyways. That's funny.
+
+2:28 - Robert Brooks (MVP.dev  No)
+  Like, what's that? That's funny. That is so similar to what you guys have already, too.
+
+2:36 - shea werner (vireos.ai)
+  I mean, it's just like, you know, it's like, it's a Figma AI tool, they're like, you know, so it's like this color schemes, where, you know, your users, stuff like that.  So, okay, so that's good. So, like, so I guess my question then is, what is, so. So what I was thinking, I don't know, just a couple of thoughts, the LinkedIn outreach, Facebook ads, a prospect finder, email campaigns, we got to think these initial users are small RIAs, these guys are money managers and salespeople, they're not marketers, they're not tech savvy at all.  So I'm always thinking about how can we accomplish the goal with the easiest, most simplistic workflow, whereas sometimes when you're working with a marketing team or an enterprise level team, they want something a bit deeper, more technical.  But like, you know, I was just thinking, like, how can we, like, just even having more menu options, like, like you see here, like that sometimes is overwhelming, you know, so that's kind of why I like like the Finney design, because Finney looked like it was idiot proof, and the workflows look pretty simple, they knew they know who  They're building it for. So like, I just again, I'm just like, trying to wrap my head around here. So then I'm not like, giving you guys too much or I'm, I'm like, we're going off track or whatever.  But like, like, again, like the lead generation functions like this LinkedIn outreach, Facebook ads, the prospect finder, the email campaigns, I was wondering if we could just have like, and just want to get your thoughts like, where we would just have like, create campaign button, and then those we would just have those tiled at the top.  So people can toggle between those. I don't know. Like, I'm, I guess, like, How about a wizard?
+
+4:40 - Robert Brooks (MVP.dev  No)
+  Like, great campaign, but it takes them through a multi step wizard where they can select each of the different things here, right?  Oh, it's a Facebook, you know, I need this list of prospects or upload your own, right? Or and then, you know, Facebook campaign, or it's a LinkedIn campaign or whatever, and it kind of walks them through the whole thing.  see next time. That way.
+
+5:01 - shea werner (vireos.ai)
+  Yeah, and I was also going to ask you, like, my ultimate goal is to turn this into an agentic platform, where, because this is what advisors want to do, right?  They want to give it a command, and then they want the entire workflow built. And then they want leads to start to populate, you know, they want to get notifications, they want to see stuff end up on their calendar.  That's my vision for this, Robert, is where we're turning all of these functions and features just into an agentic command.  And then it's all happening behind the scenes for the advisors. That's what they want. And that's like, there's no other product like that.  Honestly, all of them are heavy, like workflow heavy, like the advisor has to go in here, they have to go to new campaign, they have to settle this  up.
+
+5:52 - Robert Brooks (MVP.dev  No)
+  Right.
+
+5:53 - shea werner (vireos.ai)
+  And they hate doing that. They hate doing the guesswork, they hate doing the busy work. So... To your point, like maybe a wizard, maybe like, I don't know, you know, you have a lot more experience here with this, but that's like kind of where I want to go with this long term making Fathom.
+
+6:12 - Robert Brooks (MVP.dev  No)
+  with it and basically it, hey, how you doing today, you know, Mr. Whoever you are, what can I do for you today?  Yeah, I want to create a new campaign in the Denver area for people making over $5 million who recently changed jobs.
+
+6:29 - shea werner (vireos.ai)
+  Right, there's some new software, like there's some financial planning tools that are like, connect your client, connect to your Schwab accounts, and then like you can just, the advisors can just interact with it.  They can say, pull me all my households who have exposure to, you know, right now would be like crude oil, right?  Like, pull me all my households that are in this income bracket. And like, advisors are... digging these tools because that's what they've wanted for the longest time is like something that they can command and make really easy.  So yeah, that's kind of high level. Like when I look at this, I'm like, this is very similar to all the other tools out there.  And it's very workflow heavy and manual input, manual workflow. So if we can consolidate some of these workflows, make them simple, make them automated, or look at like doing going that route of like the wizard, or more of the command prompting.  That's where my thoughts lie. Anyways.
+
+7:39 - Robert Brooks (MVP.dev  No)
+  Okay. Absolutely. Okay.
+
+7:49 - shea werner (vireos.ai)
+  So yeah, I want to get your thoughts there. I don't know if that's realistic, you know, but then also like, you know, I was going to say, it looks like we've got everything built into this initial thing.  in terms of features. So I just wanted to let you know, like, this all looks pretty good. I mean, I, this is, we need to add more here.  But I do have the screenshots from that other product, which I would just like to use the same, having the same inputs.  So there's some little things here and there on some of these. But overall, I think we've got like, the gist of the features.  But, again, my, like, goal is like, let's try to automate as much as we can, consolidate these workflows, make it simple.  The less, the less menu options, while still being able to accomplish the same, the same workflow goal, is going to be better, especially for this initial, you know, initial.
+
+8:50 - Robert Brooks (MVP.dev  No)
+  Like, do we want like a power user? So, so this is for a particular ICP right now, right? Like a particular  But that may not always be the case, right? I mean, you may get some offices that do have a marketing team and do want this sort of power, right?  Like a power user almost, like, to be able to get into, right, these sorts of things. So maybe we should have two modes, right?  Like easy mode and power. So a lot of my platforms I build, like, for myself, I have two modes.  I have easy mode where anybody can go in and go blah, blah, blah, blah. You know, this is what I need.  And the AI goes off and gets it for them or builds it for them or whatever it's doing. And it's like stupid simple, right?  It just walks them through whatever, and they get what they need at the end, and they're good to go.  And then I have boss mode, right, or power mode. And then for those users, they can go in, maybe they're developers, right?  And they can go in and, like, I don't need stupid mode. I need to be able to go in and fine tune whatever it is this thing's building for me.  I don't know. You know, at a very low level. And so I have Boss Mode in there, which has, like in this case, has all those menu options, so you can really go in and fine-tune and set up whatever you're looking to do.  How about something like that?
+
+10:14 - shea werner (vireos.ai)
+  Yeah, that's, it's funny, because that's kind of what I was picturing, so.
+
+10:19 - Robert Brooks (MVP.dev  No)
+  Perfect.
+
+10:20 - shea werner (vireos.ai)
+  That's why I wanted to have this chat, because I know you've done this a million times, so there's no reason to, like, completely reinvent the wheel.
+
+10:27 - Robert Brooks (MVP.dev  No)
+  Yep, absolutely. Absolutely. Like, really, Shane, this is for us to have a discussion. We have to have something to talk about, right, besides air.  And I always find it easier for us to have something at least to look at, so that we can have these conversations to kind of decide which way we're going to go.  Because some founders, this is fine to them. Like, some founders are like, yeah, okay, whatever, you know. And then, like, for you, it's like, well, I've already kind of got an idea in my mind what I'm looking for.  This at least lets us have that conversation, so we know what direction to head in, right? Right? So that's perfect.
+
+10:59 - shea werner (vireos.ai)
+  Yeah. Yeah.
+
+10:59 - Robert Brooks (MVP.dev  No)
+  Yeah. So easy mode, boss mode. Okay, great.
+
+11:08 - shea werner (vireos.ai)
+  Yeah, so I know that's like, I think you've got to get an idea now of where I want to go with this.  But just going back to this, I think we've got all of the necessary features that we want baked in here.  Just so you know, we hit the mark there. I've gone through these a bunch. There are some things that I want to potentially change here.
+
+11:43 - Robert Brooks (MVP.dev  No)
+  If you watch, Jay, go ahead.
+
+11:47 - shea werner (vireos.ai)
+  Oh, yeah. Well, and then this, the audit trail, that's great. But this is just a Figma, so there's nothing to actually export, you know.  So like some of that stuff I'll want to see eventually. speak. to We'll have talk. We'll be right back.
+  ACTION ITEM: Redo Figma w/ Easy+Boss modes + Create Campaign wizard; send to Shea - WATCH: https://fathom.video/share/wwCrzrtda9C4Ht6GZj2uCWpGJnBoy9M2?timestamp=727.9999  This looks pretty good, though, so far. Yeah, so anyways, I guess, again, I want to get your input here, but yeah.  Sorry, what were you going to say?
+
+12:18 - Robert Brooks (MVP.dev  No)
+  No, I was going to say, so if you want from here, I can take that feedback that you just gave me now, because that's going to change the structure of this a bit, right?
+
+12:28 - shea werner (vireos.ai)
+  Okay.
+
+12:28 - Robert Brooks (MVP.dev  No)
+  And that will allow you to kind of see things, and then from there, you can go through and go, all right, this is good, but let's do this, this, and this.  And we can either do that live on a call, you know, session together, or you can do that on Loom.  Whatever's easier, you know, whatever's easier for you, honestly.
+
+12:45 - shea werner (vireos.ai)
+  Yeah.
+
+12:46 - Robert Brooks (MVP.dev  No)
+  But then we can work from there, right? I mean, I think that's a big enough change to let me know what direction we need to head in.  Like, we never talked about Boss and Easy Mode, right? It wasn't even on the table until this conversation. And now that we've talked  Now I know exactly what the direction we need to. Like I said, every SaaS I've built in the last two years for myself and for quite a few clients has had Boston Easy Mode for that very reason.  Because you can have agentic AI really take care of a lot or wizards take care of a lot of that stuff for you.  But you're going to have some users here or there that just like, no, I want the power. I need the full, right?  I need that full power of everything that's available.
+
+13:26 - shea werner (vireos.ai)
+  Yeah, yeah, totally. So that's, yeah, this is, and like I said, these other systems, like when we went through that heat map that I showed you, these other systems, and you could, you watch that Finney.  I mean, the Finney demo is, it's completely manual workflow.
+
+13:44 - Robert Brooks (MVP.dev  No)
+  Yeah.
+
+13:45 - shea werner (vireos.ai)
+  so yeah, that's, that's like, perfect. And yeah, I think we're, we're on the same page there. Um, so I'll let you guys, I'll let you guys mock that up and redo that.  Then I'll take a look. And I think going forward. What I'll do. And that's the reason I want I'm looking for note takers like this one.  We'll just like record what I say and then compile it. Just like, you know what mean? It's like also just like a voice recorder.
+
+14:14 - Robert Brooks (MVP.dev  No)
+  Yeah.
+
+14:15 - shea werner (vireos.ai)
+  So then I can go through, I'll do a loom video and I can go through and then that should be able to like paraphrase it for you guys and really put it into good context.  I think going forward, that'll be the easiest way for me. You know, so then I can write everything down.  I can go through. I can be methodical instead of like jumping on a call like this and having, you know, a random string of consciousness.
+
+14:42 - Robert Brooks (MVP.dev  No)
+  Well, that's kind of what ends up happening is then you'll be like, oh, and I forgot about this and I forgot about, because you're trying to explain everything to me while I'm on a call with you in a limited amount of time versus room where you can just, you can take however long you want.  mean, you can take hours and hours if you want. Right.
+
+14:59 - shea werner (vireos.ai)
+  Um, yeah. Yeah. Yeah, totally. So I'll do that going forward. I just wanted to get on initial call, have that kind of high level discussion.  It sounds like you've built tons of platforms with the same kind of, you know, like the way I look at it is it's like, you know, you have that command prompting and, you know, you connect everything and then you just kind of have that easy mode.  But then you can just like push that away.
+
+15:28 - Robert Brooks (MVP.dev  No)
+  Right.
+
+15:28 - shea werner (vireos.ai)
+  And then look like it's kind of like opening the the, you know, the the hood on the engine, right on an engine on a car.  Then you can really see how everything's working, all the data, the analytics, all that .
+
+15:41 - Robert Brooks (MVP.dev  No)
+  If that's what the user wants, right, they can dive in deeper if they want.
+
+15:45 - shea werner (vireos.ai)
+  But you're going to have like 80 percent maybe that don't care about that.
+
+15:49 - Robert Brooks (MVP.dev  No)
+  They want easy mode. They want it to be super simple for them or whatever. Right.
+
+15:53 - shea werner (vireos.ai)
+  Totally.
+
+15:54 - Robert Brooks (MVP.dev  No)
+  You know, where they can just enter in a phrase or a command or whatever, and it takes care of it for them.  Right. So you'll have the best of both worlds then, right?
+
+16:03 - shea werner (vireos.ai)
+  Yeah, and those big companies like FMG Suite, or Snappy Kraken, which I hate that name, but everybody remembers it.  Like, the thing about this company is, like, they've got this drag-and-drop AI builder, you know, and all this is, is, like, you can build campaigns, you know, with, it's a template builder.  And, but, like, the advisor still has to go in and automate all, like, manually go through all of the workflows.  And then the only other thing that they have AI-driven is they've got, like, this, you know, AI content creator.  But, like, advisors don't want any of this . They want this, they want the AI to do the work for them.  Right. They want it to be, like, a marketing...
+
+16:59 - Robert Brooks (MVP.dev  No)
+  A marketing... A Yeah.
+
+17:02 - shea werner (vireos.ai)
+  Yeah.
+
+17:02 - Robert Brooks (MVP.dev  No)
+  And you know that because you're, you're working with all this, these, these systems where it's like, I just want to tell it what to do.  I want to connect everything, tell it what to do and be done. Right. I mean, that's what I do every day.  Right. I mean, it's like, I just tell systems what to do and how to, you know, how to access it and whatever else I'm not in there manually, like tippity tapping code anymore on projects and things.  Right. I mean, it's, it's handling a good portion of that sort of stuff for me. Um, you know, at the end of the day, so like this, right?
+
+17:31 - shea werner (vireos.ai)
+  Drag and drop campaign editor or template builder is not AI.
+
+17:36 - Robert Brooks (MVP.dev  No)
+  Right. There's nothing AI about that, but it's a selling point, right? When you're selling it to somebody, hey, it's AI template building.  But if you're dragging and dropping and creating it, it's not a, you're doing it. You're doing the work. Right.
+
+17:49 - shea werner (vireos.ai)
+  That's one of the reasons I wanted to work with you. Cause you, I mean, you are using AI to make your job and like, like you understand the use case.  We saw the huge sell-off in SaaS because these companies, Microsoft, CoPilot  sucks. Because they're just throwing AI on top of their product, but they're not trying to solve any pain point.  They're not trying to solve any workflow problem or time constraints or anything like that. Snappy Kraken's doing the same thing.  They were never an AI platform. They're a content platform. And just because people, like, it's the trend, they're just throwing AI features on top of their existing platform without really trying to use AI to solve a problem.  It's like, in my opinion, it's why China is destroying us in the AI battle because right now that's what everybody's doing.  They're just throwing, slapping AI onto their product to, you know, buck the trend and to get VC money. Whereas, like, everything I read is, like, companies are...  No, we're taking AI to solve this problem, just like what you're doing. You're taking software development, the time, as well as the amount of resources and money, and you're consolidating all of that and creating huge productivity and efficiency by doing that.  And again, none of these old legacy systems are using AI. They're not thinking that way.
+
+19:24 - Robert Brooks (MVP.dev  No)
+  They're not thinking, what are the pain points that our advisors have?
+
+19:27 - shea werner (vireos.ai)
+  What are the complaints? Why do people leave? Let's do some surveys. Let's talk to people. Let's figure out where AI can help.  Instead, they make an AI drag-and-drop builder.
+
+19:42 - Robert Brooks (MVP.dev  No)
+  We're still not at the point where most people understand what AI is capable of doing. They still look at it as an email crafter, essay writer, content creator for blogs.  They don't understand that the agentics behind it, it can make decisions on its own if you give it enough.  Um, agency and leeway to do so, you know, and, and, you know, a lot of companies just haven't caught up to that, that capability.  And that's the power behind it. It's not that it can write an email for me. It's it can decide that it wants to write an email for me based on ABC criteria, right?  Instead of sending an SMS message to the person or something like that, right? I mean, it has that capability to do that on its own, you know?  Um, yeah. And that's just, that's the tip of the iceberg. I mean, this even goes much, much deeper than even that, but, um, and these companies take, that's, what's great about being a small company.  You can put all that as this stuff comes out and it gets better and better. You can put that all in before they can even figure out what it does.  Right. You can have that new feature released in two weeks. That's going to take them six months to get a budget approved for them to put it in.  Right. I mean, that's, that's really the power behind. mean, small business entrepreneurs. Small SaaS platforms like this where you don't have, you're not moving a cruise ship where it takes you, you know, three days before you can do a U-turn or pivot into another direction.  You can do it in hours.
+
+21:12 - shea werner (vireos.ai)
+  Yeah. Yeah. So anyways, that's good. Well, hey, yeah, then I'll let you guys update that. And then, yeah, and then I'll take a look.  And then, yeah, I'll start to just, like, I'll take notes using the note taker. So and then I'll use Loom, too.  So, you know, you guys have visual as well as, like, good notes and documentation for it. And then, yeah, yeah, we'll start ripping.  I'm excited. I've been reaching out and I've been getting some good feedback. I'm not ready to, you know, I'm not going to really start doing, like, pre-demos until we get a little further along.  But I think there's, like, there's some.
+
+22:00 - Robert Brooks (MVP.dev  No)
+  If you have a script for a demo that you want to be able to do for pre-sales, let me know, and I can set up something for that script so that it will be clickable, so that you can show certain features if you want, and show reports or whatever else, so you can use that for sales while we're building the main app in the back.  Or if you want to demo it to friends, people that you know in the industry and things like that, too, to kind of get their feedback, that can have some value also.  So if that's something you want to be able to do, just let me know, and we can go ahead and see about putting that together for you as well.  It's nice for you to get some validation before you even have any users start actually using the platform and getting feedback from them before things are completely built out.  Or sales, like whipping out their credit card and ready to pay, that's a beautiful sign, right? I mean, that's what you want to see at the end of the day, right?
+
+23:00 - shea werner (vireos.ai)
+  Yep, totally. So yeah, that's, I'll let you know. I'm not ready. I don't want to do that yet. But I'll keep that in mind once we get a little further along, you know, with the development.  So great. Okay, good. Then, yeah, really appreciate the time. I'll let you go, Robert. And then I'll wait for you guys to update that with kind of this new feedback and discussion that we had.  And then I'll go in and start to kind of go through each section and give notes if needed.
+
+23:32 - Robert Brooks (MVP.dev  No)
+  Perfect. I'll have it back to you by tomorrow. Give me 24 hours and I'll get it back to you.  That way we can keep things moving. We got the Trello cards. Let's see, like I talked about, the back end doesn't change.  So if we have a boss mode and an easy mode, that's all front end, right? And behind the scenes, doesn't, you know, we got an added easy mode API integrations and things like that.  But that would just sit on top of what we already have for boss mode, right? So, and for us.  A lot of the back-end stuff doesn't even get impacted when you make UI changes, right? That's all pretty much front-end stuff, so we got that rolling already.  So I'll get this back to you by tomorrow, and then you'll have some time to go through it, and we can see from there.  All right, Shay?
+
+24:18 - shea werner (vireos.ai)
+  Hey, one quick question, sorry.
+
+24:20 - Robert Brooks (MVP.dev  No)
+  I'm looking at my notes here.
+
+24:21 - shea werner (vireos.ai)
+  So I'm looking at, like, on the Trello board, the content generation stuff. Is this, so I know we talked about the, like, incorporating the FINRA rules.  Are you guys are just going to do, like, an off-the-shelf OpenAI, like, use one of their LLMs? And then I think there are some built-in with the FINRA and SEC rules.  I missed that, honestly. I know we talked about it.
+
+24:54 - Robert Brooks (MVP.dev  No)
+  I know it's part of it, but, like, we didn't talk about the integration part, and it wasn't really in the...
+
+25:00 - shea werner (vireos.ai)
+  Work order, like the specific work order. So I just, you know, I wanted to just touch on that.
+
+25:06 - Robert Brooks (MVP.dev  No)
+  Yep. So I use OpenAI as my base LLM for pretty much everything, except if there's particular situations like vision.  If we need the OCR images or things like that, Google Vision does a way better job. So depending on what the criteria is and what the need is, but my default is OpenAI GPT models.  If you have something different that you want to use, the way the system's built is we could swap models in and out.  So the thing is, you don't want to be locked in on one model, right? Because by the time we get this done, let's say we were doing this with GPT-4, right?  And it takes a couple months to get this out or whatever. Well, GPT-5 comes out. Well, now you're stuck on GPT-4.  And GPT-4 to 5, even though not as big of a leap from 3 to 4, but still substantial enough where you kind of want to move your models to 5.  Well, if you bake that model in hard-coded, you're stuck, right? Now you've got to unwind all of that with four to add in five.  So what I always do is I have that as just a variable, right? Okay, we're using model 4.0 for Omni.
+  ACTION ITEM: Research FINRA/SEC-tuned LLMs; report findings to Shea - WATCH: https://fathom.video/share/wwCrzrtda9C4Ht6GZj2uCWpGJnBoy9M2?timestamp=1573.9999  Let's move to 5.0, right, or whatever. And that's just nothing more than a configuration change in one of the files, right?  So if you have a different model that you want to use that's specifically tuned for FINRA, or if you want me to research that for you, I can do either one.  So let me know. But otherwise, the base models that I use is like the GPT models.
+
+26:39 - shea werner (vireos.ai)
+  I mean, I'll take a look, you know, maybe if you could do a little bit of digging on your end.  Because I think that there's already models that incorporate the FINRA and the SCC rule, and it might even be baked into GPT.
+
+26:55 - Robert Brooks (MVP.dev  No)
+  I would, I mean, considering GPT, yeah, I would think so. GPT. GPT is very good at HIPAA, SOC 2 compliance auditing and things like that, because it's trained on all of those manuals and things, right?  So I'll definitely check, but I'll see if there's something specific. If you know of a model while you're doing your checking that particular platforms are using that advisors trust, and I don't know if that's a thing in your industry or not.
+
+27:22 - shea werner (vireos.ai)
+  So that's the thing is, like, this is so funny. It's so funny because, like, I've looked at some of this, like, compliance software, and they've tried to, like, build their own models, or they, like, built it really poorly.  So then the feedback I got from, like, compliance officers is, like, all these products, like, none of them really hit the nail where we need it to.  So what we do is we will take our content, put it into, they have, you know, an enterprise version of ChatGBT.  Well, they're paying for that. They'll put it into ChatGBT. It'll come back with feedback. They'll edit that. So it's a super manual workflow for them, and then they'll get the final, and they'll input it into their marketing review system, so then their compliance team can review it, because that's their company process, even though it's really convoluted and stupid.  And I'm like, I talked to the entire compliance team at Morgan Stanley Merrill Lynch, and they're like, yeah, that's how we do it.  We have an enterprise, and they claim, they're like, oh, and they say that all of our searches, all of our data is proprietary, too.  They're not including, and I'm like, I think that's not true.
+
+28:40 - Robert Brooks (MVP.dev  No)
+  I worked for them via a subcontractor, J.P. Morgan, Merrill Lynch. Actually, I think it was just J.P. Morgan's, before they did the merger.  So like 2010-ish or 2011, we were integrating the platform that I was, the company I We were integrating with them.  I don't know how much you know about those big banks and big brokers and stuff like that. If you knew how messed up their back office was, you would not give them your money.  I was like, you guys are a train wreck. They're like that spitting glue holding all this stuff together to get it over the finish line sort of thing.  I mean, it's like, whoa.
+
+29:26 - shea werner (vireos.ai)
+  Yeah, it's a disaster.
+
+29:28 - Robert Brooks (MVP.dev  No)
+  And really, I was like, I was shocked. I was really shocked. But yeah, so I'll take a look for see if there's any specific models or whatever.  And we'll be able, you know, as the market evolves to Shea, we'll be able to pivot to other models if one does come out that happens to be really, you know, specific to FINRA.  And, you know, the federal government comes out and says, okay, this is the one you need to be using for anything FINRA related or whatever.  You know, we'll be we'll be ready to make that switch. If that ever does happen.
+
+30:01 - shea werner (vireos.ai)
+  I doubt that will happen, but maybe, but FINRA and SEC, they never get into that kind of . So that's good for us, right?  Because then we can like continue to kind of build something that's more customizable and proprietary than just like off the shelf FINRA model.  I just never, I could, I could never see them doing it. Like talking about inefficient, you know, government agencies and also just like Stone Age type practices.  I just, I could never see them getting their  together to do something like that. And they also, the whole thing is like, they don't approve or disapprove of anything.
+
+30:39 - Robert Brooks (MVP.dev  No)
+  They're like, here's our rule.
+
+30:40 - shea werner (vireos.ai)
+  The way you interpret it is the way you interpret it. And if you're wrong, then we're going to fine you.
+
+30:44 - Robert Brooks (MVP.dev  No)
+  Right, right.
+
+30:45 - shea werner (vireos.ai)
+  You know, that's like, it's.
+
+30:47 - Robert Brooks (MVP.dev  No)
+  Yeah, it's all open to interpretation, right? Right.
+
+30:51 - shea werner (vireos.ai)
+  Yeah. Yeah, the SEC makes a lot of money and it's all on these massive fines and the fees and all that .  You know, they're, they're, they're.
+
+31:00 - Robert Brooks (MVP.dev  No)
+  A profitable arm of the government, you know, so- monopoly, right? Like, is that a monopoly? Is this a monopoly?  You know, it's like, it's all dependent on what they feel like at that particular moment, right? I mean, the definitions are so ambiguous that you, who knows, right?
+
+31:18 - shea werner (vireos.ai)
+  But- They're still going to find you $5 billion for it. Yeah, for firms, like, I, this, this is a small firm, but they got dinged for off-channel texting.  And so they only have about 200 employees, if I can recall correctly, and they paid an $8 million fine.  So that's a big fine for a small firm.
+
+31:39 - Robert Brooks (MVP.dev  No)
+  Yeah, that's no joke.
+
+31:40 - shea werner (vireos.ai)
+  You know, that's like the bonuses for the execs.
+
+31:43 - Robert Brooks (MVP.dev  No)
+  Like, that's like a big  fine for them.
+
+31:46 - shea werner (vireos.ai)
+  And, and it's because they were texting on personal iPhones. And, you know, so we, we solved that. That was like our first enterprise deal that I closed because we're like, okay, don't want to pay $8 million.  What, you know, pay us. Pay us $100,000 a year for this contract. We'll catch all your phones, and you guys won't pay $8 million again.
+
+32:08 - Robert Brooks (MVP.dev  No)
+  That's a nice loss aversion case study, right, to go show to other potential clients then as well. Like, hey, you don't want to get fined $8 million?  Then use our platform, right, from a sales perspective.
+
+32:24 - shea werner (vireos.ai)
+  Yeah, we use that story quite a bit.
+
+32:27 - Robert Brooks (MVP.dev  No)
+  Oh, yeah.
+  ACTION ITEM: Send Shea AWS cloud cost estimate (~$300/mo) - WATCH: https://fathom.video/share/wwCrzrtda9C4Ht6GZj2uCWpGJnBoy9M2?timestamp=1948.9999
+
+32:29 - shea werner (vireos.ai)
+  Hey, so one last thing, actually. I've been putting my whole budget together and burn rate and all that stuff.  What's going to be, on average, in the beginning, AWS cloud costs?
+
+32:46 - Robert Brooks (MVP.dev  No)
+  I'll get it over to you, but it's not anything that's going to scare you. It'll be a couple hundred, maybe, at the most, honestly, to start.  Yeah, it's nothing to scare you to start.
+
+32:58 - shea werner (vireos.ai)
+  With a platform like this, then, like... How does that scale incrementally as I add more users?
+
+33:04 - Robert Brooks (MVP.dev  No)
+  So what we do, so a couple ways, we can scale horizontally and vertically, right? So what we do, AWS has burst capabilities, right?  So that if you did an ad and all of a sudden you ended up with a thousand advisors on there all at once, it can scale for that burst and what have you.  But as you take on more and more users, we can add more VMs and cloud platforms and whatever else that we need to load balancers and things across the board to help scale up to as much as we need to.  But initially, I mean, we just need a base implementation to get users on there, make sure that we got some snappy, you know, you're going to have some delay with the AI responses, of course, while it's doing generation or agentic things or whatever, right?  There's some delay there, but for the most part, it's not going to be platform. We haven't had any issues.  had one particular client who is at, jeez, I don't even know, maybe 100 million hits a month on the platform.  And we're able to handle that just fine with him.
+
+34:19 - shea werner (vireos.ai)
+  No issue at all.
+
+34:21 - Robert Brooks (MVP.dev  No)
+  So we'll be able to scale up with you as we do too.
+
+34:25 - shea werner (vireos.ai)
+  Okay, so I'll put in like three, we'll just be conservative.
+
+34:28 - Robert Brooks (MVP.dev  No)
+  I'll say like 300 a month to start out.
+
+34:31 - shea werner (vireos.ai)
+  And then, but you know, and then like we can kind of go from there. Yeah, figure that out. But okay, perfect.  Cool. Well, thanks, Robert. Really appreciate it, man. I'll just wait for that rendition to come tomorrow. And then I'll dig in and send you guys some notes.
+
+34:51 - Robert Brooks (MVP.dev  No)
+  So perfect. Sounds great. All right, Shane. Thanks. Okay. Thanks. Appreciate it. Have a great day.

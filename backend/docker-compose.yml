@@ -1,0 +1,128 @@
+version: "3.9"
+
+# =============================================================================
+# Vireos Backend — Docker Compose (Base / Production)
+# =============================================================================
+# This file defines the core services required to run the application.
+# For local development with hot-reload, use:
+#   docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: vireos_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vireos
+      POSTGRES_USER: vireos
+      POSTGRES_PASSWORD: vireos_dev
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vireos -d vireos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - vireos_network
+
+  # ---------------------------------------------------------------------------
+  # Redis 7
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: vireos_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - vireos_network
+
+  # ---------------------------------------------------------------------------
+  # Vireos API Application
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: production
+    container_name: vireos_app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Override with Docker service names for container-to-container networking
+      DATABASE_URL: postgresql://vireos:vireos_dev@postgres:5432/vireos?schema=public
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+    ports:
+      - "${PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${PORT:-3000}/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - vireos_network
+
+  # ---------------------------------------------------------------------------
+  # BullMQ Workers (separate process for job processing)
+  # ---------------------------------------------------------------------------
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: production
+    container_name: vireos_worker
+    restart: unless-stopped
+    command: ["node", "dist/queues/workers/index.js"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://vireos:vireos_dev@postgres:5432/vireos?schema=public
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - vireos_network
+
+# ---------------------------------------------------------------------------
+# Volumes
+# ---------------------------------------------------------------------------
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# ---------------------------------------------------------------------------
+# Networks
+# ---------------------------------------------------------------------------
+networks:
+  vireos_network:
+    driver: bridge
