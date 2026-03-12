@@ -8,6 +8,7 @@ import { Errors } from '../middleware/errorHandler';
 import { sha256Hex, generateSecureToken } from '../utils/crypto';
 import { UserRole } from '../types';
 import type { RegisterDto, LoginDto } from '../validators/auth.validators';
+import { emailService } from './email.service';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -212,7 +213,7 @@ async function writeAuditTrail(params: {
  * - Validates email uniqueness
  * - Hashes password with bcrypt (12 rounds)
  * - Creates user with status INVITED
- * - Logs verification email (stub for now)
+ * - Sends account welcome/verification email
  * - Writes AuditTrail CREATED action
  * - Returns JWT token pair
  */
@@ -220,10 +221,21 @@ export async function register(
   dto: RegisterDto,
   ipAddress?: string
 ): Promise<AuthTokens> {
-  // Check organization exists
-  const organization = await prisma.organization.findUnique({
-    where: { id: dto.organizationId },
-  });
+  const normalizedOrgName = dto.organizationName?.trim();
+  const organization = dto.organizationId
+    ? await prisma.organization.findUnique({
+        where: { id: dto.organizationId },
+      })
+    : normalizedOrgName
+      ? await prisma.organization.findFirst({
+          where: {
+            OR: [
+              { name: { equals: normalizedOrgName, mode: 'insensitive' } },
+              { slug: { equals: normalizedOrgName.toLowerCase().replace(/\s+/g, '-'), mode: 'insensitive' } },
+            ],
+          },
+        })
+      : null;
 
   if (!organization) {
     throw Errors.notFound('Organization');
@@ -248,7 +260,7 @@ export async function register(
   // Create user
   const user = await prisma.user.create({
     data: {
-      organizationId: dto.organizationId,
+      organizationId: organization.id,
       email: dto.email.toLowerCase(),
       passwordHash,
       firstName: dto.firstName,
@@ -258,12 +270,20 @@ export async function register(
     },
   });
 
-  // Stub: log verification email
-  logger.info('EMAIL_STUB: Send email verification', {
-    to: user.email,
-    userId: user.id,
-    note: 'In production, send a verification link via email service',
-  });
+  try {
+    await emailService.sendEmail(
+      user.email,
+      'Welcome to Vireos',
+      `<p>Hi ${user.firstName},</p><p>Your Vireos account has been created. You can now sign in and complete onboarding.</p>`,
+      `Hi ${user.firstName}, your Vireos account has been created. You can now sign in and complete onboarding.`
+    );
+  } catch (err) {
+    logger.warn('Failed to send welcome email during registration', {
+      userId: user.id,
+      email: user.email,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   // Write audit trail
   await writeAuditTrail({
@@ -477,7 +497,7 @@ export async function logout(
  * - Finds user by email
  * - Generates a secure 32-byte token
  * - Stores hashed token + 1hr expiry on user
- * - Logs the reset token (stub for development)
+ * - Sends password reset email
  */
 export async function forgotPassword(email: string): Promise<void> {
   const user = await prisma.user.findUnique({
@@ -506,14 +526,23 @@ export async function forgotPassword(email: string): Promise<void> {
     },
   });
 
-  // Stub: log the token in development
-  logger.info('EMAIL_STUB: Password reset token generated', {
-    to: user.email,
-    userId: user.id,
-    token: config.NODE_ENV !== 'production' ? rawToken : '[REDACTED]',
-    expiresAt: expiresAt.toISOString(),
-    note: 'In production, send this token via email with a reset link',
-  });
+  const resetUrl = `${config.API_BASE_URL.replace(/\/$/, '')}/reset-password?token=${encodeURIComponent(rawToken)}`;
+
+  try {
+    await emailService.sendEmail(
+      user.email,
+      'Reset your Vireos password',
+      `<p>Hi ${user.firstName},</p><p>Use the link below to reset your password. This link expires in 1 hour.</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
+      `Reset your Vireos password using this link (expires in 1 hour): ${resetUrl}`
+    );
+  } catch (err) {
+    logger.warn('Failed to send password reset email', {
+      userId: user.id,
+      email: user.email,
+      expiresAt: expiresAt.toISOString(),
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 /**

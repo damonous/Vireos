@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-03-11T11:22:07.513Z",
+  "requestId": "75bebbab-2d66-4783-ac96-887b71a9214e",
+  "requestCreated": {
+    "status": 201,
+    "requestedCount": 2,
+    "workflowStatus": "PENDING"
+  },
+  "upload": {
+    "status": 200,
+    "workflowStatus": "PROCESSING",
+    "fulfilledCount": 2,
+    "creditCost": 4
+  },
+  "preview": {
+    "status": 200,
+    "fulfilledCount": 2,
+    "creditCost": 4,
+    "leadCount": 2
+  },
+  "confirm": {
+    "status": 200,
+    "leadsImported": 2,
+    "creditsDeducted": 4
+  },
+  "tokenUsage": {
+    "status": 200,
+    "totalTokensUsed": 3710,
+    "itemCount": 6,
+    "organizationCount": 1,
+    "userCount": 1
+  }
+}

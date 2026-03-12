@@ -69,7 +69,7 @@ router.post(
 router.get(
   '/subscription',
   auth,
-  requireRole(UserRole.ORG_ADMIN, UserRole.SUPER_ADMIN) as any,
+  requireRole(UserRole.ORG_ADMIN, UserRole.SUPER_ADMIN, UserRole.ADVISOR, UserRole.VIEWER) as any,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const authReq = req as unknown as AuthenticatedRequest;
@@ -138,7 +138,7 @@ router.get(
 router.get(
   '/invoices',
   auth,
-  requireRole(UserRole.ORG_ADMIN, UserRole.SUPER_ADMIN) as any,
+  requireRole(UserRole.ORG_ADMIN, UserRole.SUPER_ADMIN, UserRole.ADVISOR, UserRole.VIEWER) as any,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const authReq = req as unknown as AuthenticatedRequest;

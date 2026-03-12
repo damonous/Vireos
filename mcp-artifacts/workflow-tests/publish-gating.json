@@ -1,0 +1,26 @@
+{
+  "ok": true,
+  "approvedDraftId": "e283c608-6ef6-4544-bb84-ecd7ecf270a2",
+  "draftId": "dce1eb3a-d163-4b13-b178-d803cfb9ac82",
+  "complianceAttempt": {
+    "httpStatus": 403,
+    "response": {
+      "success": false,
+      "error": {
+        "code": "FORBIDDEN",
+        "message": "Access denied. Required role(s): advisor, org_admin, super_admin"
+      }
+    }
+  },
+  "draftAttempt": {
+    "httpStatus": 400,
+    "response": {
+      "success": false,
+      "error": {
+        "code": "BAD_REQUEST",
+        "message": "Draft must be in APPROVED status to publish. Current status: DRAFT"
+      }
+    }
+  },
+  "generatedAt": "2026-03-11T06:58:51.298Z"
+}

@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-03-11T07:32:59.790Z",
+  "blocked_generation": {
+    "status": 400,
+    "code": "BAD_REQUEST",
+    "message": "Prompt contains prohibited terms that violate FINRA compliance rules",
+    "flagged_terms": [
+      "guaranteed returns",
+      "risk-free",
+      "guaranteed returns",
+      "risk-free"
+    ]
+  }
+}

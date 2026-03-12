@@ -13,8 +13,12 @@ export const registerSchema = z.object({
     .regex(/[0-9]/, 'Password must contain at least one number'),
   firstName: z.string().min(1, 'First name is required').max(50, 'First name cannot exceed 50 characters'),
   lastName: z.string().min(1, 'Last name is required').max(50, 'Last name cannot exceed 50 characters'),
-  organizationId: z.string().uuid('Organization ID must be a valid UUID'),
+  organizationId: z.string().uuid('Organization ID must be a valid UUID').optional(),
+  organizationName: z.string().min(1, 'Organization name is required').max(200).optional(),
   inviteToken: z.string().optional(),
+}).refine((value) => Boolean(value.organizationId || value.organizationName), {
+  message: 'Organization ID or organization name is required',
+  path: ['organizationName'],
 });
 
 export const loginSchema = z.object({
@@ -65,8 +69,12 @@ export const createOrgSchema = z.object({
 
 export const updateOrgSchema = z.object({
   name: z.string().min(1).max(200).optional(),
+  icpType: z.string().min(1).max(100).optional(),
   website: z.string().url().optional().nullable(),
   logoUrl: z.string().url().optional().nullable(),
+  prohibitedTerms: z.array(z.string().min(1).max(200)).optional(),
+  requiredDisclosures: z.union([z.array(z.string().min(1).max(1000)), z.record(z.unknown())]).optional(),
+  complianceRules: z.record(z.unknown()).optional(),
   settings: z.record(z.unknown()).optional(),
 });
 

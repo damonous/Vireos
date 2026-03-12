@@ -1,0 +1,10 @@
+{
+  "generated_at": "2026-03-11T11:22:10.252Z",
+  "organizationId": "445006c2-c156-40e8-a8f2-5c7ad02fe3c1",
+  "userEmail": "autotest-subscription-1773228127513@example.com",
+  "result": {
+    "url": "https://127.0.0.1:13443/billing?required=subscription",
+    "title": "Vireos",
+    "billingBanner": false
+  }
+}

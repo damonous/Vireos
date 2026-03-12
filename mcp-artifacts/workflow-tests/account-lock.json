@@ -1,0 +1,40 @@
+{
+  "generated_at": "2026-03-11T11:22:03.113Z",
+  "registration": {
+    "status": 201,
+    "success": true
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "status": 401,
+      "code": "UNAUTHORIZED",
+      "message": "Invalid email or password"
+    },
+    {
+      "attempt": 2,
+      "status": 401,
+      "code": "UNAUTHORIZED",
+      "message": "Invalid email or password"
+    },
+    {
+      "attempt": 3,
+      "status": 401,
+      "code": "UNAUTHORIZED",
+      "message": "Invalid email or password"
+    },
+    {
+      "attempt": 4,
+      "status": 401,
+      "code": "UNAUTHORIZED",
+      "message": "Invalid email or password"
+    },
+    {
+      "attempt": 5,
+      "status": 429,
+      "code": "TOO_MANY_REQUESTS",
+      "message": "Account has been locked for 15 minutes due to too many failed login attempts."
+    }
+  ],
+  "locked": true
+}

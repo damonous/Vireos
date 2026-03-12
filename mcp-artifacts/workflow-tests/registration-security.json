@@ -1,0 +1,13 @@
+{
+  "generated_at": "2026-03-11T11:21:58.462Z",
+  "weakPassword": {
+    "status": 422,
+    "code": "VALIDATION_ERROR",
+    "message": "Request validation failed"
+  },
+  "registrationRedirect": {
+    "url": "https://127.0.0.1:13443/billing?onboarding=required",
+    "title": "Vireos",
+    "hasAccessToken": true
+  }
+}

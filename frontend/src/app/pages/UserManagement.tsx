@@ -1,486 +1,227 @@
 import { useState } from 'react';
-import { Edit, Send, X } from 'lucide-react';
+import { UserMinus } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
+import { EmptyState } from '../components/ui/empty-state';
+import { ErrorState } from '../components/ui/error-state';
+import { LoadingState } from '../components/ui/loading-state';
+import { useApiData } from '../hooks/useApiData';
+import { useAuth } from '../hooks/useAuth';
+import { apiClient } from '../lib/api-client';
 
-interface User {
-  name: string;
-  initials: string;
-  role: string;
-  roleBadgeColor: string;
+interface Member {
+  id: string;
   email: string;
-  lastActive: string;
-  status: 'Active' | 'Inactive';
+  firstName: string;
+  lastName: string;
+  role: 'ADMIN' | 'ADVISOR' | 'COMPLIANCE' | 'SUPER_ADMIN';
+  status: string;
+  lastLoginAt?: string | null;
 }
 
-const users: User[] = [
-  {
-    name: 'James Peterson',
-    initials: 'JP',
-    role: 'Admin',
-    roleBadgeColor: 'bg-purple-100 text-purple-800',
-    email: 'james.peterson@pinnacle.com',
-    lastActive: '2 hours ago',
-    status: 'Active',
-  },
-  {
-    name: 'Sarah Mitchell',
-    initials: 'SM',
-    role: 'Advisor',
-    roleBadgeColor: 'bg-blue-100 text-blue-800',
-    email: 'sarah.mitchell@pinnacle.com',
-    lastActive: '1 hour ago',
-    status: 'Active',
-  },
-  {
-    name: 'Michael Chen',
-    initials: 'MC',
-    role: 'Advisor',
-    roleBadgeColor: 'bg-blue-100 text-blue-800',
-    email: 'michael.chen@pinnacle.com',
-    lastActive: '3 hours ago',
-    status: 'Active',
-  },
-  {
-    name: 'Jennifer Walsh',
-    initials: 'JW',
-    role: 'Advisor',
-    roleBadgeColor: 'bg-blue-100 text-blue-800',
-    email: 'jennifer.walsh@pinnacle.com',
-    lastActive: '30 minutes ago',
-    status: 'Active',
-  },
-  {
-    name: 'David Park',
-    initials: 'DP',
-    role: 'Advisor',
-    roleBadgeColor: 'bg-blue-100 text-blue-800',
-    email: 'david.park@pinnacle.com',
-    lastActive: '5 hours ago',
-    status: 'Active',
-  },
-  {
-    name: 'Lisa Nguyen',
-    initials: 'LN',
-    role: 'Advisor',
-    roleBadgeColor: 'bg-blue-100 text-blue-800',
-    email: 'lisa.nguyen@pinnacle.com',
-    lastActive: '2 hours ago',
-    status: 'Active',
-  },
-  {
-    name: 'Tom Bradley',
-    initials: 'TB',
-    role: 'Advisor',
-    roleBadgeColor: 'bg-blue-100 text-blue-800',
-    email: 'tom.bradley@pinnacle.com',
-    lastActive: '3 days ago',
-    status: 'Inactive',
-  },
-  {
-    name: 'Rachel Torres',
-    initials: 'RT',
-    role: 'Compliance Officer',
-    roleBadgeColor: 'bg-amber-100 text-amber-800',
-    email: 'rachel.torres@pinnacle.com',
-    lastActive: '4 hours ago',
-    status: 'Active',
-  },
-];
-
-interface PendingInvite {
-  email: string;
-  role: string;
-  sentDate: string;
+interface MemberResponse {
+  items: Member[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    hasNext: boolean;
+  };
 }
-
-const pendingInvites: PendingInvite[] = [
-  {
-    email: 'alex.johnson@pinnacle.com',
-    role: 'Advisor',
-    sentDate: '2 days ago',
-  },
-  {
-    email: 'emily.rodriguez@pinnacle.com',
-    role: 'Advisor',
-    sentDate: '5 days ago',
-  },
-];
 
 export default function UserManagement() {
-  const [roleFilter, setRoleFilter] = useState('All Roles');
-  const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [editedUsers, setEditedUsers] = useState<{ [key: string]: { name: string; email: string; role: string } }>({});
-  const [userStatuses, setUserStatuses] = useState<{ [key: string]: 'Active' | 'Inactive' }>(
-    users.reduce((acc, user) => ({ ...acc, [user.email]: user.status }), {})
-  );
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteName, setInviteName] = useState('');
+  const { user } = useAuth();
+  const orgId = user?.organization?.id ?? user?.orgId ?? '';
+  const members = useApiData<{ data: MemberResponse } | MemberResponse>(`/organizations/${orgId}/members?page=1&limit=50`, [orgId], Boolean(orgId));
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteFirstName, setInviteFirstName] = useState('');
+  const [inviteLastName, setInviteLastName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('Advisor');
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [invites, setInvites] = useState<PendingInvite[]>(pendingInvites);
-  const [resendingInvite, setResendingInvite] = useState<string | null>(null);
-  const [confirmingCancel, setConfirmingCancel] = useState<string | null>(null);
+  const [inviteRole, setInviteRole] = useState<'ADMIN' | 'ADVISOR' | 'COMPLIANCE'>('ADVISOR');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [rowActionId, setRowActionId] = useState<string | null>(null);
 
-  const filteredUsers = roleFilter === 'All Roles' 
-    ? users 
-    : users.filter(user => user.role === roleFilter);
+  const response = members.data && 'items' in members.data ? members.data : members.data?.data;
+  const rows = response?.items ?? [];
 
-  const toggleUserStatus = (email: string) => {
-    setUserStatuses(prev => ({
-      ...prev,
-      [email]: prev[email] === 'Active' ? 'Inactive' : 'Active'
-    }));
+  const handleInvite = async () => {
+    if (!orgId) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const created = await apiClient.post<Member>(`/organizations/${orgId}/members/invite`, {
+        email: inviteEmail,
+        firstName: inviteFirstName,
+        lastName: inviteLastName,
+        role: inviteRole,
+      });
+
+      members.setData((current) => {
+        const currentResponse = current && 'items' in current ? current : current?.data;
+        if (!currentResponse) return current;
+        const next = { ...currentResponse, items: [created, ...currentResponse.items] };
+        return ('items' in (current ?? {})) ? next as typeof current : { data: next } as typeof current;
+      });
+      setShowInvite(false);
+      setInviteFirstName('');
+      setInviteLastName('');
+      setInviteEmail('');
+      setInviteRole('ADVISOR');
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Failed to invite member.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleSendInvite = () => {
-    setToastMessage('Invitation sent!');
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
-    setShowInviteModal(false);
-    setInviteName('');
-    setInviteEmail('');
-    setInviteRole('Advisor');
-  };
-
-  const handleResendInvite = (email: string) => {
-    setResendingInvite(email);
-    setTimeout(() => {
-      setResendingInvite(null);
-      setToastMessage('Invite resent!');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-    }, 600);
-  };
-
-  const handleCancelInvite = (email: string) => {
-    setInvites(invites.filter(inv => inv.email !== email));
-    setConfirmingCancel(null);
-  };
-
-  const handleEdit = (userEmail: string, user: User) => {
-    setEditingUserId(userEmail);
-    setEditedUsers({
-      ...editedUsers,
-      [userEmail]: {
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
+  const updateMember = (memberId: string, updater: (member: Member) => Member) => {
+    members.setData((current) => {
+      const currentResponse = current && 'items' in current ? current : current?.data;
+      if (!currentResponse) return current;
+      const next = {
+        ...currentResponse,
+        items: currentResponse.items.map((member) => (member.id === memberId ? updater(member) : member)),
+      };
+      return ('items' in (current ?? {})) ? next as typeof current : { data: next } as typeof current;
     });
   };
 
-  const handleSave = (userEmail: string) => {
-    // In a real app, this would save to backend
-    setEditingUserId(null);
+  const handleRoleChange = async (memberId: string, role: Member['role']) => {
+    if (!orgId) return;
+    setRowActionId(memberId);
+    setSubmitError(null);
+    try {
+      const updated = await apiClient.put<Member>(`/organizations/${orgId}/members/${memberId}/role`, { role });
+      updateMember(memberId, () => updated);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Failed to update role.');
+    } finally {
+      setRowActionId(null);
+    }
   };
 
-  const handleCancel = () => {
-    setEditingUserId(null);
+  const handleDeactivate = async (memberId: string) => {
+    if (!orgId) return;
+    setRowActionId(memberId);
+    setSubmitError(null);
+    try {
+      await apiClient.del(`/organizations/${orgId}/members/${memberId}`);
+      updateMember(memberId, (member) => ({ ...member, status: 'INACTIVE' }));
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Failed to deactivate member.');
+    } finally {
+      setRowActionId(null);
+    }
   };
 
-  const updateEditedUser = (userEmail: string, field: string, value: string) => {
-    setEditedUsers({
-      ...editedUsers,
-      [userEmail]: {
-        ...editedUsers[userEmail],
-        [field]: value,
-      },
-    });
-  };
+  if (members.loading) return <LoadingState label="Loading organization members..." />;
+  if (members.error) return <ErrorState message={members.error} onRetry={() => void members.reload()} />;
 
   return (
     <div className="flex-1 overflow-auto bg-gray-50">
-      {/* Top Bar */}
       <div className="bg-white border-b border-gray-200 px-8 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-[#1E3A5F]">User Management</h1>
-            <p className="text-sm text-gray-500 mt-1">Manage team members and permissions</p>
+            <p className="text-sm text-gray-500 mt-1">Live organization members and invitation workflow</p>
           </div>
-          <Button className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white" onClick={() => setShowInviteModal(true)}>
-            + Invite User
+          <Button className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white" onClick={() => setShowInvite((value) => !value)}>
+            {showInvite ? 'Close Invite' : '+ Invite User'}
           </Button>
         </div>
       </div>
 
-      <div className="p-8">
-        {/* Filter Bar */}
-        <div className="mb-6">
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-transparent"
-          >
-            <option>All Roles</option>
-            <option>Advisor</option>
-            <option>Admin</option>
-            <option>Compliance Officer</option>
-          </select>
-        </div>
-
-        {/* Users Table */}
-        <Card className="rounded-lg shadow-sm border border-gray-200 mb-8">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    User
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Role
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Last Active
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredUsers.map((user) => {
-                  const isEditing = editingUserId === user.email;
-                  const editedData = editedUsers[user.email] || { name: user.name, email: user.email, role: user.role };
-                  
-                  return (
-                  <tr key={user.email} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-[#1E3A5F] flex items-center justify-center text-white font-medium text-sm">
-                          {user.initials}
-                        </div>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editedData.name}
-                            onChange={(e) => updateEditedUser(user.email, 'name', e.target.value)}
-                            className="text-sm font-medium text-[#1E3A5F] border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]"
-                          />
-                        ) : (
-                          <span className="text-sm font-medium text-[#1E3A5F]">{user.name}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {isEditing ? (
-                        <select
-                          value={editedData.role}
-                          onChange={(e) => updateEditedUser(user.email, 'role', e.target.value)}
-                          className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]"
-                        >
-                          <option>Advisor</option>
-                          <option>Admin</option>
-                          <option>Compliance Officer</option>
-                        </select>
-                      ) : (
-                        <Badge className={`${user.roleBadgeColor} hover:${user.roleBadgeColor}`}>
-                          {user.role}
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {isEditing ? (
-                        <input
-                          type="email"
-                          value={editedData.email}
-                          onChange={(e) => updateEditedUser(user.email, 'email', e.target.value)}
-                          className="text-sm text-gray-700 border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] w-full"
-                        />
-                      ) : (
-                        user.email
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.lastActive}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge
-                        className={
-                          userStatuses[user.email] === 'Active'
-                            ? 'bg-green-100 text-green-800 hover:bg-green-100'
-                            : 'bg-gray-100 text-gray-800 hover:bg-gray-100'
-                        }
-                      >
-                        {userStatuses[user.email]}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {isEditing ? (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            onClick={() => handleSave(user.email)}
-                            className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-xs h-8"
-                          >
-                            Save
-                          </Button>
-                          <Button
-                            onClick={handleCancel}
-                            className="bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 text-xs h-8"
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          <button 
-                            onClick={() => handleEdit(user.email, user)}
-                            className="text-[#0EA5E9] hover:text-[#0284C7] mr-4 inline-flex items-center gap-1"
-                          >
-                            <Edit className="w-4 h-4" />
-                            Edit
-                          </button>
-                          <button className="text-gray-500 hover:text-red-600" onClick={() => toggleUserStatus(user.email)}>
-                            {userStatuses[user.email] === 'Active' ? 'Deactivate' : 'Activate'}
-                          </button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        {/* Pending Invites */}
-        <Card className="rounded-lg shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-[#1E3A5F]">Pending Invites</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Role
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Sent
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {invites.map((invite) => (
-                  <tr key={invite.email} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {invite.email}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
-                        {invite.role}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {invite.sentDate}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button className="text-[#0EA5E9] hover:text-[#0284C7] mr-4 inline-flex items-center gap-1" onClick={() => handleResendInvite(invite.email)}>
-                        <Send className="w-4 h-4" />
-                        Resend
-                      </button>
-                      <button className="text-gray-500 hover:text-red-600 inline-flex items-center gap-1" onClick={() => setConfirmingCancel(invite.email)}>
-                        <X className="w-4 h-4" />
-                        Cancel
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      </div>
-
-      {/* Invite Modal */}
-      {showInviteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-8 rounded-lg shadow-lg w-96">
-            <h2 className="text-xl font-semibold text-[#1E3A5F] mb-4">Invite User</h2>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700">Name</label>
-              <Input
-                type="text"
-                value={inviteName}
-                onChange={(e) => setInviteName(e.target.value)}
-                className="mt-1 block w-full"
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700">Email</label>
-              <Input
-                type="email"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                className="mt-1 block w-full"
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700">Role</label>
-              <select
-                value={inviteRole}
-                onChange={(e) => setInviteRole(e.target.value)}
-                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-transparent"
-              >
-                <option>Advisor</option>
-                <option>Admin</option>
-                <option>Compliance Officer</option>
+      <div className="p-8 space-y-6">
+        {showInvite ? (
+          <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
+            <h2 className="text-lg font-semibold text-[#1E3A5F] mb-4">Invite Team Member</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input value={inviteFirstName} onChange={(event) => setInviteFirstName(event.target.value)} placeholder="First name" />
+              <Input value={inviteLastName} onChange={(event) => setInviteLastName(event.target.value)} placeholder="Last name" />
+              <Input value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="Email address" className="md:col-span-2" />
+              <select className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm" value={inviteRole} onChange={(event) => setInviteRole(event.target.value as typeof inviteRole)}>
+                <option value="ADVISOR">Advisor</option>
+                <option value="ADMIN">Admin</option>
+                <option value="COMPLIANCE">Compliance</option>
               </select>
             </div>
-            <div className="flex justify-end">
-              <Button className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white mr-4" onClick={handleSendInvite}>
-                Send Invite
-              </Button>
-              <Button className="bg-gray-300 hover:bg-gray-400 text-gray-700" onClick={() => setShowInviteModal(false)}>
-                Cancel
+            {submitError ? <p className="mt-4 text-sm text-red-600">{submitError}</p> : null}
+            <div className="mt-4 flex justify-end">
+              <Button className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white" onClick={() => void handleInvite()} disabled={submitting || !inviteEmail || !inviteFirstName || !inviteLastName}>
+                {submitting ? 'Sending...' : 'Send Invite'}
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </Card>
+        ) : null}
+        {submitError ? <p className="text-sm text-red-600">{submitError}</p> : null}
 
-      {/* Toast */}
-      {showToast && (
-        <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg">
-          {toastMessage}
-        </div>
-      )}
-
-      {/* Confirm Cancel Invite */}
-      {confirmingCancel && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-8 rounded-lg shadow-lg w-96">
-            <h2 className="text-xl font-semibold text-[#1E3A5F] mb-4">Cancel Invite</h2>
-            <p className="text-sm text-gray-700 mb-4">Are you sure you want to cancel the invite for {confirmingCancel}?</p>
-            <div className="flex justify-end">
-              <Button className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white mr-4" onClick={() => handleCancelInvite(confirmingCancel)}>
-                Cancel Invite
-              </Button>
-              <Button className="bg-gray-300 hover:bg-gray-400 text-gray-700" onClick={() => setConfirmingCancel(null)}>
-                Cancel
-              </Button>
+        <Card className="rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          {rows.length === 0 ? (
+            <div className="p-10">
+              <EmptyState title="No organization members found" description="Invited members will appear here once the backend has organization users." />
             </div>
-          </div>
-        </div>
-      )}
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {rows.map((member) => (
+                    <tr key={member.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="font-medium text-[#1E3A5F]">{member.firstName} {member.lastName}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <select
+                          className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
+                          value={member.role}
+                          onChange={(event) => void handleRoleChange(member.id, event.target.value as Member['role'])}
+                          disabled={rowActionId === member.id || member.id === user?.id || member.status === 'INACTIVE'}
+                        >
+                          <option value="ADMIN">Admin</option>
+                          <option value="ADVISOR">Advisor</option>
+                          <option value="COMPLIANCE">Compliance</option>
+                        </select>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{member.email}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{member.lastLoginAt ? new Date(member.lastLoginAt).toLocaleString() : 'Never'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge className={member.status === 'ACTIVE' ? 'bg-green-100 text-green-700 border-0' : 'bg-gray-100 text-gray-700 border-0'}>{member.status}</Badge>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        {member.status === 'ACTIVE' && member.id !== user?.id ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => void handleDeactivate(member.id)}
+                            disabled={rowActionId === member.id}
+                          >
+                            <UserMinus className="mr-2 h-4 w-4" />
+                            {rowActionId === member.id ? 'Updating...' : 'Deactivate'}
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-gray-400">{member.id === user?.id ? 'Current user' : 'Inactive'}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }

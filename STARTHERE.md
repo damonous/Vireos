@@ -25,6 +25,71 @@
 
 ---
 
+## AWS MVP Deployment (LIVE)
+
+| Item | Value |
+|------|-------|
+| **App URL** | https://vireos.mvp.dev |
+| **Health Check** | https://vireos.mvp.dev/health |
+| **SSH** | `ssh -i infra/aws-mvp/vireos-mvp-key.pem ec2-user@54.241.49.208` |
+| **Region** | us-west-1 (N. California) |
+| **Instance** | t3.medium, Amazon Linux 2023, 30GB gp3 |
+| **Elastic IP** | 54.241.49.208 |
+| **AWS Account** | 689546300257 |
+| **Domain** | vireos.mvp.dev (Cloudflare DNS → A record) |
+| **TLS** | Let's Encrypt (auto-renewed by Caddy) |
+| **Est. Cost** | ~$34/month |
+
+### Architecture
+```
+Internet → :443 (Caddy, Let's Encrypt TLS) → :13443 (Express + React)
+                                          → PostgreSQL 16
+                                          → Redis 7
+                                          → BullMQ Worker
+```
+
+### Common Operations
+```bash
+# SSH into instance
+ssh -i infra/aws-mvp/vireos-mvp-key.pem ec2-user@54.241.49.208
+
+# Container status
+cd infra/aws-mvp && ./deploy.sh status
+
+# View logs
+cd infra/aws-mvp && ./deploy.sh logs
+
+# Redeploy after code changes
+cd infra/aws-mvp && ./deploy.sh
+
+# Restart containers (no rebuild)
+cd infra/aws-mvp && ./deploy.sh restart
+
+# Tear down everything
+cd infra/aws-mvp && terraform destroy
+```
+
+### Infrastructure Files (`infra/aws-mvp/`)
+| File | Purpose |
+|------|---------|
+| `main.tf` | Terraform root — EC2, security group, EIP, SSH key |
+| `variables.tf` | Input variables (region, instance type, etc.) |
+| `outputs.tf` | Terraform outputs (IP, SSH command, app URL) |
+| `user-data.sh` | EC2 first-boot bootstrap (Docker, Compose, Caddy) |
+| `Caddyfile` | Reverse proxy config (:443 → :13443) |
+| `deploy.sh` | Deploy helper (sync, build, start, logs, status) |
+| `.env` | Production environment variables (not in git) |
+
+### Client Transfer
+1. Client provides AWS credentials
+2. `aws configure` with their creds
+3. `cd infra/aws-mvp && terraform apply`
+4. Update `.env` with new Elastic IP
+5. `./deploy.sh`
+6. Optionally migrate data: `pg_dump` from old → `pg_restore` on new
+
+---
+
 ## Backend — Local Development
 
 ### Prerequisites

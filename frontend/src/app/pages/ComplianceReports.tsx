@@ -1,98 +1,244 @@
-import { Download, FileCheck, TrendingUp, Clock, AlertCircle } from 'lucide-react';
+import { useMemo } from 'react';
+import { AlertCircle, Clock, Download, FileCheck, TrendingUp } from 'lucide-react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { LineChart, Line, PieChart, Pie, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { EmptyState } from '../components/ui/empty-state';
+import { ErrorState } from '../components/ui/error-state';
+import { LoadingState } from '../components/ui/loading-state';
+import { useApiData } from '../hooks/useApiData';
 
-const kpiData = [
-  { label: 'Total Reviewed', value: '47', icon: FileCheck, color: 'bg-blue-500' },
-  { label: 'Approval Rate', value: '93.6%', icon: TrendingUp, color: 'bg-green-500' },
-  { label: 'Avg Review Time', value: '4.2 hrs', icon: Clock, color: 'bg-teal-500' },
-  { label: 'Prohibited Terms Flagged', value: '43', icon: AlertCircle, color: 'bg-orange-500' },
-];
+interface ReviewItem {
+  id: string;
+  status: string;
+  reviewNotes: string | null;
+  createdAt: string;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  draft: {
+    title: string | null;
+    channel: string;
+  } | null;
+}
 
-// 30 days of compliance rate data
-const complianceRateData = [
-  { day: 'Day 1', rate: 91.2 },
-  { day: 'Day 2', rate: 92.5 },
-  { day: 'Day 3', rate: 89.8 },
-  { day: 'Day 4', rate: 94.1 },
-  { day: 'Day 5', rate: 91.7 },
-  { day: 'Day 6', rate: 93.3 },
-  { day: 'Day 7', rate: 90.5 },
-  { day: 'Day 8', rate: 92.8 },
-  { day: 'Day 9', rate: 94.5 },
-  { day: 'Day 10', rate: 91.9 },
-  { day: 'Day 11', rate: 93.1 },
-  { day: 'Day 12', rate: 92.4 },
-  { day: 'Day 13', rate: 90.8 },
-  { day: 'Day 14', rate: 93.7 },
-  { day: 'Day 15', rate: 95.2 },
-  { day: 'Day 16', rate: 92.3 },
-  { day: 'Day 17', rate: 91.5 },
-  { day: 'Day 18', rate: 94.0 },
-  { day: 'Day 19', rate: 93.8 },
-  { day: 'Day 20', rate: 92.1 },
-  { day: 'Day 21', rate: 94.3 },
-  { day: 'Day 22', rate: 93.2 },
-  { day: 'Day 23', rate: 91.8 },
-  { day: 'Day 24', rate: 95.0 },
-  { day: 'Day 25', rate: 93.9 },
-  { day: 'Day 26', rate: 92.6 },
-  { day: 'Day 27', rate: 94.7 },
-  { day: 'Day 28', rate: 93.4 },
-  { day: 'Day 29', rate: 92.9 },
-  { day: 'Day 30', rate: 93.6 },
-];
+interface ReviewResponse {
+  data?: ReviewItem[];
+  items?: ReviewItem[];
+}
 
-const rejectionReasonsData = [
-  { name: 'Prohibited Terms', value: 52, color: '#EF4444' },
-  { name: 'Misleading Claims', value: 28, color: '#F97316' },
-  { name: 'Missing Disclaimer', value: 20, color: '#EAB308' },
-];
+interface AuditItem {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  createdAt: string;
+  metadata?: Record<string, unknown> | null;
+}
 
-const platformReviewsData = [
-  { platform: 'LinkedIn', reviews: 28 },
-  { platform: 'Facebook', reviews: 12 },
-  { platform: 'Email', reviews: 7 },
-];
-
-const flaggedTermsData = [
-  { term: 'guaranteed', occurrences: 23, advisors: 3 },
-  { term: 'promise', occurrences: 8, advisors: 2 },
-  { term: 'risk-free', occurrences: 6, advisors: 2 },
-  { term: 'will double', occurrences: 4, advisors: 1 },
-  { term: 'no risk', occurrences: 3, advisors: 1 },
-];
+function humanize(value: string): string {
+  return value
+    .toLowerCase()
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
 
 export default function ComplianceReports() {
+  const reviews = useApiData<ReviewItem[] | ReviewResponse>('/reviews?page=1&limit=100');
+  const auditTrail = useApiData<AuditItem[]>('/audit-trail?page=1&limit=100');
+
+  const reviewRows = Array.isArray(reviews.data)
+    ? reviews.data
+    : reviews.data?.items ?? reviews.data?.data ?? [];
+  const auditRows = auditTrail.data ?? [];
+
+  const totals = useMemo(() => {
+    const approved = reviewRows.filter((item) => item.status === 'APPROVED').length;
+    const rejected = reviewRows.filter((item) => item.status === 'REJECTED').length;
+    const pending = reviewRows.filter((item) => item.status === 'PENDING').length;
+
+    const reviewDurations = reviewRows
+      .filter((item) => item.reviewedAt && item.submittedAt)
+      .map((item) => {
+        const submittedAt = new Date(item.submittedAt as string).getTime();
+        const reviewedAt = new Date(item.reviewedAt as string).getTime();
+        return Math.max(0, (reviewedAt - submittedAt) / (1000 * 60 * 60));
+      });
+
+    const avgReviewTime =
+      reviewDurations.length > 0
+        ? Math.round((reviewDurations.reduce((sum, value) => sum + value, 0) / reviewDurations.length) * 10) / 10
+        : 0;
+
+    const flaggedTerms = auditRows.filter((item) => item.action.includes('REJECT') || item.action.includes('FLAG'));
+
+    return {
+      totalReviewed: reviewRows.length,
+      approvalRate: reviewRows.length > 0 ? Math.round((approved / reviewRows.length) * 1000) / 10 : 0,
+      avgReviewTime,
+      flaggedCount: flaggedTerms.length,
+      approved,
+      rejected,
+      pending,
+    };
+  }, [auditRows, reviewRows]);
+
+  const complianceRateData = useMemo(() => {
+    const grouped = new Map<string, { approved: number; total: number }>();
+
+    for (const review of reviewRows) {
+      const key = new Date(review.createdAt).toLocaleDateString();
+      const existing = grouped.get(key) ?? { approved: 0, total: 0 };
+      existing.total += 1;
+      if (review.status === 'APPROVED') {
+        existing.approved += 1;
+      }
+      grouped.set(key, existing);
+    }
+
+    return Array.from(grouped.entries())
+      .map(([day, value]) => ({
+        day,
+        rate: value.total > 0 ? Math.round((value.approved / value.total) * 1000) / 10 : 0,
+      }))
+      .slice(-14);
+  }, [reviewRows]);
+
+  const rejectionReasonsData = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const review of reviewRows.filter((item) => item.status === 'REJECTED')) {
+      const note = review.reviewNotes?.trim() || 'No note provided';
+      counts.set(note, (counts.get(note) ?? 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .map(([name, value], index) => ({
+        name,
+        value,
+        color: ['#EF4444', '#F97316', '#EAB308', '#0EA5E9'][index % 4] ?? '#94A3B8',
+      }))
+      .slice(0, 4);
+  }, [reviewRows]);
+
+  const platformReviewsData = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const review of reviewRows) {
+      const channel = review.draft?.channel ?? 'UNKNOWN';
+      counts.set(channel, (counts.get(channel) ?? 0) + 1);
+    }
+
+    return Array.from(counts.entries()).map(([platform, reviewsCount]) => ({
+      platform: humanize(platform),
+      reviews: reviewsCount,
+    }));
+  }, [reviewRows]);
+
+  const flaggedTermsData = useMemo(() => {
+    const counts = new Map<string, { occurrences: number; actors: Set<string> }>();
+
+    for (const review of reviewRows.filter((item) => item.status === 'REJECTED')) {
+      const key = review.reviewNotes?.trim() || 'No note provided';
+      const existing = counts.get(key) ?? { occurrences: 0, actors: new Set<string>() };
+      existing.occurrences += 1;
+      existing.actors.add(review.id);
+      counts.set(key, existing);
+    }
+
+    return Array.from(counts.entries())
+      .map(([term, value]) => ({
+        term,
+        occurrences: value.occurrences,
+        advisors: value.actors.size,
+      }))
+      .sort((a, b) => b.occurrences - a.occurrences)
+      .slice(0, 6);
+  }, [reviewRows]);
+
+  const exportReport = () => {
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      summary: totals,
+      reviews: reviewRows,
+      auditTrail: auditRows,
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'vireos-compliance-report.json';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const hasData = reviewRows.length > 0 || auditRows.length > 0;
+
+  if (reviews.loading || auditTrail.loading) {
+    return <LoadingState label="Loading compliance reports..." />;
+  }
+
+  if (reviews.error || auditTrail.error) {
+    return (
+      <ErrorState
+        message={reviews.error || auditTrail.error || 'Failed to load compliance reports.'}
+        onRetry={() => {
+          void reviews.reload();
+          void auditTrail.reload();
+        }}
+      />
+    );
+  }
+
   return (
     <div className="flex-1 overflow-auto bg-gray-50">
-      {/* Top Bar */}
       <div className="bg-white border-b border-gray-200 px-8 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-[#1E3A5F]">Compliance Reports</h1>
-            <p className="text-sm text-gray-500 mt-1">Generate compliance analytics and reports</p>
+            <p className="text-sm text-gray-500 mt-1">Live review and audit analytics for your organization</p>
           </div>
           <div className="flex items-center gap-3">
-            <select className="h-9 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]">
-              <option value="30">Last 30 Days</option>
-              <option value="7">Last 7 Days</option>
-              <option value="90">Last Quarter</option>
-              <option value="365">Last Year</option>
-            </select>
-            <Button className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white">
+            <Button className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white" onClick={exportReport}>
               <Download className="w-4 h-4 mr-2" />
-              Export PDF Report
+              Export JSON Report
             </Button>
           </div>
         </div>
       </div>
 
       <div className="p-8">
-        {/* KPI Cards */}
+        {!hasData ? (
+          <Card className="p-10 rounded-lg shadow-sm border border-gray-200 mb-8">
+            <EmptyState
+              title="No compliance activity yet"
+              description="Review submissions and audit events will populate this report automatically."
+            />
+          </Card>
+        ) : null}
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {kpiData.map((kpi) => {
+          {[
+            { label: 'Total Reviewed', value: totals.totalReviewed.toString(), icon: FileCheck, color: 'bg-blue-500' },
+            { label: 'Approval Rate', value: `${totals.approvalRate}%`, icon: TrendingUp, color: 'bg-green-500' },
+            { label: 'Avg Review Time', value: `${totals.avgReviewTime} hrs`, icon: Clock, color: 'bg-teal-500' },
+            { label: 'Flagged Events', value: totals.flaggedCount.toString(), icon: AlertCircle, color: 'bg-orange-500' },
+          ].map((kpi) => {
             const Icon = kpi.icon;
             return (
               <Card key={kpi.label} className="p-6 rounded-lg shadow-sm border border-gray-200">
@@ -110,14 +256,13 @@ export default function ComplianceReports() {
           })}
         </div>
 
-        {/* Compliance Rate Over Time */}
         <Card className="p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
           <h3 className="text-lg font-semibold text-[#1E3A5F] mb-4">Compliance Rate Over Time</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={complianceRateData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="day" tick={{ fontSize: 12 }} interval={4} />
-              <YAxis domain={[80, 100]} tick={{ fontSize: 12 }} />
+              <XAxis dataKey="day" tick={{ fontSize: 12 }} />
+              <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
               <Tooltip />
               <ReferenceLine y={90} stroke="#F97316" strokeDasharray="3 3" label="Target" />
               <Line type="monotone" dataKey="rate" stroke="#0EA5E9" strokeWidth={2} name="Compliance Rate %" />
@@ -125,98 +270,85 @@ export default function ComplianceReports() {
           </ResponsiveContainer>
         </Card>
 
-        {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Rejection Reasons Pie Chart */}
           <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
             <h3 className="text-lg font-semibold text-[#1E3A5F] mb-4">Rejection Reasons</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={rejectionReasonsData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {rejectionReasonsData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex justify-center gap-6 mt-4">
-              {rejectionReasonsData.map((entry) => (
-                <div key={entry.name} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }} />
-                  <span className="text-xs text-gray-600">{entry.name}</span>
-                </div>
-              ))}
-            </div>
+            {rejectionReasonsData.length === 0 ? (
+              <EmptyState title="No rejected reviews" description="Rejection reasons will appear once content is rejected." />
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={rejectionReasonsData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name.slice(0, 16)} ${Math.round((percent ?? 0) * 100)}%`}
+                    outerRadius={80}
+                    dataKey="value"
+                  >
+                    {rejectionReasonsData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </Card>
 
-          {/* Reviews by Platform Bar Chart */}
           <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-[#1E3A5F] mb-4">Reviews by Platform</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={platformReviewsData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="platform" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="reviews" name="Reviews">
-                  <Cell fill="#0EA5E9" />
-                  <Cell fill="#3B82F6" />
-                  <Cell fill="#6366F1" />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <h3 className="text-lg font-semibold text-[#1E3A5F] mb-4">Reviews by Channel</h3>
+            {platformReviewsData.length === 0 ? (
+              <EmptyState title="No review volume yet" description="Channel breakdown appears after content enters the review flow." />
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={platformReviewsData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="platform" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="reviews" name="Reviews">
+                    {platformReviewsData.map((entry, index) => (
+                      <Cell key={entry.platform} fill={['#0EA5E9', '#3B82F6', '#6366F1'][index % 3] ?? '#94A3B8'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </Card>
         </div>
 
-        {/* Most Flagged Terms Table */}
         <Card className="rounded-lg shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-[#1E3A5F]">Most Flagged Terms This Month</h3>
+            <h3 className="text-lg font-semibold text-[#1E3A5F]">Most Frequent Rejection Notes</h3>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Term
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Occurrences
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Advisors Affected
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {flaggedTermsData.map((item) => (
-                  <tr key={item.term} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-medium text-red-600 bg-red-50 px-2 py-1 rounded">
-                        "{item.term}"
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {item.occurrences}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {item.advisors} advisor{item.advisors > 1 ? 's' : ''}
-                    </td>
+          {flaggedTermsData.length === 0 ? (
+            <div className="p-8">
+              <EmptyState title="No flagged notes recorded" description="Once reviewers reject or flag items, the notes will be summarized here." />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Review Note</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Occurrences</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Affected Reviews</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {flaggedTermsData.map((item) => (
+                    <tr key={item.term} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 text-sm font-medium text-red-600">{item.term}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{item.occurrences}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{item.advisors}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
       </div>
     </div>

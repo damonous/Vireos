@@ -217,7 +217,7 @@ export async function getSubscription(
   orgId: string,
   user: AuthenticatedUser
 ): Promise<Subscription | null> {
-  requireAdminRole(user);
+  requireReadRole(user);
 
   const subscription = await prisma.subscription.findUnique({
     where: { organizationId: orgId },
@@ -466,7 +466,7 @@ export async function getInvoices(
   orgId: string,
   user: AuthenticatedUser
 ): Promise<Stripe.Invoice[]> {
-  requireAdminRole(user);
+  requireReadRole(user);
 
   const org = await prisma.organization.findUnique({
     where: { id: orgId },

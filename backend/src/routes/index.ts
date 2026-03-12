@@ -17,6 +17,9 @@ import auditRoutes from './audit.routes';
 import facebookAdRoutes from './facebook-ad.routes';
 import linkedinCampaignRoutes from './linkedin-campaign.routes';
 import agentRoutes from './agent.routes';
+import adminRoutes from './admin.routes';
+import featureFlagRoutes from './feature-flag.routes';
+import notificationRoutes from './notification.routes';
 
 // ---------------------------------------------------------------------------
 // Root router
@@ -161,6 +164,9 @@ router.use('/api', linkedinCampaignRoutes);
  * PATCH  /api/v1/agent/conversations/:id/archive
  */
 router.use('/api/v1/agent', agentRoutes);
+router.use('/api', adminRoutes);
+router.use('/api', featureFlagRoutes);
+router.use('/api/v1/notifications', notificationRoutes);
 
 // ---------------------------------------------------------------------------
 // 404 catch-all for undefined API routes

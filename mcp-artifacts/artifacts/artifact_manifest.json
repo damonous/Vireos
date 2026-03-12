@@ -1,0 +1,403 @@
+{
+  "status": "MANIFEST_VALID",
+  "generatedAt": "2026-03-11T11:25:18.449Z",
+  "artifacts": [
+    {
+      "path": "mcp-artifacts/persona-sweep/report.json",
+      "sha256": "46dfd3a905d5b052ad4af355ef86fe86aa6d45d41295b2586dc3f3a7868c6f84",
+      "size_bytes": 14712
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/auth__login.png",
+      "sha256": "f533336f56de88b9cb7607ffd9add7a074c7a4505f7a0a5a685af47f4a4d53f1",
+      "size_bytes": 42916
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/auth__register.png",
+      "sha256": "76e96f6871f58462dde431cf87f3c04ff6ca1c56b87322387d83fbe4c1617d06",
+      "size_bytes": 53791
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/auth__forgot-password.png",
+      "sha256": "0694e4070cb20e8f64f1ab5b97a4875fa436939ccf08efc6659c867b97cb5d16",
+      "size_bytes": 30851
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/advisor__content__generate.png",
+      "sha256": "90b62a6d8bc932b1f5a8eeb670dfafe3db7973e578fd3d81ccaf3ae48cfae96e",
+      "size_bytes": 95115
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/admin__content__drafts.png",
+      "sha256": "7c8be3aed8bdf519954e40c683a372fae45146ce6e27ea45b206c0a89d579088",
+      "size_bytes": 115100
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/admin__content-draft-detail.png",
+      "sha256": "19f9a5900b4e7d43bdf80cc51f27812de6d7309c462ac42edf6d67e6f389d31e",
+      "size_bytes": 102386
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/advisor__home.png",
+      "sha256": "c8221f6371ac6c5c9686ee7c68439f0bb869626459ffb7ad94a2823510db3232",
+      "size_bytes": 111314
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/advisor__billing.png",
+      "sha256": "f6e054c59e7cae74eaa19959af1029e02f3c6fac46a360de9146ae93409a11a9",
+      "size_bytes": 244066
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/admin__admin__users.png",
+      "sha256": "cf3cadd7af290a04b560867fcb29fd3c9deb595461743c8296dd58bfb76335d8",
+      "size_bytes": 120369
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/compliance__compliance-officer__review.png",
+      "sha256": "083b9f7ad3a96b46973cbb87108c66895d64f0657edf7f15fb2ac2dbfbdd46db",
+      "size_bytes": 95593
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__orgs.png",
+      "sha256": "84345f848d358030da658d5381e74a6d374d0856b1245b46ebbd933c1d3bb93f",
+      "size_bytes": 99982
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__prospects.png",
+      "sha256": "b62aebe654c4f8d4b4968dadb358da4df93cd859a2c84eeea4f43419dcea456e",
+      "size_bytes": 89979
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__tokens.png",
+      "sha256": "f9197f36ea8d63b26db7dd19bba7bd2deed6a00bfa1c2378a53646db206f631a",
+      "size_bytes": 80366
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__billing.png",
+      "sha256": "f243d35ebf46c178556fe6007fb1e303cd16647870bf73fb7965117752bfb024",
+      "size_bytes": 76573
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/advisor__settings__notifications.png",
+      "sha256": "d33524ccb297d94468d409687975011516328e492ca26aff27209af2ff397eed",
+      "size_bytes": 89201
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/advisor__content__draft-detail__autosave.png",
+      "sha256": "064e07f2416f42d5cd3b3966b9f8826fe7088b0c0a99b4a7417ff395ed321c15",
+      "size_bytes": 78900
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/advisor__leads.png",
+      "sha256": "bd21643f777eb6b1b451e5fd41550c73c0777c48a7e287ab699c9826008679e6",
+      "size_bytes": 72245
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/advisor__leads__movable.png",
+      "sha256": "b11e1b80ccfcd9ac58edc5be8eeabea31b2f69e3b2544d6d8a92cdebb0d9b768",
+      "size_bytes": 116946
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/compliance__compliance-officer__audit.png",
+      "sha256": "2709d4d87bdddc34e87b888de35ace4f92e14d83d3b42557dba21effa3823ee3",
+      "size_bytes": 102587
+    },
+    {
+      "path": "mcp-artifacts/persona-sweep/screenshots/advisor__facebook-campaign-detail.png",
+      "sha256": "ef7cccfc90a7bd78f990aeb9f51f1707eaa9489e7ba63d1c8cd9d50ac6838a18",
+      "size_bytes": 86671
+    },
+    {
+      "path": "mcp-artifacts/workflow-tests/account-lock.json",
+      "sha256": "e2b9e29354bb3b2e341b515428589edd8cdefc638968a617a52c4fa8294474a3",
+      "size_bytes": 853
+    },
+    {
+      "path": "mcp-artifacts/workflow-tests/admin-user-lifecycle.json",
+      "sha256": "e51f5ed0e4236efc106320bf751b1ea949aae79f08f7cfdbd4675fa824e383c5",
+      "size_bytes": 441
+    },
+    {
+      "path": "mcp-artifacts/workflow-tests/ai-guardrails.json",
+      "sha256": "3a0fb08bcaa139d121c190045c0f45ceef2b52b7f31d59bb94830df83088ebca",
+      "size_bytes": 334
+    },
+    {
+      "path": "mcp-artifacts/workflow-tests/approval-notification.json",
+      "sha256": "282e79e4975122fbd1ac93f50d9c911179d2b6a3ae5652ca0a564bb0b8742fe1",
+      "size_bytes": 740
+    },
+    {
+      "path": "mcp-artifacts/workflow-tests/auth-and-content-ui.json",
+      "sha256": "a83cd3ef9b7950ef67b9397cf927f85ad0b48f8cd17b8a2ad9a42faf0ca1102b",
+      "size_bytes": 1194
+    },
+    {
+      "path": "mcp-artifacts/workflow-tests/compliance-review-flow.json",
+      "sha256": "12727e49ababf50dff9303a860dfe6c92638191f689e020abfd7bff987a6eb08",
+      "size_bytes": 348
+    },
+    {
+      "path": "mcp-artifacts/workflow-tests/compliance-settings-guardrails.json",
+      "sha256": "dc0f4c48260a3a6794f921c3294761d27bb512de5799076353b263c9d624e9e1",
+      "size_bytes": 372
+    },
+    {
+      "path": "mcp-artifacts/workflow-tests/draft-autosave.json",
+      "sha256": "e2e9b2573b68904d4e9447aefe63097bde23f566b0f1c98c924d146e5e3efd6b",
+      "size_bytes": 209
+    },
+    {
+      "path": "mcp-artifacts/workflow-tests/prospect-fulfillment.json",
+      "sha256": "1761ceff3ccbe801463250c0ab350d25f443b5b1df00306b3ecaf451efa9fe0a",
+      "size_bytes": 656
+    },
+    {
+      "path": "mcp-artifacts/workflow-tests/publish-gating.json",
+      "sha256": "654e34b3c7485b5ab5cb9a79953201bc6c6f655626e8244c5889d8f3f7fa01a3",
+      "size_bytes": 657
+    },
+    {
+      "path": "mcp-artifacts/workflow-tests/registration-security.json",
+      "sha256": "a10bc229b7c0108abe024c8654beb45806e2ace91a10f27751003bdc3bd8fbdb",
+      "size_bytes": 317
+    },
+    {
+      "path": "mcp-artifacts/workflow-tests/session-refresh.json",
+      "sha256": "5cb9c7fe1ec15d88b622ec6a4ae101df38279c754ae31c95897f9c9fa6967bc3",
+      "size_bytes": 198
+    },
+    {
+      "path": "mcp-artifacts/workflow-tests/lead-pipeline-ui.json",
+      "sha256": "1e11dd7b8c074b0a738a1487c731ec424d692b78310e79fa0291eb55d2bcfdb7",
+      "size_bytes": 844
+    }
+  ],
+  "tests": [
+    {
+      "id": "persona-sweep",
+      "storyIds": [
+        "TASK-FE-001",
+        "TASK-FE-002",
+        "TASK-FE-003",
+        "TASK-FE-004",
+        "TASK-FE-005",
+        "TASK-FE-006",
+        "TASK-FE-007",
+        "TASK-FE-008",
+        "TASK-FE-009",
+        "TASK-FE-010",
+        "TASK-FE-011",
+        "TASK-FE-012",
+        "TASK-FE-013",
+        "TASK-FE-014"
+      ],
+      "requirementIds": [
+        "FR-002",
+        "FR-003",
+        "FR-005",
+        "FR-015",
+        "FR-016"
+      ],
+      "artifacts": [
+        "mcp-artifacts/persona-sweep/report.json",
+        "mcp-artifacts/persona-sweep/screenshots/advisor__home.png",
+        "mcp-artifacts/persona-sweep/screenshots/admin__admin__users.png",
+        "mcp-artifacts/persona-sweep/screenshots/compliance__compliance-officer__review.png",
+        "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__prospects.png",
+        "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__tokens.png"
+      ]
+    },
+    {
+      "id": "auth-and-account-security",
+      "storyIds": [
+        "SI001-SI002",
+        "SI003",
+        "SI004",
+        "SI005",
+        "SI006"
+      ],
+      "requirementIds": [
+        "FR-002",
+        "FR-021"
+      ],
+      "artifacts": [
+        "mcp-artifacts/workflow-tests/account-lock.json",
+        "mcp-artifacts/workflow-tests/registration-security.json",
+        "mcp-artifacts/workflow-tests/session-refresh.json",
+        "mcp-artifacts/workflow-tests/auth-and-content-ui.json",
+        "mcp-artifacts/persona-sweep/screenshots/auth__login.png",
+        "mcp-artifacts/persona-sweep/screenshots/auth__register.png",
+        "mcp-artifacts/persona-sweep/screenshots/auth__forgot-password.png"
+      ]
+    },
+    {
+      "id": "compliance-and-publishing",
+      "storyIds": [
+        "AI001",
+        "AI002",
+        "AI003",
+        "AI006",
+        "AD001",
+        "AD002",
+        "AD003",
+        "AD004",
+        "AD005",
+        "AD006"
+      ],
+      "requirementIds": [
+        "FR-003",
+        "FR-005",
+        "FR-013",
+        "FR-015",
+        "FR-016"
+      ],
+      "artifacts": [
+        "mcp-artifacts/workflow-tests/ai-guardrails.json",
+        "mcp-artifacts/workflow-tests/draft-autosave.json",
+        "mcp-artifacts/workflow-tests/approval-notification.json",
+        "mcp-artifacts/workflow-tests/compliance-settings-guardrails.json",
+        "mcp-artifacts/workflow-tests/compliance-review-flow.json",
+        "mcp-artifacts/workflow-tests/publish-gating.json",
+        "mcp-artifacts/persona-sweep/screenshots/advisor__content__draft-detail__autosave.png",
+        "mcp-artifacts/persona-sweep/screenshots/advisor__settings__notifications.png"
+      ]
+    },
+    {
+      "id": "admin-and-platform-ops",
+      "storyIds": [
+        "SU005",
+        "SU006",
+        "SU007",
+        "SA001",
+        "SA002",
+        "SA004",
+        "SA005",
+        "SA006",
+        "SA007",
+        "SA008"
+      ],
+      "requirementIds": [
+        "FR-002",
+        "FR-015",
+        "FR-016",
+        "FR-017"
+      ],
+      "artifacts": [
+        "mcp-artifacts/workflow-tests/admin-user-lifecycle.json",
+        "mcp-artifacts/workflow-tests/prospect-fulfillment.json",
+        "mcp-artifacts/persona-sweep/screenshots/advisor__billing.png",
+        "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__orgs.png",
+        "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__billing.png"
+      ]
+    },
+    {
+      "id": "lead-pipeline-ui",
+      "storyIds": [
+        "TASK-FE-009"
+      ],
+      "requirementIds": [],
+      "artifacts": [
+        "mcp-artifacts/workflow-tests/lead-pipeline-ui.json",
+        "mcp-artifacts/persona-sweep/screenshots/advisor__leads.png",
+        "mcp-artifacts/persona-sweep/screenshots/advisor__leads__movable.png"
+      ]
+    }
+  ],
+  "test_mappings": {
+    "TASK-FE-001": [
+      "mcp-artifacts/persona-sweep/report.json",
+      "mcp-artifacts/persona-sweep/screenshots/advisor__home.png",
+      "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__prospects.png",
+      "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__tokens.png"
+    ],
+    "TASK-FE-002": [
+      "mcp-artifacts/workflow-tests/auth-and-content-ui.json",
+      "mcp-artifacts/workflow-tests/account-lock.json",
+      "mcp-artifacts/workflow-tests/registration-security.json",
+      "mcp-artifacts/workflow-tests/session-refresh.json",
+      "mcp-artifacts/persona-sweep/screenshots/auth__login.png",
+      "mcp-artifacts/persona-sweep/screenshots/auth__register.png",
+      "mcp-artifacts/persona-sweep/screenshots/auth__forgot-password.png"
+    ],
+    "TASK-FE-003": [
+      "mcp-artifacts/workflow-tests/auth-and-content-ui.json",
+      "mcp-artifacts/workflow-tests/ai-guardrails.json",
+      "mcp-artifacts/persona-sweep/screenshots/advisor__content__generate.png",
+      "mcp-artifacts/persona-sweep/screenshots/admin__content__drafts.png",
+      "mcp-artifacts/persona-sweep/screenshots/admin__content-draft-detail.png"
+    ],
+    "TASK-FE-009": [
+      "mcp-artifacts/workflow-tests/lead-pipeline-ui.json",
+      "mcp-artifacts/persona-sweep/screenshots/advisor__leads.png",
+      "mcp-artifacts/persona-sweep/screenshots/advisor__leads__movable.png"
+    ],
+    "SI004": [
+      "mcp-artifacts/workflow-tests/account-lock.json"
+    ],
+    "SI001-SI002": [
+      "mcp-artifacts/workflow-tests/registration-security.json"
+    ],
+    "SI006": [
+      "mcp-artifacts/workflow-tests/session-refresh.json"
+    ],
+    "SU005": [
+      "mcp-artifacts/workflow-tests/admin-user-lifecycle.json"
+    ],
+    "SU006": [
+      "mcp-artifacts/workflow-tests/admin-user-lifecycle.json"
+    ],
+    "SU007": [
+      "mcp-artifacts/persona-sweep/screenshots/compliance__compliance-officer__settings.png"
+    ],
+    "AI002": [
+      "mcp-artifacts/workflow-tests/ai-guardrails.json"
+    ],
+    "AI006": [
+      "mcp-artifacts/workflow-tests/draft-autosave.json",
+      "mcp-artifacts/persona-sweep/screenshots/advisor__content__draft-detail__autosave.png"
+    ],
+    "AI008": [
+      "mcp-artifacts/workflow-tests/compliance-settings-guardrails.json"
+    ],
+    "AD003": [
+      "mcp-artifacts/workflow-tests/draft-autosave.json",
+      "mcp-artifacts/persona-sweep/screenshots/advisor__content__draft-detail__autosave.png",
+      "mcp-artifacts/persona-sweep/screenshots/admin__content-draft-detail.png"
+    ],
+    "AD004": [
+      "mcp-artifacts/workflow-tests/compliance-review-flow.json"
+    ],
+    "AD005": [
+      "mcp-artifacts/persona-sweep/screenshots/admin__content__drafts.png",
+      "mcp-artifacts/persona-sweep/screenshots/advisor__content__drafts.png"
+    ],
+    "AD006": [
+      "mcp-artifacts/workflow-tests/approval-notification.json",
+      "mcp-artifacts/persona-sweep/screenshots/advisor__settings__notifications.png"
+    ],
+    "SA001": [
+      "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__orgs.png"
+    ],
+    "SA002": [
+      "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__orgs.png"
+    ],
+    "SA004": [
+      "mcp-artifacts/workflow-tests/prospect-fulfillment.json"
+    ],
+    "SA005": [
+      "mcp-artifacts/workflow-tests/prospect-fulfillment.json"
+    ],
+    "SA006": [
+      "mcp-artifacts/workflow-tests/prospect-fulfillment.json",
+      "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__tokens.png"
+    ],
+    "SA007": [
+      "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__home.png"
+    ],
+    "SA008": [
+      "mcp-artifacts/persona-sweep/screenshots/advisor__billing.png",
+      "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__billing.png"
+    ]
+  }
+}

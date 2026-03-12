@@ -16,6 +16,12 @@ const configSchema = z.object({
     .enum(['development', 'production', 'test'])
     .default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
+  ENABLE_HTTPS: z.coerce.boolean().default(false),
+  HTTPS_PORT: z.coerce.number().int().positive().default(3443),
+  EXTERNAL_HTTPS_PORT: z.coerce.number().int().positive().default(3443),
+  SSL_CERT_PATH: z.string().default('/app/backend/certs/dev-cert.pem'),
+  SSL_KEY_PATH: z.string().default('/app/backend/certs/dev-key.pem'),
+  FRONTEND_DIST_DIR: z.string().default('/app/backend/public'),
   API_BASE_URL: z.string().url().default('http://localhost:3000'),
   CORS_ORIGINS: z
     .string()

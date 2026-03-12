@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "draftId": "3c4d82b0-031a-45c1-8b45-ceafb717d1ce",
+  "steps": [
+    {
+      "action": "reject",
+      "status": "REJECTED"
+    },
+    {
+      "action": "resubmit_rejected",
+      "status": "PENDING_REVIEW"
+    },
+    {
+      "action": "approve",
+      "status": "APPROVED"
+    }
+  ],
+  "generatedAt": "2026-03-11T06:58:51.383Z"
+}

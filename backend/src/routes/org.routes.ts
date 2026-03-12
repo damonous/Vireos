@@ -13,6 +13,7 @@ import {
 import * as orgService from '../services/organization.service';
 import { AuthenticatedRequest, UserRole } from '../types';
 import { UserRole as PrismaUserRole } from '@prisma/client';
+import { prisma } from '../db/client';
 
 const router = Router();
 
@@ -30,6 +31,86 @@ const userIdParamSchema = z.object({
   orgId: z.string().uuid('orgId must be a valid UUID'),
   userId: z.string().uuid('userId must be a valid UUID'),
 });
+
+const listOrganizationsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  search: z.string().trim().optional(),
+});
+
+// ---------------------------------------------------------------------------
+// GET /  (super_admin only)
+// ---------------------------------------------------------------------------
+
+router.get(
+  '/',
+  auth,
+  requireRole(UserRole.SUPER_ADMIN) as any,
+  validateQuery(listOrganizationsQuerySchema),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { page, limit, search } = req.query as unknown as z.infer<typeof listOrganizationsQuerySchema>;
+      const skip = (page - 1) * limit;
+
+      const where = search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' as const } },
+              { slug: { contains: search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {};
+
+      const [items, total] = await Promise.all([
+        prisma.organization.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            isActive: true,
+            subscriptionStatus: true,
+            creditBalance: true,
+            createdAt: true,
+            _count: {
+              select: {
+                users: true,
+              },
+            },
+          },
+        }),
+        prisma.organization.count({ where }),
+      ]);
+
+      res.status(200).json({
+        success: true,
+        data: items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          slug: item.slug,
+          isActive: item.isActive,
+          subscriptionStatus: item.subscriptionStatus,
+          creditBalance: item.creditBalance,
+          createdAt: item.createdAt,
+          userCount: item._count.users,
+        })),
+        meta: {
+          page,
+          limit,
+          totalCount: total,
+          totalPages: Math.ceil(total / limit),
+          hasNextPage: skip + limit < total,
+          hasPreviousPage: page > 1,
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 
 // ---------------------------------------------------------------------------
 // POST /  (super_admin only)

@@ -6,6 +6,9 @@ import { logger } from '../utils/logger';
 import { Errors } from '../middleware/errorHandler';
 import { UserRole } from '../types';
 import type { AuthenticatedUser } from '../types';
+import { config } from '../config';
+import { emailService } from './email.service';
+import { generateSecureToken, sha256Hex } from '../utils/crypto';
 import type {
   CreateOrgDto,
   UpdateOrgDto,
@@ -39,12 +42,16 @@ export interface OrgResult {
   name: string;
   slug: string;
   icpType: string;
+  complianceRules: unknown;
+  prohibitedTerms: string[];
+  requiredDisclosures: unknown;
   logoUrl: string | null;
   website: string | null;
   subscriptionStatus: string;
   creditBalance: number;
   isActive: boolean;
   settings: unknown;
+  userCount?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -172,6 +179,9 @@ export async function create(
     name: org.name,
     slug: org.slug,
     icpType: org.icpType,
+    complianceRules: org.complianceRules,
+    prohibitedTerms: org.prohibitedTerms,
+    requiredDisclosures: org.requiredDisclosures,
     logoUrl: org.logoUrl,
     website: org.website,
     subscriptionStatus: org.subscriptionStatus,
@@ -206,6 +216,9 @@ export async function findById(
     name: org.name,
     slug: org.slug,
     icpType: org.icpType,
+    complianceRules: org.complianceRules,
+    prohibitedTerms: org.prohibitedTerms,
+    requiredDisclosures: org.requiredDisclosures,
     logoUrl: org.logoUrl,
     website: org.website,
     subscriptionStatus: org.subscriptionStatus,
@@ -238,8 +251,12 @@ export async function update(
     where: { id },
     data: {
       ...(dto.name !== undefined ? { name: dto.name } : {}),
+      ...(dto.icpType !== undefined ? { icpType: dto.icpType } : {}),
       ...(dto.website !== undefined ? { website: dto.website } : {}),
       ...(dto.logoUrl !== undefined ? { logoUrl: dto.logoUrl } : {}),
+      ...(dto.prohibitedTerms !== undefined ? { prohibitedTerms: dto.prohibitedTerms } : {}),
+      ...(dto.requiredDisclosures !== undefined ? { requiredDisclosures: dto.requiredDisclosures as object } : {}),
+      ...(dto.complianceRules !== undefined ? { complianceRules: dto.complianceRules as object } : {}),
       ...(dto.settings !== undefined ? { settings: dto.settings as object } : {}),
     },
   });
@@ -255,6 +272,9 @@ export async function update(
     name: org.name,
     slug: org.slug,
     icpType: org.icpType,
+    complianceRules: org.complianceRules,
+    prohibitedTerms: org.prohibitedTerms,
+    requiredDisclosures: org.requiredDisclosures,
     logoUrl: org.logoUrl,
     website: org.website,
     subscriptionStatus: org.subscriptionStatus,
@@ -363,14 +383,35 @@ export async function inviteMember(
     },
   });
 
-  // Stub: log invitation email
-  logger.info('EMAIL_STUB: Send member invitation', {
-    to: user.email,
-    userId: user.id,
-    orgId,
-    invitedBy: requestingUser.id,
-    note: 'In production, send an invitation email with an onboarding link',
+  const rawToken = generateSecureToken(32);
+  const hashedToken = sha256Hex(rawToken);
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      passwordResetToken: hashedToken,
+      passwordResetExpiresAt: expiresAt,
+    },
   });
+
+  const inviteUrl = `${config.API_BASE_URL.replace(/\/$/, '')}/reset-password?token=${encodeURIComponent(rawToken)}`;
+
+  try {
+    await emailService.sendEmail(
+      user.email,
+      `You're invited to join ${org.name} on Vireos`,
+      `<p>Hi ${user.firstName},</p><p>${requestingUser.email} invited you to join ${org.name} on Vireos.</p><p>Set your password using this link (expires in 1 hour): <a href="${inviteUrl}">${inviteUrl}</a></p>`,
+      `You've been invited to ${org.name} on Vireos. Set your password using this link (expires in 1 hour): ${inviteUrl}`
+    );
+  } catch (err) {
+    logger.warn('Failed to send organization invitation email', {
+      userId: user.id,
+      orgId,
+      invitedBy: requestingUser.id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   logger.info('Member invited', {
     userId: user.id,

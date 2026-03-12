@@ -1,7 +1,12 @@
 import { createBrowserRouter, Navigate } from 'react-router';
 import Login from './pages/Login';
+import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import AIContent from './pages/AIContent';
+import ContentDrafts from './pages/ContentDrafts';
+import ContentDraftDetail from './pages/ContentDraftDetail';
 import Easy from './pages/Easy';
 import ComplianceQueue from './pages/ComplianceQueue';
 import LeadManagement from './pages/LeadManagement';
@@ -34,12 +39,26 @@ import SystemHealth from './pages/SystemHealth';
 import PlatformBilling from './pages/PlatformBilling';
 import FeatureFlags from './pages/FeatureFlags';
 import PlatformSettings from './pages/PlatformSettings';
+import PlatformProspects from './pages/PlatformProspects';
+import TokenUsage from './pages/TokenUsage';
 import { ProtectedLayout } from './components/ProtectedLayout';
 
 export const router = createBrowserRouter([
   {
     path: '/login',
     Component: Login,
+  },
+  {
+    path: '/register',
+    Component: Register,
+  },
+  {
+    path: '/forgot-password',
+    Component: ForgotPassword,
+  },
+  {
+    path: '/reset-password',
+    Component: ResetPassword,
   },
   {
     path: '/',
@@ -56,6 +75,18 @@ export const router = createBrowserRouter([
       {
         path: 'ai-content',
         Component: AIContent,
+      },
+      {
+        path: 'content/generate',
+        Component: AIContent,
+      },
+      {
+        path: 'content/drafts',
+        Component: ContentDrafts,
+      },
+      {
+        path: 'content/drafts/:draftId',
+        Component: ContentDraftDetail,
       },
       {
         path: 'easy',
@@ -122,6 +153,10 @@ export const router = createBrowserRouter([
         Component: Settings,
       },
       {
+        path: 'profile',
+        Component: Settings,
+      },
+      {
         path: 'admin/home',
         Component: AdminHome,
       },
@@ -184,6 +219,14 @@ export const router = createBrowserRouter([
       {
         path: 'super-admin/billing',
         Component: PlatformBilling,
+      },
+      {
+        path: 'super-admin/prospects',
+        Component: PlatformProspects,
+      },
+      {
+        path: 'super-admin/tokens',
+        Component: TokenUsage,
       },
       {
         path: 'super-admin/flags',

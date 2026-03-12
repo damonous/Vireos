@@ -9,76 +9,70 @@
 # =============================================================================
 
 # ---- Stage 1: Base image -----------------------------------------------------
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
 
-# Install dumb-init for proper signal handling in containers
-RUN apk add --no-cache dumb-init
+# Install runtime utilities
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends dumb-init ca-certificates openssl && \
+    rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+# ---- Stage 2: Backend production dependencies --------------------------------
+FROM base AS backend-deps
+WORKDIR /app/backend
 
-# ---- Stage 2: Production dependencies ---------------------------------------
-FROM base AS deps
-
-# Copy package files and install ONLY production dependencies
-COPY package.json package-lock.json* ./
-COPY prisma/schema.prisma ./prisma/
+COPY backend/package.json backend/package-lock.json* ./
+COPY backend/prisma/schema.prisma ./prisma/
 
 RUN npm ci --omit=dev && \
     npx prisma generate && \
-    # Clean npm cache to reduce layer size
     npm cache clean --force
 
-# ---- Stage 3: Builder -------------------------------------------------------
-FROM deps AS builder
+# ---- Stage 3: Backend builder ------------------------------------------------
+FROM backend-deps AS backend-builder
+WORKDIR /app/backend
 
-# Install ALL dependencies (including devDependencies for TypeScript compilation)
-COPY package.json package-lock.json* ./
+COPY backend/package.json backend/package-lock.json* ./
 RUN npm ci
 
-# Copy source files
-COPY tsconfig.json ./
-COPY src/ ./src/
+COPY backend/tsconfig.json ./
+COPY backend/src ./src
 
-# Compile TypeScript to JavaScript
 RUN npm run build
 
-# ---- Stage 4: Production image ----------------------------------------------
+# ---- Stage 4: Frontend builder ----------------------------------------------
+FROM base AS frontend-builder
+WORKDIR /app/frontend
+
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci
+
+COPY frontend/ ./
+RUN npm run build
+
+# ---- Stage 5: Production image ----------------------------------------------
 FROM base AS production
 
-# Create a non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S vireos -u 1001 -G nodejs
+RUN groupadd --gid 1001 nodejs && \
+    useradd --uid 1001 --gid 1001 --create-home --shell /usr/sbin/nologin vireos
 
-WORKDIR /app
+WORKDIR /app/backend
 
-# Copy production node_modules from deps stage
-COPY --from=deps --chown=vireos:nodejs /app/node_modules ./node_modules
+# Backend runtime artifacts
+COPY --from=backend-deps --chown=vireos:nodejs /app/backend/node_modules ./node_modules
+COPY --from=backend-deps --chown=vireos:nodejs /app/backend/node_modules/.prisma ./node_modules/.prisma
+COPY --from=backend-builder --chown=vireos:nodejs /app/backend/dist ./dist
+COPY --chown=vireos:nodejs backend/package.json ./
+COPY --chown=vireos:nodejs backend/prisma ./prisma
 
-# Copy Prisma client generated files
-COPY --from=deps --chown=vireos:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+# Frontend static bundle (served by Express)
+COPY --from=frontend-builder --chown=vireos:nodejs /app/frontend/dist ./public
 
-# Copy compiled JavaScript output from builder stage
-COPY --from=builder --chown=vireos:nodejs /app/dist ./dist
+COPY --chown=vireos:nodejs backend/docker/entrypoint.sh /usr/local/bin/vireos-entrypoint.sh
+RUN chmod +x /usr/local/bin/vireos-entrypoint.sh && mkdir -p /app/backend/certs && chown -R vireos:nodejs /app/backend/certs
 
-# Copy package.json for version info and npm scripts
-COPY --chown=vireos:nodejs package.json ./
-
-# Copy Prisma schema for migrate deploy
-COPY --chown=vireos:nodejs prisma/ ./prisma/
-
-# Switch to non-root user
 USER vireos
 
-# Expose the application port (configurable via PORT env var)
-EXPOSE 3000
+EXPOSE 3000 3443
 
-# Health check — Docker will monitor this endpoint
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD wget -qO- http://localhost:${PORT:-3000}/health || exit 1
-
-# Use dumb-init as PID 1 to handle signals correctly
-# This ensures graceful shutdown works when Docker sends SIGTERM
-ENTRYPOINT ["dumb-init", "--"]
-
-# Default command: run the compiled server
+ENTRYPOINT ["dumb-init", "--", "/usr/local/bin/vireos-entrypoint.sh"]
 CMD ["node", "dist/server.js"]

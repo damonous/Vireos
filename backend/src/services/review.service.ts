@@ -82,7 +82,7 @@ async function writeAuditTrail(params: {
 }
 
 // ---------------------------------------------------------------------------
-// Notification helper (stub — logs via Winston, real delivery not yet wired)
+// Notification helper — persists in-app notifications for relevant users.
 // ---------------------------------------------------------------------------
 
 async function sendNotification(params: {
@@ -172,7 +172,7 @@ function draftToState(draft: Draft): Record<string, unknown> {
  *
  * Rules:
  *  - Caller must have ADVISOR, ORG_ADMIN, or SUPER_ADMIN role
- *  - Draft status must be DRAFT or NEEDS_CHANGES
+ *  - Draft status must be DRAFT, NEEDS_CHANGES, or REJECTED
  *  - Sets status → PENDING_REVIEW
  *  - Writes AuditTrail with action SUBMITTED
  *  - Notifies compliance officers in the org
@@ -201,10 +201,14 @@ export async function submitForReview(
     throw Errors.forbidden('You can only submit your own drafts');
   }
 
-  if (draft.status !== ContentStatus.DRAFT && draft.status !== ContentStatus.NEEDS_CHANGES) {
+  if (
+    draft.status !== ContentStatus.DRAFT &&
+    draft.status !== ContentStatus.NEEDS_CHANGES &&
+    draft.status !== ContentStatus.REJECTED
+  ) {
     throw Errors.conflict(
       `Draft cannot be submitted for review from status "${draft.status}". ` +
-      `Only DRAFT or NEEDS_CHANGES drafts can be submitted.`
+      `Only DRAFT, NEEDS_CHANGES, or REJECTED drafts can be submitted.`
     );
   }
 
@@ -261,8 +265,8 @@ export async function getReviewQueue(
   user: AuthenticatedUser,
   pagination: PaginationParams
 ): Promise<PaginatedResult<Draft>> {
-  if (!isComplianceOrAdmin(user.role)) {
-    throw Errors.forbidden('Only compliance officers and admins can view the review queue');
+  if (!isComplianceOrAdmin(user.role) && user.role !== UserRole.ADVISOR) {
+    throw Errors.forbidden('Only advisors, compliance officers, and admins can view review items');
   }
 
   const { page, limit } = pagination;
@@ -271,22 +275,33 @@ export async function getReviewQueue(
   // Super admin can view all orgs, others are scoped to their org
   const whereOrgId = user.role === UserRole.SUPER_ADMIN ? orgId : user.orgId;
 
+  const where =
+    user.role === UserRole.ADVISOR
+      ? {
+          organizationId: whereOrgId,
+          creatorId: user.id,
+          status: {
+            in: [
+              ContentStatus.PENDING_REVIEW,
+              ContentStatus.NEEDS_CHANGES,
+              ContentStatus.APPROVED,
+              ContentStatus.REJECTED,
+            ],
+          },
+        }
+      : {
+          organizationId: whereOrgId,
+          status: ContentStatus.PENDING_REVIEW,
+        };
+
   const [drafts, totalCount] = await Promise.all([
     prisma.draft.findMany({
-      where: {
-        organizationId: whereOrgId,
-        status: ContentStatus.PENDING_REVIEW,
-      },
+      where,
       orderBy: { updatedAt: 'asc' }, // oldest first — FIFO review order
       skip,
       take: limit,
     }),
-    prisma.draft.count({
-      where: {
-        organizationId: whereOrgId,
-        status: ContentStatus.PENDING_REVIEW,
-      },
-    }),
+    prisma.draft.count({ where }),
   ]);
 
   const totalPages = Math.ceil(totalCount / limit);

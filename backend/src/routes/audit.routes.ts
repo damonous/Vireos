@@ -62,7 +62,7 @@ type AuditQuery = z.infer<typeof auditQuerySchema>;
 router.get(
   '/v1/audit',
   auth,
-  requireRole(UserRole.SUPER_ADMIN, UserRole.ORG_ADMIN) as any,
+  requireRole(UserRole.SUPER_ADMIN, UserRole.ORG_ADMIN, UserRole.VIEWER) as any,
   validate({ query: auditQuerySchema }),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

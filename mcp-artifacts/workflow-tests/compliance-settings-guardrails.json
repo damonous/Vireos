@@ -1,0 +1,17 @@
+{
+  "generated_at": "2026-03-11T08:35:04.194Z",
+  "term": "autotest-prohibited-1773218104123",
+  "save": {
+    "status": 200,
+    "termCount": 6
+  },
+  "blocked_generation": {
+    "status": 400,
+    "code": "BAD_REQUEST",
+    "message": "Prompt contains prohibited terms that violate FINRA compliance rules"
+  },
+  "restore": {
+    "status": 200,
+    "termCount": 5
+  }
+}

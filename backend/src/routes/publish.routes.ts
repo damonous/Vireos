@@ -2,7 +2,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate, requireRole } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
-import { publishSchema, listPublishJobsQuerySchema } from '../validators/publish.validators';
+import { publishSchema, listPublishJobsQuerySchema, updatePublishSchema } from '../validators/publish.validators';
 import * as publishService from '../services/publish.service';
 import { AuthenticatedRequest, UserRole } from '../types';
 
@@ -119,6 +119,25 @@ router.delete(
         success: true,
         data: { message: 'Publish job cancelled successfully.' },
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.patch(
+  '/:jobId',
+  auth,
+  advisorOrAdmin,
+  validateBody(updatePublishSchema),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const authReq = req as unknown as AuthenticatedRequest;
+      const jobId = req.params['jobId'] as string;
+      const dto = req.body as import('../validators/publish.validators').UpdatePublishDto;
+
+      const job = await publishService.updateJob(jobId, dto, authReq.user);
+      res.status(200).json({ success: true, data: job });
     } catch (err) {
       next(err);
     }

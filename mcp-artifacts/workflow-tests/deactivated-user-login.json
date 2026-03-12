@@ -1,0 +1,10 @@
+{
+  "generated_at": "2026-03-11T11:22:05.978Z",
+  "memberId": "97723fed-5e24-4e5d-b4c6-09cfa718f531",
+  "invitedStatus": 201,
+  "loginAttempt": {
+    "status": 403,
+    "code": "FORBIDDEN",
+    "message": "Account is inactive. Contact your administrator."
+  }
+}

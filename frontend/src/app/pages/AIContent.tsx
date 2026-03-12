@@ -1,362 +1,329 @@
-import { useState } from 'react';
-import { Bell, Sparkles, AlertTriangle, Info, Linkedin, Facebook, Mail, Megaphone } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router';
+import { AlertTriangle, Clock3, Facebook, Info, Linkedin, Mail, Megaphone, Sparkles } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Input } from '../components/ui/input';
+import { Badge } from '../components/ui/badge';
+import { EmptyState } from '../components/ui/empty-state';
+import { ErrorState } from '../components/ui/error-state';
+import { LoadingState } from '../components/ui/loading-state';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { useApiData } from '../hooks/useApiData';
+import { apiClient } from '../lib/api-client';
 
-type Platform = 'linkedin' | 'facebook' | 'email' | 'ad-copy';
+type Platform = 'LINKEDIN' | 'FACEBOOK' | 'EMAIL' | 'AD_COPY';
+
+interface Draft {
+  id: string;
+  title: string;
+  status: string;
+  originalPrompt: string;
+  linkedinContent?: string | null;
+  facebookContent?: string | null;
+  emailContent?: string | null;
+  adCopyContent?: string | null;
+  createdAt: string;
+}
+
+interface DraftListResponse {
+  data?: Draft[];
+}
+
+const platformConfig: Record<Platform, { label: string; icon: typeof Linkedin }> = {
+  LINKEDIN: { label: 'LinkedIn', icon: Linkedin },
+  FACEBOOK: { label: 'Facebook', icon: Facebook },
+  EMAIL: { label: 'Email', icon: Mail },
+  AD_COPY: { label: 'Ad Copy', icon: Megaphone },
+};
+
+function getDraftContent(draft: Draft | null, platform: Platform): string {
+  if (!draft) return '';
+  if (platform === 'LINKEDIN') return draft.linkedinContent ?? '';
+  if (platform === 'FACEBOOK') return draft.facebookContent ?? '';
+  if (platform === 'EMAIL') return draft.emailContent ?? '';
+  return draft.adCopyContent ?? '';
+}
 
 export default function AIContent() {
+  const drafts = useApiData<DraftListResponse>('/content/drafts?page=1&limit=8');
+  const [title, setTitle] = useState('');
   const [topic, setTopic] = useState('');
-  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>(['linkedin']);
-  const [tone, setTone] = useState('educational');
-  const [generated, setGenerated] = useState(false);
+  const [audience, setAudience] = useState('');
+  const [talkingPoints, setTalkingPoints] = useState('');
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>(['LINKEDIN', 'FACEBOOK', 'EMAIL', 'AD_COPY']);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [activePreviewTab, setActivePreviewTab] = useState<Platform>('linkedin');
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [activePreviewTab, setActivePreviewTab] = useState<Platform>('LINKEDIN');
+  const [previewDraft, setPreviewDraft] = useState<Draft | null>(null);
 
-  const handleGenerate = () => {
-    setIsGenerating(true);
-    setTimeout(() => {
-      setGenerated(true);
-      setIsGenerating(false);
-      // Set active preview tab to first selected platform
-      if (selectedPlatforms.length > 0) {
-        setActivePreviewTab(selectedPlatforms[0]);
-      }
-    }, 1200);
-  };
+  const draftRows = Array.isArray(drafts.data) ? drafts.data : drafts.data?.data ?? [];
+  const newestDraft = previewDraft ?? draftRows[0] ?? null;
+  const draftPlatforms = (Object.keys(platformConfig) as Platform[]).filter((platform) => Boolean(getDraftContent(newestDraft, platform)));
+  const availablePreviewTabs = useMemo(
+    () => draftPlatforms,
+    [draftPlatforms]
+  );
+  const recentDrafts = draftRows.slice(0, 4);
 
   const togglePlatform = (platform: Platform) => {
-    setSelectedPlatforms(prev => {
-      if (prev.includes(platform)) {
-        return prev.filter(p => p !== platform);
-      } else {
-        return [...prev, platform];
+    setSelectedPlatforms((prev) => {
+      const next = prev.includes(platform) ? prev.filter((item) => item !== platform) : [...prev, platform];
+      if (!next.includes(activePreviewTab)) {
+        setActivePreviewTab(next[0] ?? 'LINKEDIN');
       }
+      return next;
     });
   };
 
-  const handleSelectAll = () => {
-    const allPlatforms: Platform[] = ['linkedin', 'facebook', 'email', 'ad-copy'];
-    if (selectedPlatforms.length === allPlatforms.length) {
-      // Deselect all
-      setSelectedPlatforms([]);
-    } else {
-      // Select all
-      setSelectedPlatforms(allPlatforms);
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    setSubmitError(null);
+    try {
+      const prompt = [
+        `Topic: ${topic.trim()}`,
+        `Audience: ${audience.trim()}`,
+        `Talking points: ${talkingPoints.trim()}`,
+      ].join('\n');
+      const created = await apiClient.post<Draft>('/content/generate', {
+        title: title.trim() || undefined,
+        prompt,
+        channels: selectedPlatforms,
+      });
+
+      setPreviewDraft(created);
+      setActivePreviewTab('LINKEDIN');
+      setTopic('');
+      setAudience('');
+      setTalkingPoints('');
+      setTitle('');
+      drafts.setData((current) => {
+        const existing = Array.isArray(current) ? current : current?.data ?? [];
+        return [created, ...existing].slice(0, 8) as typeof current;
+      });
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Failed to generate content.');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
-  const isSelectAllIndeterminate = selectedPlatforms.length > 0 && selectedPlatforms.length < 4;
+  if (drafts.loading) {
+    return <LoadingState label="Loading AI content workspace..." />;
+  }
 
-  const platformsData = [
-    { id: 'linkedin' as Platform, name: 'LinkedIn', icon: Linkedin },
-    { id: 'facebook' as Platform, name: 'Facebook', icon: Facebook },
-    { id: 'email' as Platform, name: 'Email', icon: Mail },
-    { id: 'ad-copy' as Platform, name: 'Ad Copy', icon: Megaphone },
-  ];
-
-  const sampleContent = {
-    linkedin: `🎯 3 Key Retirement Planning Strategies for 2026
-
-As we navigate an evolving financial landscape, it's more important than ever to revisit your retirement strategy. Here are three essential considerations:
-
-1️⃣ Maximize Your Tax-Advantaged Accounts
-With contribution limits increasing, now is the perfect time to boost your 401(k) and IRA contributions. The power of compound growth over time cannot be understated.
-
-2️⃣ Diversification Remains Critical
-Don't put all your eggs in one basket. A well-balanced portfolio across various asset classes can help weather market volatility.
-
-3️⃣ Review Your Asset Allocation
-As you move closer to retirement, your risk tolerance naturally shifts. Ensure your portfolio aligns with your timeline and goals.
-
-Want to discuss your personalized retirement strategy? Let's connect.`,
-    facebook: `Planning for retirement doesn't have to be overwhelming! 🌟
-
-Here are 3 simple strategies to get you started:
-✅ Start early and let time work in your favor
-✅ Diversify your investments
-✅ Review and adjust regularly
-
-Ready to take control of your financial future? Reach out to learn more about creating a retirement plan that works for you!`,
-    email: `Subject: Your Retirement Planning Checklist for 2026
-
-Dear [Client Name],
-
-As we begin a new year, I wanted to share some timely retirement planning strategies that could benefit your financial future.
-
-Key Considerations for 2026:
-• Contribution limits for 401(k)s and IRAs have increased
-• Market conditions present unique opportunities for rebalancing
-• Tax planning strategies should be reviewed annually
-
-I'd love to schedule a brief call to discuss how these strategies might apply to your specific situation.
-
-Best regards,
-Sarah Mitchell`,
-    'ad-copy': `🌟 Boost Your Retirement Savings with These 3 Simple Strategies
-
-Planning for retirement doesn't have to be complicated. Here are three easy steps to get you started:
-
-1️⃣ Start Early
-The sooner you begin saving, the more time your money has to grow. Even small contributions can make a big difference.
-
-2️⃣ Diversify Your Investments
-Spread your investments across different asset classes to reduce risk and maximize returns.
-
-3️⃣ Review Regularly
-Market conditions change, so it's important to review and adjust your retirement plan annually.
-
-Ready to take the first step towards a secure retirement? Contact us today!`
-  };
+  if (drafts.error) {
+    return <ErrorState message={drafts.error} onRetry={() => void drafts.reload()} />;
+  }
 
   return (
-    <div className="flex-1 overflow-auto">
-      {/* Top Bar */}
+    <div className="flex-1 overflow-auto bg-gray-50">
       <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-[#1E3A5F]">AI Content Generator</h1>
-          <p className="text-sm text-gray-500 mt-1">Create compliant marketing content in seconds</p>
+          <p className="text-sm text-gray-500 mt-1">Generate real drafts and review the latest saved output from the backend.</p>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-600">Pinnacle Financial</span>
-          <button className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <Bell className="w-5 h-5 text-gray-600" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
+        <div className="text-right">
+          <p className="text-sm text-[#1E3A5F] font-medium">{draftRows.length}</p>
+          <p className="text-xs text-gray-500">drafts in your workspace</p>
         </div>
       </div>
 
-      <div className="p-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Input Panel */}
-          <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex items-center gap-2 mb-6">
-              <Sparkles className="w-5 h-5 text-[#0EA5E9]" />
-              <h3 className="text-lg font-semibold text-[#1E3A5F]">Create New Content</h3>
+      <div className="p-8 grid grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-6">
+        <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center gap-2 mb-6">
+            <Sparkles className="w-5 h-5 text-[#0EA5E9]" />
+            <h3 className="text-lg font-semibold text-[#1E3A5F]">Create New Content</h3>
+          </div>
+
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-[#1E3A5F] mb-2">Draft title</label>
+              <Input
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Optional title for the generated draft"
+                className="border-gray-300"
+              />
             </div>
 
-            <div className="space-y-6">
-              {/* Topic Input */}
-              <div>
-                <label className="block text-sm font-medium text-[#1E3A5F] mb-2">
-                  What would you like to write about?
-                </label>
-                <Textarea
-                  placeholder="E.g., Tax planning strategies for high-net-worth individuals, Benefits of starting retirement savings early, How to diversify your investment portfolio..."
-                  className="min-h-[120px] border-gray-300 focus:border-[#0EA5E9] focus:ring-[#0EA5E9]"
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                />
+            <div>
+              <label className="block text-sm font-medium text-[#1E3A5F] mb-2">Topic</label>
+              <Input
+                placeholder="Retirement planning, tax strategy, estate planning..."
+                className="border-gray-300"
+                value={topic}
+                onChange={(event) => setTopic(event.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#1E3A5F] mb-2">Audience</label>
+              <Input
+                placeholder="Pre-retirees, business owners, existing clients..."
+                className="border-gray-300"
+                value={audience}
+                onChange={(event) => setAudience(event.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#1E3A5F] mb-2">Talking points</label>
+              <Textarea
+                placeholder="Capture the key points, caveats, CTA, and any compliance-sensitive context."
+                className="min-h-[160px] border-gray-300"
+                value={talkingPoints}
+                onChange={(event) => setTalkingPoints(event.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#1E3A5F] mb-2">Channels</label>
+              <div className="grid grid-cols-2 gap-3">
+                {Object.entries(platformConfig).map(([id, config]) => {
+                  const platform = id as Platform;
+                  const Icon = config.icon;
+                  const selected = selectedPlatforms.includes(platform);
+                  return (
+                    <button
+                      key={platform}
+                      type="button"
+                      onClick={() => togglePlatform(platform)}
+                      className={`flex items-center gap-3 rounded-lg border-2 px-4 py-3 text-left transition-colors ${
+                        selected ? 'border-[#0EA5E9] bg-[#0EA5E9]/5' : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <Icon className={`w-5 h-5 ${selected ? 'text-[#0EA5E9]' : 'text-gray-500'}`} />
+                      <span className={`text-sm font-medium ${selected ? 'text-[#1E3A5F]' : 'text-gray-700'}`}>{config.label}</span>
+                    </button>
+                  );
+                })}
               </div>
+              <p className="text-xs text-gray-500 mt-2">{selectedPlatforms.length} channel{selectedPlatforms.length === 1 ? '' : 's'} selected</p>
+            </div>
 
-              {/* Platform Selector */}
+            {submitError ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                {submitError}
+              </div>
+            ) : null}
+
+            <Button
+              className="w-full bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
+              onClick={() => void handleGenerate()}
+              disabled={isGenerating || selectedPlatforms.length === 0 || topic.trim().length < 3 || audience.trim().length < 3 || talkingPoints.trim().length < 10}
+            >
+              {isGenerating ? <Sparkles className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+              {isGenerating ? 'Generating draft...' : 'Generate Draft'}
+            </Button>
+
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 flex gap-3">
+              <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-blue-900">
+                <p className="font-medium mb-1">Real backend generation</p>
+                <p>This form calls `/api/v1/content/generate`. If provider credentials are missing, the API error is shown here instead of fake copy.</p>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Link to="/content/drafts" className="text-sm text-[#0EA5E9] hover:underline">
+                Browse saved drafts
+              </Link>
+            </div>
+          </div>
+        </Card>
+
+        <div className="space-y-6">
+          <Card className="p-6 rounded-lg shadow-sm border border-gray-200 min-h-[420px]">
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <label className="block text-sm font-medium text-[#1E3A5F] mb-2">
-                  Platforms
-                </label>
-                <p className="text-xs text-gray-500 mb-3">
-                  Select one or more platforms. Content will be optimized for each.
+                <h3 className="text-lg font-semibold text-[#1E3A5F]">Preview</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {newestDraft ? `Showing "${newestDraft.title}"` : 'Generate or load a draft to preview channel output.'}
                 </p>
-                
-                {/* Select All Checkbox */}
-                <label className="flex items-center gap-2 mb-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedPlatforms.length === 4}
-                    ref={(input) => {
-                      if (input) {
-                        input.indeterminate = isSelectAllIndeterminate;
-                      }
-                    }}
-                    onChange={handleSelectAll}
-                    className="w-4 h-4 text-[#0EA5E9] border-gray-300 rounded focus:ring-[#0EA5E9]"
-                  />
-                  <span className="text-sm text-gray-700 font-medium">Select All</span>
-                </label>
+              </div>
+              {newestDraft ? <Badge className="bg-[#0EA5E9]/10 text-[#0EA5E9] border-0">{newestDraft.status}</Badge> : null}
+            </div>
 
-                {/* Platform Cards */}
-                <div className="grid grid-cols-2 gap-3 mb-2">
-                  {platformsData.map((platform) => {
-                    const Icon = platform.icon;
-                    const isSelected = selectedPlatforms.includes(platform.id);
-                    
+            {newestDraft && availablePreviewTabs.length > 0 ? (
+              <Tabs value={activePreviewTab} onValueChange={(value) => setActivePreviewTab(value as Platform)}>
+                <TabsList className="mb-4">
+                  {availablePreviewTabs.map((platform) => {
+                    const Icon = platformConfig[platform].icon;
                     return (
-                      <label
-                        key={platform.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                          isSelected
-                            ? 'border-[#0EA5E9] bg-[#0EA5E9]/5'
-                            : 'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => togglePlatform(platform.id)}
-                          className="w-4 h-4 text-[#0EA5E9] border-gray-300 rounded focus:ring-[#0EA5E9]"
-                        />
-                        <Icon className={`w-5 h-5 ${isSelected ? 'text-[#0EA5E9]' : 'text-gray-500'}`} />
-                        <span className={`text-sm font-medium ${isSelected ? 'text-[#1E3A5F]' : 'text-gray-700'}`}>
-                          {platform.name}
-                        </span>
-                      </label>
+                      <TabsTrigger key={platform} value={platform}>
+                        <Icon className="w-4 h-4 mr-2" />
+                        {platformConfig[platform].label}
+                      </TabsTrigger>
                     );
                   })}
-                </div>
-
-                {/* Selection Count */}
-                <p className="text-xs text-gray-500 mt-2">
-                  {selectedPlatforms.length} of 4 selected
-                </p>
-              </div>
-
-              {/* Tone Dropdown */}
-              <div>
-                <label className="block text-sm font-medium text-[#1E3A5F] mb-2">
-                  Tone
-                </label>
-                <Select value={tone} onValueChange={setTone}>
-                  <SelectTrigger className="border-gray-300 focus:border-[#0EA5E9] focus:ring-[#0EA5E9]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="educational">Educational</SelectItem>
-                    <SelectItem value="promotional">Promotional</SelectItem>
-                    <SelectItem value="thought-leadership">Thought Leadership</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Generate Button */}
-              <Button 
-                className="w-full bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
-                onClick={handleGenerate}
-                disabled={isGenerating || selectedPlatforms.length === 0}
-              >
-                {isGenerating ? (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    {selectedPlatforms.length === 0
-                      ? 'Select a Platform'
-                      : selectedPlatforms.length === 1
-                      ? 'Generate Content'
-                      : `Generate for ${selectedPlatforms.length} Platforms`}
-                  </>
-                )}
-              </Button>
-
-              {/* Info Box */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3">
-                <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-blue-900">
-                  <p className="font-medium mb-1">AI-Powered & Compliant</p>
-                  <p className="text-blue-700">
-                    All content is automatically checked for FINRA compliance and includes required disclosures.
-                  </p>
-                </div>
-              </div>
-            </div>
+                </TabsList>
+                {availablePreviewTabs.map((platform) => (
+                  <TabsContent key={platform} value={platform} className="mt-0">
+                    <div className="mb-3 flex items-center justify-between text-xs text-gray-500">
+                      <span>Saved channel output</span>
+                      <span>{getDraftContent(newestDraft, platform).length} characters</span>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 bg-white p-4 whitespace-pre-wrap text-sm text-gray-700 leading-6 min-h-[280px]">
+                      {getDraftContent(newestDraft, platform)}
+                    </div>
+                  </TabsContent>
+                ))}
+              </Tabs>
+            ) : (
+              <EmptyState
+                title="No generated content yet"
+                description="Once a draft is created, each selected channel preview will render here from the saved backend draft."
+              />
+            )}
           </Card>
 
-          {/* Output Preview Panel */}
           <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-[#1E3A5F] mb-6">Preview</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <Clock3 className="w-4 h-4 text-gray-500" />
+              <h3 className="text-lg font-semibold text-[#1E3A5F]">Recent Drafts</h3>
+            </div>
 
-            {!generated ? (
-              <div className="flex flex-col items-center justify-center h-[500px] text-center px-8">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                  <Sparkles className="w-8 h-8 text-gray-400" />
-                </div>
-                <p className="text-gray-500 mb-2">Select your platforms and topic, then click Generate Content.</p>
-                <p className="text-sm text-gray-400">
-                  The AI will create optimized content for each selected platform.
-                </p>
-              </div>
+            {recentDrafts.length === 0 ? (
+              <EmptyState
+                title="No drafts in this workspace"
+                description="Generated drafts will appear here after the backend saves them."
+              />
             ) : (
-              <div className="space-y-6">
-                {/* Platform Tabs (if multiple platforms selected) */}
-                {selectedPlatforms.length > 1 && (
-                  <Tabs value={activePreviewTab} onValueChange={(value) => setActivePreviewTab(value as Platform)}>
-                    <TabsList className={`grid w-full ${selectedPlatforms.length === 2 ? 'grid-cols-2' : selectedPlatforms.length === 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
-                      {selectedPlatforms.map((platformId) => {
-                        const platformData = platformsData.find(p => p.id === platformId);
-                        if (!platformData) return null;
-                        const Icon = platformData.icon;
-                        
-                        return (
-                          <TabsTrigger key={platformId} value={platformId} className="flex items-center gap-1.5">
-                            <Icon className="w-4 h-4" />
-                            {platformData.name}
-                          </TabsTrigger>
-                        );
-                      })}
-                    </TabsList>
-                  </Tabs>
-                )}
-
-                {/* Generated Content */}
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 min-h-[280px]">
-                  <p className="text-sm text-[#1E3A5F] whitespace-pre-line">
-                    {sampleContent[activePreviewTab]}
-                  </p>
-                </div>
-
-                {/* Compliance Warnings */}
-                <div className="border-2 border-red-200 bg-red-50 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <AlertTriangle className="w-5 h-5 text-red-600" />
-                    <h4 className="font-semibold text-red-900">Compliance Warnings</h4>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-start gap-2">
-                      <span className="text-red-600 font-mono">•</span>
-                      <p className="text-red-800">
-                        <span className="font-medium">Guarantee language detected:</span> "cannot be understated" - Consider rephrasing to avoid implied guarantees
-                      </p>
+              <div className="space-y-3">
+                {recentDrafts.map((draft) => (
+                  <button
+                    key={draft.id}
+                    type="button"
+                    onClick={() => {
+                      setPreviewDraft(draft);
+                      const firstAvailable = (Object.keys(platformConfig) as Platform[]).find((platform) => Boolean(getDraftContent(draft, platform)));
+                      setActivePreviewTab(firstAvailable ?? 'LINKEDIN');
+                    }}
+                    className="w-full rounded-lg border border-gray-200 bg-white p-4 text-left hover:border-[#0EA5E9] transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-[#1E3A5F]">{draft.title}</p>
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{draft.originalPrompt}</p>
+                      </div>
+                      <Badge className="bg-gray-100 text-gray-700 border-0">{draft.status}</Badge>
                     </div>
-                    <div className="flex items-start gap-2">
-                      <span className="text-red-600 font-mono">•</span>
-                      <p className="text-red-800">
-                        <span className="font-medium">Performance implications:</span> "power of compound growth" - Add disclaimer about market volatility
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Required Disclosures */}
-                <div className="border-2 border-blue-200 bg-blue-50 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Info className="w-5 h-5 text-blue-600" />
-                    <h4 className="font-semibold text-blue-900">Required Disclosures</h4>
-                  </div>
-                  <p className="text-xs text-blue-800">
-                    Investment advisory services offered through Pinnacle Financial, a registered investment adviser. 
-                    Past performance is not indicative of future results. All investments carry risk, including potential 
-                    loss of principal. This content is for informational purposes only and should not be considered 
-                    personalized investment advice. Securities offered through XYZ Securities, Member FINRA/SIPC.
-                  </p>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-3">
-                  <Button variant="outline" className="flex-1 border-gray-300 text-[#1E3A5F] hover:bg-gray-50">
-                    Save Draft
-                  </Button>
-                  <Button className="flex-1 bg-[#0EA5E9] hover:bg-[#0284C7] text-white">
-                    Request Approval
-                  </Button>
-                </div>
+                    <p className="text-xs text-gray-500 mt-3">{new Date(draft.createdAt).toLocaleString()}</p>
+                  </button>
+                ))}
               </div>
             )}
           </Card>
+
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 flex gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-amber-900">
+              <p className="font-medium mb-1">Provider dependency</p>
+              <p>OpenAI credentials are still required for successful generation. This screen now exposes that real dependency instead of mocking a successful result.</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

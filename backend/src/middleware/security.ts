@@ -30,7 +30,11 @@ export function httpsRedirect(
     (req.headers['x-forwarded-proto'] as string | undefined) ?? req.protocol;
 
   if (proto !== 'https') {
-    const httpsUrl = `https://${req.hostname}${req.originalUrl}`;
+    const port =
+      config.ENABLE_HTTPS && config.EXTERNAL_HTTPS_PORT !== 443
+        ? `:${config.EXTERNAL_HTTPS_PORT}`
+        : '';
+    const httpsUrl = `https://${req.hostname}${port}${req.originalUrl}`;
     res.redirect(301, httpsUrl);
     return;
   }

@@ -1,0 +1,1926 @@
+{
+  "metadata": {
+    "type_values": [
+      "feature",
+      "enhancement",
+      "chore"
+    ],
+    "priority_values": [
+      "MUST",
+      "SHOULD",
+      "COULD"
+    ],
+    "weight_values": [
+      "1",
+      "2",
+      "3",
+      "5",
+      "8",
+      "13"
+    ],
+    "scoring": {
+      "value_scale": 1,
+      "risk_reduction_scale": 1,
+      "time_criticality_scale": 1,
+      "formula": "priority_score = (value + risk + time_criticality) / weight"
+    },
+    "generated": {
+      "iso": "2026-03-11T00:00:00Z",
+      "revision": 4
+    },
+    "description": "Requirements Traceability Matrix (RTM) with weighted WSJF-style priority.",
+    "version": "1.1.0",
+    "source_hash": "59db14b7c29fe81d308a2e4a083ef8f32c4858939b9b163ea2ccd1e923adb777",
+    "status_values": [
+      "Planned",
+      "In Progress",
+      "Completed",
+      "Blocked"
+    ],
+    "project": "Vireos Platform - MVP Phase 1 (Compliance & Security)",
+    "source_of_truth": "docs/FRD.md"
+  },
+  "components": [
+    {
+      "id": "C-001",
+      "name": "Authentication",
+      "description": "User auth, session, password policy"
+    },
+    {
+      "id": "C-002",
+      "name": "RBAC",
+      "description": "Role-based access control and permissions matrix"
+    },
+    {
+      "id": "C-003",
+      "name": "Compliance Engine",
+      "description": "Pre/post-generation compliance checks and guardrails"
+    },
+    {
+      "id": "C-004",
+      "name": "Content Service",
+      "description": "Content generation, storage, status state machine"
+    },
+    {
+      "id": "C-005",
+      "name": "Audit Logging",
+      "description": "Immutable audit trail for actions and changes"
+    },
+    {
+      "id": "C-006",
+      "name": "Notifications",
+      "description": "Email and in-app notifications"
+    },
+    {
+      "id": "C-007",
+      "name": "Admin Panel",
+      "description": "Back-office admin for Vireos staff"
+    },
+    {
+      "id": "C-008",
+      "name": "ICP Configuration",
+      "description": "Per-ICP rules, terminology, and guardrails"
+    },
+    {
+      "id": "C-009",
+      "name": "OpenAI Integration",
+      "description": "Model config, prompt orchestration"
+    },
+    {
+      "id": "C-010",
+      "name": "Publishing Integrations",
+      "description": "LinkedIn/Facebook posting and scheduling"
+    },
+    {
+      "id": "C-011",
+      "name": "Security",
+      "description": "AppSec controls, rate limiting, secret management"
+    },
+    {
+      "id": "C-012",
+      "name": "Data Protection",
+      "description": "Encryption at rest/in transit, PII handling"
+    },
+    {
+      "id": "C-013",
+      "name": "Billing & Stripe",
+      "description": "Subscriptions, credits, PCI-safe webhooks"
+    },
+    {
+      "id": "C-014",
+      "name": "Multi-tenant DB",
+      "description": "Tenant isolation with organization_id and RLS"
+    },
+    {
+      "id": "C-015",
+      "name": "API Gateway",
+      "description": "API security, input validation, throttling"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "FR-001",
+      "title": "Multi-tenant isolation with organization_id and Row-Level Security (RLS)",
+      "description": "Enforce strict tenant data isolation in a single database using organization_id scoping and PostgreSQL RLS policies.",
+      "type": "feature",
+      "priority": "MUST",
+      "components": [
+        "Multi-tenant DB",
+        "Security",
+        "Data Protection"
+      ],
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Given a user from Org A, when querying any table, then rows from Org B are never returned.",
+        "Given direct ID references, when accessing resources, then RLS denies cross-tenant access.",
+        "Given admin tooling, when viewing system data, then cross-tenant views require Super Admin role."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-SEC-001",
+          "title": "Strong password policy enforced on signup/change",
+          "description": "Validate password complexity and rejection of weak passwords.",
+          "requirement_ids": [
+            "FR-001"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "AUTH",
+            "PII_PROTECTION"
+          ],
+          "preconditions": [
+            "Test org exists; signup enabled; password policy configured per spec"
+          ],
+          "steps": [
+            "Attempt signup with weak password (e.g., 'password1')",
+            "Verify inline error shows policy requirements",
+            "Sign up with strong password meeting policy",
+            "Change password to another strong value from profile/security page"
+          ],
+          "expected_results": [
+            "Weak password rejected with clear reasons",
+            "Strong password accepted; user created/session issued",
+            "Password change succeeds; audit entry created"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "security",
+            "auth"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "Completed",
+      "priority_score": 3,
+      "risk": 8,
+      "time_criticality": 8,
+      "value": 8,
+      "weight": 8,
+      "implementation_notes": "Define RLS policies per table; enforce org_id on all queries via middleware/ORM scopes."
+    },
+    {
+      "id": "FR-002",
+      "title": "Role-Based Access Control (RBAC) per permission matrix",
+      "description": "Implement roles (Super Admin, Admin, Advisor, Compliance) with least-privilege permissions across all modules.",
+      "type": "feature",
+      "priority": "MUST",
+      "components": [
+        "RBAC",
+        "Authentication",
+        "Security"
+      ],
+      "dependencies": [
+        "FR-021"
+      ],
+      "acceptance_criteria": [
+        "Given an Advisor, when attempting to publish, then action is blocked until Approved by Compliance/Admin.",
+        "Given a Compliance user, when reviewing content, then approve/reject/edit is permitted.",
+        "Given an Admin, when managing users, then invite/remove/role-change is permitted."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-SEC-002",
+          "title": "Session token security and expiration",
+          "description": "Validate secure tokens, expiration, and refresh behavior.",
+          "requirement_ids": [
+            "FR-002"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "AUTH"
+          ],
+          "preconditions": [
+            "User account exists and can log in"
+          ],
+          "steps": [
+            "Log in and capture auth cookies/headers",
+            "Wait until token TTL elapses",
+            "Call a protected API and UI action",
+            "Re-authenticate and retry action"
+          ],
+          "expected_results": [
+            "Tokens are HttpOnly/SameSite/Lax or Strict and secure",
+            "Expired token returns 401; UI prompts re-login",
+            "After re-auth, action succeeds; prior session invalidated"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "security",
+            "session"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "Completed",
+      "priority_score": 4.2,
+      "risk": 5,
+      "time_criticality": 8,
+      "value": 8,
+      "weight": 5,
+      "implementation_notes": "Backend role checks and frontend route visibility are live. Verified with publish-gating.json for advisor restrictions, compliance-review-flow.json for compliance actions, admin-user-lifecycle.json for invite/remove/role-change, and the persona sweep across all role shells."
+    },
+    {
+      "id": "FR-003",
+      "title": "AI pre-generation compliance guardrails",
+      "description": "Apply prohibited terms filtering, required disclosures, and constraints before content generation.",
+      "type": "feature",
+      "priority": "MUST",
+      "components": [
+        "Compliance Engine",
+        "OpenAI Integration",
+        "Content Service"
+      ],
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Given a prompt with prohibited terms, when generating, then block or sanitize before send to model.",
+        "Given investment content, when generating, then required risk disclosures are included.",
+        "Given ICP config, when generating, then ICP-specific rules are applied."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-SEC-003",
+          "title": "Password reset flow is secure",
+          "description": "Reset tokens are single-use, time-limited, and invalidated on use.",
+          "requirement_ids": [
+            "FR-003"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "AUTH",
+            "PII_PROTECTION",
+            "AUDIT_TRAIL"
+          ],
+          "preconditions": [
+            "User exists with verified email; email delivery enabled (SendGrid sandbox)"
+          ],
+          "steps": [
+            "Initiate password reset",
+            "Open reset link within validity window; set new strong password",
+            "Attempt using the same reset link again",
+            "Attempt reset link after expiry window"
+          ],
+          "expected_results": [
+            "Reset succeeds; audit event recorded",
+            "Second attempt fails with invalid/used token",
+            "Expired link rejected with secure error; no leakage"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "security",
+            "reset"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "Completed",
+      "priority_score": 4.8,
+      "risk": 8,
+      "time_criticality": 8,
+      "value": 8,
+      "weight": 5,
+      "implementation_notes": "Pre-generation prohibited-term blocking is verified with ai-guardrails.json. The remaining disclosure and ICP-application acceptance criteria still require a live OpenAI key because this environment is currently configured with a placeholder API key."
+    },
+    {
+      "id": "FR-004",
+      "title": "Post-generation compliance validation and auto-disclaimers",
+      "description": "Scan AI output for violations, auto-insert disclaimers, and flag uncertain content for human review.",
+      "type": "feature",
+      "priority": "MUST",
+      "components": [
+        "Compliance Engine",
+        "Content Service"
+      ],
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Given generated content, when scanned, then violations are flagged and content routed to review.",
+        "Given missing disclosure, when detected, then system auto-inserts compliant disclaimer text.",
+        "Given uncertain compliance score, when below threshold, then content is forced to Pending Review."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-RBAC-004",
+          "title": "Permission matrix enforcement across roles",
+          "description": "Verify CRUD and approval rights per role per matrix.",
+          "requirement_ids": [
+            "FR-004",
+            "FR-021"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "RBAC",
+            "COMPLIANCE_WF",
+            "ANALYTICS"
+          ],
+          "preconditions": [
+            "Users exist for all roles in same org; sample content present"
+          ],
+          "steps": [
+            "Advisor attempts to publish without approval",
+            "Compliance edits and approves content",
+            "Admin views analytics for all users; Advisor views own only"
+          ],
+          "expected_results": [
+            "Advisor blocked from publishing pre-approval",
+            "Compliance can edit/approve; status updates recorded",
+            "Admin sees org-wide analytics; Advisor sees own data only"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "rbac",
+            "compliance"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "In Progress",
+      "priority_score": 3,
+      "risk": 8,
+      "time_criticality": 8,
+      "value": 8,
+      "weight": 8,
+      "implementation_notes": "Use rule-based scans with configurable thresholds; maintain audit of inserted text."
+    },
+    {
+      "id": "FR-005",
+      "title": "Compliance workflow enforcement (Draft → Review → Approved/Rejected)",
+      "description": "Enforce content state transitions with permissions, notes, and publication gating.",
+      "type": "feature",
+      "priority": "MUST",
+      "components": [
+        "Content Service",
+        "RBAC",
+        "Compliance Engine"
+      ],
+      "dependencies": [
+        "FR-002"
+      ],
+      "acceptance_criteria": [
+        "Given Draft content, when Advisor submits, then status changes to Pending Review and notifies Compliance.",
+        "Given Rejected content, when Advisor edits, then it can be resubmitted with change notes.",
+        "Given Approved content, when publishing, then only permitted roles can publish."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-MT-005",
+          "title": "Row-level security: cross-tenant isolation",
+          "description": "Users cannot access other organizations’ data.",
+          "requirement_ids": [
+            "FR-005",
+            "FR-021"
+          ],
+          "priority": "MUST",
+          "type": "negative",
+          "components": [
+            "MULTI_TENANT",
+            "RBAC",
+            "PII_PROTECTION"
+          ],
+          "preconditions": [
+            "Org A and Org B exist; user U_A (Org A) logged in; content and leads exist in both orgs"
+          ],
+          "steps": [
+            "Directly navigate to Org B resource IDs via URL/API",
+            "Attempt search/filter to surface cross-tenant data",
+            "Inspect network responses for foreign records"
+          ],
+          "expected_results": [
+            "All attempts return 403/404 with no data leakage",
+            "No foreign records appear; audit entries for denied access"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "security",
+            "multi-tenant"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        },
+        {
+          "id": "TC-ANL-021",
+          "title": "Analytics visibility respects role and tenant",
+          "description": "Dashboards filter by organization and role permissions.",
+          "requirement_ids": [
+            "FR-021",
+            "FR-005"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "ANALYTICS",
+            "RBAC",
+            "MULTI_TENANT"
+          ],
+          "preconditions": [
+            "Org A and Org B with data; Admin/Advisor/Compliance users exist"
+          ],
+          "steps": [
+            "Admin Org A views analytics (org-wide)",
+            "Advisor Org A views analytics (own-only)",
+            "Cross-tenant URL/API attempts to fetch Org B analytics"
+          ],
+          "expected_results": [
+            "Admin sees only Org A aggregated data",
+            "Advisor sees own metrics only",
+            "Cross-tenant access blocked (403/404); no leakage"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "analytics",
+            "rbac",
+            "security"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "Completed",
+      "priority_score": 4.2,
+      "risk": 5,
+      "time_criticality": 8,
+      "value": 8,
+      "weight": 5,
+      "implementation_notes": "Finite-state review workflow enforced in backend and surfaced in UI. Verified with persona sweep, compliance-review-flow.json, and publish-gating.json. Legacy TCC mappings under FR-005 remain stale and should be normalized in a later traceability cleanup."
+    },
+    {
+      "id": "FR-006",
+      "title": "Immutable audit trail for content and user actions",
+      "description": "Track create/edit/review/approval/publish actions with timestamp, actor, and diffs; records are immutable.",
+      "type": "feature",
+      "priority": "MUST",
+      "components": [
+        "Audit Logging",
+        "Content Service",
+        "Security"
+      ],
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Given any content change, when saved, then an audit record is appended with before/after diffs.",
+        "Given a status change, when performed, then actor, timestamp, and reason are recorded.",
+        "Given an audit export, when requested, then entries are ordered, complete, and non-editable."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-AI-006",
+          "title": "Pre-generation guardrails block prohibited terms",
+          "description": "Prohibited terms are blocked and explain why.",
+          "requirement_ids": [
+            "FR-006"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "AI_GUARDRAILS",
+            "COMPLIANCE_WF",
+            "AUDIT_TRAIL"
+          ],
+          "preconditions": [
+            "Advisor logged in; prohibited terms list configured"
+          ],
+          "steps": [
+            "Enter prompt containing guarantees/promissory language",
+            "Submit generation request"
+          ],
+          "expected_results": [
+            "Request blocked or sanitized with rationale referencing FINRA/SEC",
+            "Event logged with prompt, user, and rule triggered"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "compliance",
+            "ai"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        },
+        {
+          "id": "TC-AI-007",
+          "title": "Post-generation validation and disclaimers insertion",
+          "description": "Generated content is scanned; disclaimers auto-inserted or flagged.",
+          "requirement_ids": [
+            "FR-007",
+            "FR-006"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "AI_GUARDRAILS",
+            "COMPLIANCE_WF",
+            "AUDIT_TRAIL"
+          ],
+          "preconditions": [
+            "Advisor logged in; firm-specific disclosures configured"
+          ],
+          "steps": [
+            "Generate content for investment topic",
+            "Review output across channels (LinkedIn, Facebook, Email)"
+          ],
+          "expected_results": [
+            "Required disclosures appended per channel",
+            "If uncertain, content flagged Pending Review with reasons",
+            "Validation events captured in audit log"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "compliance",
+            "ai"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "In Progress",
+      "priority_score": 4.8,
+      "risk": 8,
+      "time_criticality": 8,
+      "value": 8,
+      "weight": 5,
+      "implementation_notes": "Use append-only log with cryptographic hash chaining optional for tamper-evidence."
+    },
+    {
+      "id": "FR-007",
+      "title": "Compliance export to PDF/Word",
+      "description": "Export approved or reviewed content with metadata and audit trail for recordkeeping.",
+      "type": "enhancement",
+      "priority": "MUST",
+      "components": [
+        "Content Service",
+        "Audit Logging"
+      ],
+      "dependencies": [
+        "FR-006"
+      ],
+      "acceptance_criteria": [
+        "Given an Approved item, when exporting, then PDF/Word includes content, disclosures, and approvals.",
+        "Given Pending Review, when exporting, then reviewer notes are included.",
+        "Given export, when downloaded, then file is accessible to authorized roles only."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-AI-007",
+          "title": "Post-generation validation and disclaimers insertion",
+          "description": "Generated content is scanned; disclaimers auto-inserted or flagged.",
+          "requirement_ids": [
+            "FR-007",
+            "FR-006"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "AI_GUARDRAILS",
+            "COMPLIANCE_WF",
+            "AUDIT_TRAIL"
+          ],
+          "preconditions": [
+            "Advisor logged in; firm-specific disclosures configured"
+          ],
+          "steps": [
+            "Generate content for investment topic",
+            "Review output across channels (LinkedIn, Facebook, Email)"
+          ],
+          "expected_results": [
+            "Required disclosures appended per channel",
+            "If uncertain, content flagged Pending Review with reasons",
+            "Validation events captured in audit log"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "compliance",
+            "ai"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "In Progress",
+      "priority_score": 4.33,
+      "risk": 3,
+      "time_criticality": 5,
+      "value": 5,
+      "weight": 3,
+      "implementation_notes": "Server-side document generation with stamped metadata and checksums."
+    },
+    {
+      "id": "FR-008",
+      "title": "Secrets management and token encryption",
+      "description": "Encrypt OAuth tokens and API keys at rest; rotate and restrict access via environment vault.",
+      "type": "chore",
+      "priority": "MUST",
+      "components": [
+        "Security",
+        "Data Protection"
+      ],
+      "dependencies": [
+        "FR-021"
+      ],
+      "acceptance_criteria": [
+        "Given stored tokens, when inspected at DB layer, then values are encrypted.",
+        "Given key rotation, when executed, then services continue without token leakage.",
+        "Given service startup, when loading secrets, then only least-privileged processes can read them."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-COMP-008",
+          "title": "Compliance workflow transitions and gating",
+          "description": "Status transitions follow Draft→Pending→Approved/Rejected/Needs Changes→Published.",
+          "requirement_ids": [
+            "FR-008"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "COMPLIANCE_WF",
+            "RBAC",
+            "AUDIT_TRAIL"
+          ],
+          "preconditions": [
+            "Advisor and Compliance users exist"
+          ],
+          "steps": [
+            "Advisor creates content and submits for review",
+            "Compliance returns Needs Changes with notes",
+            "Advisor updates and resubmits",
+            "Compliance approves; Admin publishes"
+          ],
+          "expected_results": [
+            "Invalid transitions blocked; notes retained",
+            "Publish possible only after approval",
+            "All transitions timestamped with user in audit log"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "workflow",
+            "compliance"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "In Progress",
+      "priority_score": 8,
+      "risk": 8,
+      "time_criticality": 8,
+      "value": 8,
+      "weight": 3,
+      "implementation_notes": "Use KMS/Secrets Manager; encrypt columns; implement rotation playbooks."
+    },
+    {
+      "id": "FR-009",
+      "title": "Encryption in transit and at rest",
+      "description": "Enable TLS for all endpoints and database connections; encrypt sensitive data at rest.",
+      "type": "chore",
+      "priority": "MUST",
+      "components": [
+        "Data Protection",
+        "Security"
+      ],
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Given any API call, when intercepted, then traffic is TLS 1.2+ encrypted.",
+        "Given database storage, when querying encryption status, then at-rest encryption is enabled.",
+        "Given backups, when created, then backups are encrypted with managed keys."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-AUD-009",
+          "title": "Comprehensive audit trail for content lifecycle",
+          "description": "All edits, reviews, approvals, and publications are logged immutably.",
+          "requirement_ids": [
+            "FR-009"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "AUDIT_TRAIL",
+            "COMPLIANCE_WF"
+          ],
+          "preconditions": [
+            "Content item exists; multiple user roles available"
+          ],
+          "steps": [
+            "Make edit, change status, approve, publish",
+            "Open audit view for the content and export JSON/CSV if available"
+          ],
+          "expected_results": [
+            "Each action present with timestamp, actor, before/after",
+            "No edits to audit entries allowed; read-only view"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "audit",
+            "compliance"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        },
+        {
+          "id": "TC-EXP-010",
+          "title": "Export to PDF/Word for recordkeeping",
+          "description": "Records export contains content, approvals, and disclosures.",
+          "requirement_ids": [
+            "FR-010",
+            "FR-009"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "EXPORTS",
+            "COMPLIANCE_WF",
+            "AUDIT_TRAIL"
+          ],
+          "preconditions": [
+            "Approved content exists"
+          ],
+          "steps": [
+            "From compliance view, export PDF and Word",
+            "Open files and inspect contents"
+          ],
+          "expected_results": [
+            "Exports include final content, disclosures, approval metadata, and audit summary",
+            "Files stored/available for download; access controlled"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "export",
+            "compliance"
+          ],
+          "artifacts": [
+            "exported_pdf",
+            "exported_docx"
+          ],
+          "status": "Planned"
+        },
+        {
+          "id": "TC-NOT-016",
+          "title": "Compliance notifications emitted and logged",
+          "description": "Notifications sent on submit/approve/reject/changes.",
+          "requirement_ids": [
+            "FR-016",
+            "FR-009"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "NOTIFICATIONS",
+            "COMPLIANCE_WF",
+            "AUDIT_TRAIL"
+          ],
+          "preconditions": [
+            "Email delivery enabled; in-app notifications visible"
+          ],
+          "steps": [
+            "Advisor submits content",
+            "Compliance approves; then rejects another item",
+            "Open notification center and check emails"
+          ],
+          "expected_results": [
+            "Correct recipients get email + in-app alerts",
+            "Notification events present in audit with correlation IDs"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "notifications",
+            "compliance"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        },
+        {
+          "id": "TC-USG-019",
+          "title": "OpenAI usage and cost tracking per user/org",
+          "description": "Usage recorded with content ID correlation and totals.",
+          "requirement_ids": [
+            "FR-019",
+            "FR-009"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "OPENAI_USAGE",
+            "AUDIT_TRAIL"
+          ],
+          "preconditions": [
+            "Advisor generates multiple contents in same org"
+          ],
+          "steps": [
+            "Generate content across channels",
+            "Open usage dashboard/logs"
+          ],
+          "expected_results": [
+            "Tokens and cost attributed to user and org with content correlation IDs",
+            "Audit entries include usage metadata"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "usage",
+            "ai",
+            "audit"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        },
+        {
+          "id": "TC-CRED-020",
+          "title": "Data credit purchase, deduction, and audit",
+          "description": "Credits purchased via Stripe; deductions on list import; no negative balances.",
+          "requirement_ids": [
+            "FR-020",
+            "FR-017",
+            "FR-009"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "DATA_CREDITS",
+            "BILLING_STRIPE",
+            "AUDIT_TRAIL"
+          ],
+          "preconditions": [
+            "Org has zero credits; Stripe test mode enabled; Prospect Finder request ready for import"
+          ],
+          "steps": [
+            "Purchase credit bundle",
+            "Submit Prospect Finder request; import list preview and confirm",
+            "Verify credits deducted per pricing tier; try import exceeding balance"
+          ],
+          "expected_results": [
+            "Balance increases post-webhook",
+            "Deduction matches record types; audit entries for purchase and deduction",
+            "Exceeding balance blocked with clear error; no negative balance"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "credits",
+            "billing",
+            "audit"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "In Progress",
+      "priority_score": 4.8,
+      "risk": 8,
+      "time_criticality": 8,
+      "value": 8,
+      "weight": 5,
+      "implementation_notes": "Enforce HTTPS, HSTS; enable PG encryption at rest via cloud provider; encrypt S3 objects."
+    },
+    {
+      "id": "FR-010",
+      "title": "API rate limiting and input validation",
+      "description": "Apply per-tenant and per-user rate limits; validate and sanitize inputs to prevent abuse.",
+      "type": "chore",
+      "priority": "MUST",
+      "components": [
+        "API Gateway",
+        "Security"
+      ],
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Given excessive requests, when limits exceeded, then 429 is returned and logged.",
+        "Given invalid input, when submitted, then request is rejected with detailed but safe errors.",
+        "Given known bad patterns, when detected, then requests are blocked and alerted."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-EXP-010",
+          "title": "Export to PDF/Word for recordkeeping",
+          "description": "Records export contains content, approvals, and disclosures.",
+          "requirement_ids": [
+            "FR-010",
+            "FR-009"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "EXPORTS",
+            "COMPLIANCE_WF",
+            "AUDIT_TRAIL"
+          ],
+          "preconditions": [
+            "Approved content exists"
+          ],
+          "steps": [
+            "From compliance view, export PDF and Word",
+            "Open files and inspect contents"
+          ],
+          "expected_results": [
+            "Exports include final content, disclosures, approval metadata, and audit summary",
+            "Files stored/available for download; access controlled"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "export",
+            "compliance"
+          ],
+          "artifacts": [
+            "exported_pdf",
+            "exported_docx"
+          ],
+          "status": "Planned"
+        }
+      ],
+      "status": "In Progress",
+      "priority_score": 5,
+      "risk": 5,
+      "time_criticality": 5,
+      "value": 5,
+      "weight": 3,
+      "implementation_notes": "Implement token buckets; centralize validation schemas; WAF rules as needed."
+    },
+    {
+      "id": "FR-011",
+      "title": "Security event logging and monitoring",
+      "description": "Log auth failures, permission denials, rate limit hits, and suspicious activities with alerts.",
+      "type": "chore",
+      "priority": "MUST",
+      "components": [
+        "Security",
+        "Audit Logging"
+      ],
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Given repeated auth failures, when threshold reached, then alert is sent to ops channel.",
+        "Given privilege escalation attempt, when detected, then event is logged with context.",
+        "Given rate limit bursts, when anomalous, then alerts include tenant and IP."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-ENC-011",
+          "title": "Encryption at rest and TLS in transit",
+          "description": "Verify TLS enforcement and encrypted sensitive fields.",
+          "requirement_ids": [
+            "FR-011",
+            "FR-014"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "ENCRYPTION_KEYS",
+            "PII_PROTECTION"
+          ],
+          "preconditions": [
+            "Staging uses valid TLS; DB has encrypted columns for secrets/tokens"
+          ],
+          "steps": [
+            "Attempt HTTP access; inspect redirect/blocking",
+            "Inspect DB for ciphered OAuth token fields (no plaintext)",
+            "Intercept traffic with proxy to confirm TLS"
+          ],
+          "expected_results": [
+            "HTTP blocked or redirected to HTTPS; HSTS present",
+            "Secrets/tokens stored encrypted; no plaintext found",
+            "All traffic encrypted end-to-end"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "encryption",
+            "security"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "Planned",
+      "priority_score": 3.6,
+      "risk": 8,
+      "time_criticality": 5,
+      "value": 5,
+      "weight": 5,
+      "implementation_notes": "Centralized log aggregation; alert rules; retain logs per compliance policy."
+    },
+    {
+      "id": "FR-012",
+      "title": "Access logging for PII and sensitive records",
+      "description": "Record who viewed or exported PII with purpose and timestamp; enable audit queries.",
+      "type": "feature",
+      "priority": "MUST",
+      "components": [
+        "Audit Logging",
+        "Data Protection",
+        "Security"
+      ],
+      "dependencies": [
+        "FR-021",
+        "FR-002"
+      ],
+      "acceptance_criteria": [
+        "Given a user views a lead with PII, when accessed, then a view log entry is created.",
+        "Given CSV export with PII, when executed, then actor, scope, and reason are logged.",
+        "Given audit search, when filtered by user or record, then matching access events are returned."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-PII-012",
+          "title": "PII access logging and least privilege",
+          "description": "Access to PII is logged and restricted by role/tenant.",
+          "requirement_ids": [
+            "FR-012",
+            "FR-021"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "PII_PROTECTION",
+            "RBAC",
+            "MULTI_TENANT",
+            "AUDIT_TRAIL"
+          ],
+          "preconditions": [
+            "Leads with PII exist; multiple roles available"
+          ],
+          "steps": [
+            "Advisor views own lead PII",
+            "Advisor attempts to view another advisor’s lead",
+            "Compliance views org-wide but read-only PII (where applicable)",
+            "Review PII access logs"
+          ],
+          "expected_results": [
+            "Unauthorized access blocked",
+            "Every PII read logged with actor/time/object",
+            "Compliance access follows policy; no edits unless allowed"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "pii",
+            "security"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "Planned",
+      "priority_score": 4.2,
+      "risk": 8,
+      "time_criticality": 5,
+      "value": 8,
+      "weight": 5,
+      "implementation_notes": "Tag PII fields; instrument read paths; restrict log visibility by role."
+    },
+    {
+      "id": "FR-013",
+      "title": "Publish gating: only approved content can be published",
+      "description": "Block publishing from Advisor role unless content is Approved by Compliance/Admin.",
+      "type": "feature",
+      "priority": "MUST",
+      "components": [
+        "Content Service",
+        "RBAC",
+        "Publishing Integrations"
+      ],
+      "dependencies": [
+        "FR-002",
+        "FR-005",
+        "FR-004"
+      ],
+      "acceptance_criteria": [
+        "Given content not Approved, when publish is attempted, then action is denied with reason.",
+        "Given Approved content, when published, then publication event is audited.",
+        "Given bypass attempts, when detected, then system prevents and logs the attempt."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-SEC-013",
+          "title": "Secure storage of API keys and redaction",
+          "description": "API keys only in env; redacted in logs/UI.",
+          "requirement_ids": [
+            "FR-013"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "ENCRYPTION_KEYS",
+            "PII_PROTECTION"
+          ],
+          "preconditions": [
+            "System configured with OpenAI/SendGrid/Stripe keys"
+          ],
+          "steps": [
+            "Open settings/admin diagnostics",
+            "Trigger error that would include env in logs",
+            "Search logs for secrets"
+          ],
+          "expected_results": [
+            "No secrets displayed in UI or logs; values redacted",
+            "No endpoint returns secrets"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "security",
+            "secrets"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "In Progress",
+      "priority_score": 12,
+      "risk": 8,
+      "time_criticality": 8,
+      "value": 8,
+      "weight": 2,
+      "implementation_notes": "Backend publish endpoints hard-gate non-approved drafts and block non-advisor/admin roles. AC-1 verified with publish-gating.json; AC-2/AC-3 still need explicit audit-path evidence."
+    },
+    {
+      "id": "FR-014",
+      "title": "Compliance notifications for key events",
+      "description": "Send Email and in-app notifications for submission, approval, rejection, and changes needed.",
+      "type": "enhancement",
+      "priority": "SHOULD",
+      "components": [
+        "Notifications",
+        "Content Service"
+      ],
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Given content submitted, when event occurs, then Compliance receives Email and in-app alerts.",
+        "Given content approved/rejected, when event occurs, then Advisor is notified with details.",
+        "Given changes needed, when sent, then Advisor sees notes inline."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-ENC-011",
+          "title": "Encryption at rest and TLS in transit",
+          "description": "Verify TLS enforcement and encrypted sensitive fields.",
+          "requirement_ids": [
+            "FR-011",
+            "FR-014"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "ENCRYPTION_KEYS",
+            "PII_PROTECTION"
+          ],
+          "preconditions": [
+            "Staging uses valid TLS; DB has encrypted columns for secrets/tokens"
+          ],
+          "steps": [
+            "Attempt HTTP access; inspect redirect/blocking",
+            "Inspect DB for ciphered OAuth token fields (no plaintext)",
+            "Intercept traffic with proxy to confirm TLS"
+          ],
+          "expected_results": [
+            "HTTP blocked or redirected to HTTPS; HSTS present",
+            "Secrets/tokens stored encrypted; no plaintext found",
+            "All traffic encrypted end-to-end"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "encryption",
+            "security"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        },
+        {
+          "id": "TC-SEC-014",
+          "title": "OAuth tokens encrypted and rotated",
+          "description": "3rd-party tokens encrypted at rest; rotation supported.",
+          "requirement_ids": [
+            "FR-014"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "ENCRYPTION_KEYS",
+            "SOCIAL_INTEGRATIONS"
+          ],
+          "preconditions": [
+            "LinkedIn/Facebook accounts connected"
+          ],
+          "steps": [
+            "Connect LinkedIn; inspect DB token field",
+            "Force token rotation/refresh",
+            "Validate prior token unusable; new token works and remains encrypted"
+          ],
+          "expected_results": [
+            "Tokens stored encrypted; not readable in plaintext",
+            "Rotation invalidates old token; new token functions"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "oauth",
+            "security"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        },
+        {
+          "id": "TC-SOC-018",
+          "title": "Minimal OAuth scopes and revocation handling",
+          "description": "Only required scopes requested; revocation detected.",
+          "requirement_ids": [
+            "FR-018",
+            "FR-014"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "SOCIAL_INTEGRATIONS",
+            "ENCRYPTION_KEYS",
+            "RBAC"
+          ],
+          "preconditions": [
+            "User connects LinkedIn and Facebook with required scopes"
+          ],
+          "steps": [
+            "Inspect consent screen scopes",
+            "Post a test item; then revoke access at provider",
+            "Attempt another post; reconnect flow"
+          ],
+          "expected_results": [
+            "Only documented scopes requested",
+            "After revocation, posting fails gracefully and prompts reconnect",
+            "Reconnected account works; tokens encrypted"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "oauth",
+            "compliance"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "Planned",
+      "priority_score": 4.33,
+      "risk": 3,
+      "time_criticality": 5,
+      "value": 5,
+      "weight": 3,
+      "implementation_notes": "Use SendGrid for email; in-app toast and inbox; configurable notification prefs."
+    },
+    {
+      "id": "FR-015",
+      "title": "ICP-specific compliance rules configuration",
+      "description": "Allow admins to configure firm/ICP-specific disclosures, prohibited terms, and terminology.",
+      "type": "feature",
+      "priority": "SHOULD",
+      "components": [
+        "ICP Configuration",
+        "Compliance Engine",
+        "Admin Panel"
+      ],
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Given an ICP config change, when saved, then new rules apply to subsequent generations.",
+        "Given firm-specific disclosure text, when configured, then it appears in generated outputs.",
+        "Given prohibited list updates, when applied, then pre-checks enforce them."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-RATE-015",
+          "title": "API rate limiting enforces quotas",
+          "description": "Excess requests return 429 and are logged.",
+          "requirement_ids": [
+            "FR-015"
+          ],
+          "priority": "MUST",
+          "type": "negative",
+          "components": [
+            "RATE_LIMITING",
+            "AUDIT_TRAIL"
+          ],
+          "preconditions": [
+            "Known per-user/per-IP limits configured"
+          ],
+          "steps": [
+            "Burst requests to a protected API beyond limit",
+            "Observe responses and retry after window"
+          ],
+          "expected_results": [
+            "429 with Retry-After header",
+            "Requests accepted after cooldown; throttle event logged"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "security",
+            "rate-limit"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "Planned",
+      "priority_score": 2.6,
+      "risk": 5,
+      "time_criticality": 3,
+      "value": 5,
+      "weight": 5,
+      "implementation_notes": "Store configs per organization and ICP; hot-reload into guardrails service."
+    },
+    {
+      "id": "FR-016",
+      "title": "Prohibited terms list management and enforcement",
+      "description": "Manage customizable lists of prohibited/flagged terms with enforcement in pre/post checks.",
+      "type": "enhancement",
+      "priority": "SHOULD",
+      "components": [
+        "Compliance Engine",
+        "Admin Panel"
+      ],
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Given prohibited terms, when present in prompts, then generation is blocked or sanitized.",
+        "Given prohibited terms in outputs, when detected, then content is flagged for review.",
+        "Given term updates, when saved, then enforcement takes effect immediately."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-NOT-016",
+          "title": "Compliance notifications emitted and logged",
+          "description": "Notifications sent on submit/approve/reject/changes.",
+          "requirement_ids": [
+            "FR-016",
+            "FR-009"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "NOTIFICATIONS",
+            "COMPLIANCE_WF",
+            "AUDIT_TRAIL"
+          ],
+          "preconditions": [
+            "Email delivery enabled; in-app notifications visible"
+          ],
+          "steps": [
+            "Advisor submits content",
+            "Compliance approves; then rejects another item",
+            "Open notification center and check emails"
+          ],
+          "expected_results": [
+            "Correct recipients get email + in-app alerts",
+            "Notification events present in audit with correlation IDs"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "notifications",
+            "compliance"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "In Progress",
+      "priority_score": 5,
+      "risk": 5,
+      "time_criticality": 5,
+      "value": 5,
+      "weight": 3,
+      "implementation_notes": "Prompt blocking and immediate enforcement after term updates are verified with ai-guardrails.json and compliance-settings-guardrails.json. Post-generation output flagging is verified with post-generation-flags.json and the advisor__content__drafts__flagged.png screenshot, so the requirement is fully covered without placeholder UI."
+    },
+    {
+      "id": "FR-017",
+      "title": "Data credits audit trail and deduction logs",
+      "description": "Track credit purchases, balances, and per-record deductions with immutable logs.",
+      "type": "enhancement",
+      "priority": "SHOULD",
+      "components": [
+        "Billing & Stripe",
+        "Audit Logging"
+      ],
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Given a list import, when credits are deducted, then entries record counts and costs.",
+        "Given a credit purchase, when completed, then balance and ledger reflect transaction.",
+        "Given audit query, when filtered by org/date, then credit events are returned."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-BILL-017",
+          "title": "Stripe webhook signature verification",
+          "description": "Reject invalid signatures; process valid events once.",
+          "requirement_ids": [
+            "FR-017"
+          ],
+          "priority": "MUST",
+          "type": "error_handling",
+          "components": [
+            "BILLING_STRIPE",
+            "AUDIT_TRAIL"
+          ],
+          "preconditions": [
+            "Stripe webhook secret configured; test mode events available"
+          ],
+          "steps": [
+            "Send webhook with invalid signature",
+            "Send valid invoice.paid event",
+            "Replay the same valid event (idempotency test)"
+          ],
+          "expected_results": [
+            "Invalid request 400/401 rejected; no state change",
+            "Valid event processed; audit recorded",
+            "Replay ignored (idempotent); no duplicate effects"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "billing",
+            "security"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        },
+        {
+          "id": "TC-CRED-020",
+          "title": "Data credit purchase, deduction, and audit",
+          "description": "Credits purchased via Stripe; deductions on list import; no negative balances.",
+          "requirement_ids": [
+            "FR-020",
+            "FR-017",
+            "FR-009"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "DATA_CREDITS",
+            "BILLING_STRIPE",
+            "AUDIT_TRAIL"
+          ],
+          "preconditions": [
+            "Org has zero credits; Stripe test mode enabled; Prospect Finder request ready for import"
+          ],
+          "steps": [
+            "Purchase credit bundle",
+            "Submit Prospect Finder request; import list preview and confirm",
+            "Verify credits deducted per pricing tier; try import exceeding balance"
+          ],
+          "expected_results": [
+            "Balance increases post-webhook",
+            "Deduction matches record types; audit entries for purchase and deduction",
+            "Exceeding balance blocked with clear error; no negative balance"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "credits",
+            "billing",
+            "audit"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "In Progress",
+      "priority_score": 5,
+      "risk": 5,
+      "time_criticality": 5,
+      "value": 5,
+      "weight": 3,
+      "implementation_notes": "Double-entry style ledger; reconcile with Stripe events."
+    },
+    {
+      "id": "FR-018",
+      "title": "Stripe PCI-safe handling and webhook verification",
+      "description": "Do not store card data; verify signed webhooks; enforce least scopes and secure retries.",
+      "type": "chore",
+      "priority": "MUST",
+      "components": [
+        "Billing & Stripe",
+        "Security"
+      ],
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Given payment methods, when managed, then Stripe-hosted components are used exclusively.",
+        "Given webhooks, when received, then signatures are verified and idempotency enforced.",
+        "Given webhook replay, when detected, then duplicate effects are prevented."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-SOC-018",
+          "title": "Minimal OAuth scopes and revocation handling",
+          "description": "Only required scopes requested; revocation detected.",
+          "requirement_ids": [
+            "FR-018",
+            "FR-014"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "SOCIAL_INTEGRATIONS",
+            "ENCRYPTION_KEYS",
+            "RBAC"
+          ],
+          "preconditions": [
+            "User connects LinkedIn and Facebook with required scopes"
+          ],
+          "steps": [
+            "Inspect consent screen scopes",
+            "Post a test item; then revoke access at provider",
+            "Attempt another post; reconnect flow"
+          ],
+          "expected_results": [
+            "Only documented scopes requested",
+            "After revocation, posting fails gracefully and prompts reconnect",
+            "Reconnected account works; tokens encrypted"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "oauth",
+            "compliance"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "Planned",
+      "priority_score": 6,
+      "risk": 8,
+      "time_criticality": 5,
+      "value": 5,
+      "weight": 3,
+      "implementation_notes": "Use Stripe Checkout/Elements; verify signatures; store only Stripe IDs and metadata."
+    },
+    {
+      "id": "FR-019",
+      "title": "OAuth scopes minimization, refresh, and revocation",
+      "description": "Request minimal LinkedIn/Facebook scopes; encrypt tokens; support refresh and user-initiated revocation.",
+      "type": "chore",
+      "priority": "MUST",
+      "components": [
+        "Publishing Integrations",
+        "Security",
+        "Data Protection"
+      ],
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Given account connect, when authorizing, then only documented minimal scopes are requested.",
+        "Given user disconnect, when triggered, then tokens are revoked and deleted.",
+        "Given token expiry, when occurring, then refresh is automatic without user impact."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-USG-019",
+          "title": "OpenAI usage and cost tracking per user/org",
+          "description": "Usage recorded with content ID correlation and totals.",
+          "requirement_ids": [
+            "FR-019",
+            "FR-009"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "OPENAI_USAGE",
+            "AUDIT_TRAIL"
+          ],
+          "preconditions": [
+            "Advisor generates multiple contents in same org"
+          ],
+          "steps": [
+            "Generate content across channels",
+            "Open usage dashboard/logs"
+          ],
+          "expected_results": [
+            "Tokens and cost attributed to user and org with content correlation IDs",
+            "Audit entries include usage metadata"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "usage",
+            "ai",
+            "audit"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "Planned",
+      "priority_score": 5,
+      "risk": 5,
+      "time_criticality": 5,
+      "value": 5,
+      "weight": 3,
+      "implementation_notes": "Document scopes; build disconnect flows; handle provider-specific refresh rules."
+    },
+    {
+      "id": "FR-020",
+      "title": "Content versioning and history with diffs",
+      "description": "Maintain version history for all content edits with ability to compare versions.",
+      "type": "enhancement",
+      "priority": "SHOULD",
+      "components": [
+        "Content Service",
+        "Audit Logging"
+      ],
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Given content edits, when saved, then a new version is created and linked.",
+        "Given two versions, when compared, then field-level diffs are shown.",
+        "Given rollback, when requested by authorized role, then previous version becomes current and is audited."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-CRED-020",
+          "title": "Data credit purchase, deduction, and audit",
+          "description": "Credits purchased via Stripe; deductions on list import; no negative balances.",
+          "requirement_ids": [
+            "FR-020",
+            "FR-017",
+            "FR-009"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "DATA_CREDITS",
+            "BILLING_STRIPE",
+            "AUDIT_TRAIL"
+          ],
+          "preconditions": [
+            "Org has zero credits; Stripe test mode enabled; Prospect Finder request ready for import"
+          ],
+          "steps": [
+            "Purchase credit bundle",
+            "Submit Prospect Finder request; import list preview and confirm",
+            "Verify credits deducted per pricing tier; try import exceeding balance"
+          ],
+          "expected_results": [
+            "Balance increases post-webhook",
+            "Deduction matches record types; audit entries for purchase and deduction",
+            "Exceeding balance blocked with clear error; no negative balance"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "credits",
+            "billing",
+            "audit"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "Planned",
+      "priority_score": 5,
+      "risk": 5,
+      "time_criticality": 5,
+      "value": 5,
+      "weight": 3,
+      "implementation_notes": "Store versions with immutable IDs; compute diffs server-side."
+    },
+    {
+      "id": "FR-021",
+      "title": "Authentication and session security",
+      "description": "Email/password auth with strong policy, secure sessions, and password reset flow.",
+      "type": "feature",
+      "priority": "MUST",
+      "components": [
+        "Authentication",
+        "Security"
+      ],
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Given password policy, when weak password is set, then it is rejected per policy.",
+        "Given session cookies, when transmitted, then they are HttpOnly, Secure, SameSite=Lax or Strict.",
+        "Given password reset, when requested, then tokenized flow expires and is audited."
+      ],
+      "test_cases": [
+        {
+          "id": "TC-RBAC-004",
+          "title": "Permission matrix enforcement across roles",
+          "description": "Verify CRUD and approval rights per role per matrix.",
+          "requirement_ids": [
+            "FR-004",
+            "FR-021"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "RBAC",
+            "COMPLIANCE_WF",
+            "ANALYTICS"
+          ],
+          "preconditions": [
+            "Users exist for all roles in same org; sample content present"
+          ],
+          "steps": [
+            "Advisor attempts to publish without approval",
+            "Compliance edits and approves content",
+            "Admin views analytics for all users; Advisor views own only"
+          ],
+          "expected_results": [
+            "Advisor blocked from publishing pre-approval",
+            "Compliance can edit/approve; status updates recorded",
+            "Admin sees org-wide analytics; Advisor sees own data only"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "rbac",
+            "compliance"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        },
+        {
+          "id": "TC-MT-005",
+          "title": "Row-level security: cross-tenant isolation",
+          "description": "Users cannot access other organizations’ data.",
+          "requirement_ids": [
+            "FR-005",
+            "FR-021"
+          ],
+          "priority": "MUST",
+          "type": "negative",
+          "components": [
+            "MULTI_TENANT",
+            "RBAC",
+            "PII_PROTECTION"
+          ],
+          "preconditions": [
+            "Org A and Org B exist; user U_A (Org A) logged in; content and leads exist in both orgs"
+          ],
+          "steps": [
+            "Directly navigate to Org B resource IDs via URL/API",
+            "Attempt search/filter to surface cross-tenant data",
+            "Inspect network responses for foreign records"
+          ],
+          "expected_results": [
+            "All attempts return 403/404 with no data leakage",
+            "No foreign records appear; audit entries for denied access"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "security",
+            "multi-tenant"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        },
+        {
+          "id": "TC-PII-012",
+          "title": "PII access logging and least privilege",
+          "description": "Access to PII is logged and restricted by role/tenant.",
+          "requirement_ids": [
+            "FR-012",
+            "FR-021"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "PII_PROTECTION",
+            "RBAC",
+            "MULTI_TENANT",
+            "AUDIT_TRAIL"
+          ],
+          "preconditions": [
+            "Leads with PII exist; multiple roles available"
+          ],
+          "steps": [
+            "Advisor views own lead PII",
+            "Advisor attempts to view another advisor’s lead",
+            "Compliance views org-wide but read-only PII (where applicable)",
+            "Review PII access logs"
+          ],
+          "expected_results": [
+            "Unauthorized access blocked",
+            "Every PII read logged with actor/time/object",
+            "Compliance access follows policy; no edits unless allowed"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "pii",
+            "security"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        },
+        {
+          "id": "TC-ANL-021",
+          "title": "Analytics visibility respects role and tenant",
+          "description": "Dashboards filter by organization and role permissions.",
+          "requirement_ids": [
+            "FR-021",
+            "FR-005"
+          ],
+          "priority": "MUST",
+          "type": "functional",
+          "components": [
+            "ANALYTICS",
+            "RBAC",
+            "MULTI_TENANT"
+          ],
+          "preconditions": [
+            "Org A and Org B with data; Admin/Advisor/Compliance users exist"
+          ],
+          "steps": [
+            "Admin Org A views analytics (org-wide)",
+            "Advisor Org A views analytics (own-only)",
+            "Cross-tenant URL/API attempts to fetch Org B analytics"
+          ],
+          "expected_results": [
+            "Admin sees only Org A aggregated data",
+            "Advisor sees own metrics only",
+            "Cross-tenant access blocked (403/404); no leakage"
+          ],
+          "frameworks": [
+            "PYTEST_PLAYWRIGHT"
+          ],
+          "tags": [
+            "analytics",
+            "rbac",
+            "security"
+          ],
+          "artifacts": [],
+          "status": "Planned"
+        }
+      ],
+      "status": "In Progress",
+      "priority_score": 4.8,
+      "risk": 8,
+      "time_criticality": 8,
+      "value": 8,
+      "weight": 5,
+      "implementation_notes": "Strong password validation, account lockout, registration redirect, deactivated-user denial, subscription gating, access-token refresh, and inactivity logout are verified with registration-security.json, account-lock.json, deactivated-user-login.json, subscription-gate.json, session-refresh.json, and idle-logout.json. The requirement remains in progress because the current auth implementation is bearer-token/localStorage based rather than secure session cookies, and the reset-token expiry/audit path still needs explicit end-to-end evidence."
+    }
+  ]
+}

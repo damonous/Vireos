@@ -1,6 +1,8 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import fs from 'fs';
+import path from 'path';
 import { config } from './config';
 import { requestLogger } from './middleware/requestLogger';
 import { globalRateLimit } from './middleware/rateLimiter';
@@ -22,6 +24,9 @@ import { logger } from './utils/logger';
  */
 export function createApp(): Application {
   const app = express();
+  const frontendDistDir = path.resolve(config.FRONTEND_DIST_DIR);
+  const frontendIndexFile = path.join(frontendDistDir, 'index.html');
+  const hasFrontendBundle = fs.existsSync(frontendIndexFile);
 
   // ---- Trust proxy (for accurate IP behind nginx/load balancer) ----------
   // Set to 1 to trust the first proxy. Adjust if behind multiple proxies.
@@ -98,8 +103,36 @@ export function createApp(): Application {
   // ---- Routes --------------------------------------------------------------
   app.use(router);
 
+  // ---- Frontend static files (single-container deployment) -----------------
+  if (hasFrontendBundle) {
+    app.use(express.static(frontendDistDir, { index: false }));
+
+    // SPA fallback for all non-API routes
+    app.get('/{*path}', (req: Request, res: Response, next: NextFunction) => {
+      if (
+        req.path.startsWith('/api') ||
+        req.path.startsWith('/health') ||
+        req.path.startsWith('/metrics')
+      ) {
+        return next();
+      }
+
+      res.sendFile(frontendIndexFile);
+    });
+  }
+
   // ---- 404 catch-all for non-API routes -----------------------------------
-  app.use((_req: Request, res: Response) => {
+  app.use((req: Request, res: Response) => {
+    if (
+      hasFrontendBundle &&
+      !req.path.startsWith('/api') &&
+      !req.path.startsWith('/health') &&
+      !req.path.startsWith('/metrics')
+    ) {
+      res.sendFile(frontendIndexFile);
+      return;
+    }
+
     res.status(404).json({
       success: false,
       error: {

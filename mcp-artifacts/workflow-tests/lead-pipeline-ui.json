@@ -1,0 +1,26 @@
+{
+  "test_id": "lead-pipeline-ui",
+  "story_ids": [
+    "TASK-FE-009"
+  ],
+  "summary": "Verified /leads renders all live backend statuses, Mia Hernandez card no longer overflows, and status movement persists through the API.",
+  "checks": [
+    {
+      "name": "Live board renders backend statuses",
+      "result": "passed",
+      "evidence": [
+        "mcp-artifacts/persona-sweep/screenshots/advisor__leads.png"
+      ]
+    },
+    {
+      "name": "Lead movement persists",
+      "result": "passed",
+      "details": "Moved Mia Hernandez from MEETING_SCHEDULED to CLIENT and confirmed /api/v1/leads returned CLIENT before reseeding demo data."
+    },
+    {
+      "name": "Demo seed restored",
+      "result": "passed",
+      "details": "Reseed completed and Mia Hernandez returned to MEETING_SCHEDULED for the baseline dataset."
+    }
+  ]
+}

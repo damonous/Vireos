@@ -1,0 +1,408 @@
+{
+  "baseUrl": "https://172.31.129.204:13443",
+  "startedAt": "2026-03-11T16:02:38.057Z",
+  "personas": [
+    {
+      "persona": "advisor",
+      "email": "advisor@vireos-demo.com",
+      "loginUrl": "https://172.31.129.204:13443/home",
+      "title": "Vireos",
+      "routes": [
+        {
+          "route": "/home",
+          "url": "https://172.31.129.204:13443/home",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__home.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/ai-content",
+          "url": "https://172.31.129.204:13443/ai-content",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__ai-content.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/content/generate",
+          "url": "https://172.31.129.204:13443/content/generate",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__content__generate.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/content/drafts",
+          "url": "https://172.31.129.204:13443/content/drafts",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__content__drafts.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/easy",
+          "url": "https://172.31.129.204:13443/easy",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__easy.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/compliance",
+          "url": "https://172.31.129.204:13443/compliance",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__compliance.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/calendar",
+          "url": "https://172.31.129.204:13443/calendar",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__calendar.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/linkedin",
+          "url": "https://172.31.129.204:13443/linkedin",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__linkedin.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/linkedin-builder",
+          "url": "https://172.31.129.204:13443/linkedin-builder",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__linkedin-builder.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/facebook",
+          "url": "https://172.31.129.204:13443/facebook",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__facebook.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/facebook-wizard",
+          "url": "https://172.31.129.204:13443/facebook-wizard",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__facebook-wizard.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/facebook-submitted",
+          "url": "https://172.31.129.204:13443/facebook-submitted",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__facebook-submitted.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/facebook-campaign-detail",
+          "url": "https://172.31.129.204:13443/facebook-campaign-detail",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__facebook-campaign-detail.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/prospects",
+          "url": "https://172.31.129.204:13443/prospects",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__prospects.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/leads",
+          "url": "https://172.31.129.204:13443/leads",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__leads.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/email",
+          "url": "https://172.31.129.204:13443/email",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__email.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/email/create",
+          "url": "https://172.31.129.204:13443/email/create",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__email__create.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/analytics",
+          "url": "https://172.31.129.204:13443/analytics",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__analytics.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/billing",
+          "url": "https://172.31.129.204:13443/billing",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__billing.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/settings",
+          "url": "https://172.31.129.204:13443/settings",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/advisor__settings.png",
+          "ok": true,
+          "navError": ""
+        }
+      ],
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": []
+    },
+    {
+      "persona": "admin",
+      "email": "admin@vireos-demo.com",
+      "loginUrl": "https://172.31.129.204:13443/admin/home",
+      "title": "Vireos",
+      "routes": [
+        {
+          "route": "/admin/home",
+          "url": "https://172.31.129.204:13443/admin/home",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/admin__admin__home.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/ai-content",
+          "url": "https://172.31.129.204:13443/ai-content",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/admin__ai-content.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/content/generate",
+          "url": "https://172.31.129.204:13443/content/generate",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/admin__content__generate.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/content/drafts",
+          "url": "https://172.31.129.204:13443/content/drafts",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/admin__content__drafts.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/compliance",
+          "url": "https://172.31.129.204:13443/compliance",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/admin__compliance.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/calendar",
+          "url": "https://172.31.129.204:13443/calendar",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/admin__calendar.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/linkedin",
+          "url": "https://172.31.129.204:13443/linkedin",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/admin__linkedin.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/facebook",
+          "url": "https://172.31.129.204:13443/facebook",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/admin__facebook.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/prospects",
+          "url": "https://172.31.129.204:13443/prospects",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/admin__prospects.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/leads",
+          "url": "https://172.31.129.204:13443/leads",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/admin__leads.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/email",
+          "url": "https://172.31.129.204:13443/email",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/admin__email.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/analytics",
+          "url": "https://172.31.129.204:13443/analytics",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/admin__analytics.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/admin/users",
+          "url": "https://172.31.129.204:13443/admin/users",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/admin__admin__users.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/admin/reports",
+          "url": "https://172.31.129.204:13443/admin/reports",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/admin__admin__reports.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/admin/org-settings",
+          "url": "https://172.31.129.204:13443/admin/org-settings",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/admin__admin__org-settings.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/admin/billing",
+          "url": "https://172.31.129.204:13443/admin/billing",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/admin__admin__billing.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/admin/settings",
+          "url": "https://172.31.129.204:13443/admin/settings",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/admin__admin__settings.png",
+          "ok": true,
+          "navError": ""
+        }
+      ],
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": []
+    },
+    {
+      "persona": "compliance",
+      "email": "compliance@vireos-demo.com",
+      "loginUrl": "https://172.31.129.204:13443/compliance-officer/home",
+      "title": "Vireos",
+      "routes": [
+        {
+          "route": "/compliance-officer/home",
+          "url": "https://172.31.129.204:13443/compliance-officer/home",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/compliance__compliance-officer__home.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/compliance-officer/review",
+          "url": "https://172.31.129.204:13443/compliance-officer/review",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/compliance__compliance-officer__review.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/compliance-officer/audit",
+          "url": "https://172.31.129.204:13443/compliance-officer/audit",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/compliance__compliance-officer__audit.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/compliance-officer/reports",
+          "url": "https://172.31.129.204:13443/compliance-officer/reports",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/compliance__compliance-officer__reports.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/compliance-officer/settings",
+          "url": "https://172.31.129.204:13443/compliance-officer/settings",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/compliance__compliance-officer__settings.png",
+          "ok": true,
+          "navError": ""
+        }
+      ],
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": []
+    },
+    {
+      "persona": "super-admin",
+      "email": "super_admin@vireos.ai",
+      "loginUrl": "https://172.31.129.204:13443/super-admin/home",
+      "title": "Vireos",
+      "routes": [
+        {
+          "route": "/super-admin/home",
+          "url": "https://172.31.129.204:13443/super-admin/home",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__home.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/super-admin/orgs",
+          "url": "https://172.31.129.204:13443/super-admin/orgs",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__orgs.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/super-admin/users",
+          "url": "https://172.31.129.204:13443/super-admin/users",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__users.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/super-admin/prospects",
+          "url": "https://172.31.129.204:13443/super-admin/prospects",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__prospects.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/super-admin/tokens",
+          "url": "https://172.31.129.204:13443/super-admin/tokens",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__tokens.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/super-admin/health",
+          "url": "https://172.31.129.204:13443/super-admin/health",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__health.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/super-admin/billing",
+          "url": "https://172.31.129.204:13443/super-admin/billing",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__billing.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/super-admin/flags",
+          "url": "https://172.31.129.204:13443/super-admin/flags",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__flags.png",
+          "ok": true,
+          "navError": ""
+        },
+        {
+          "route": "/super-admin/settings",
+          "url": "https://172.31.129.204:13443/super-admin/settings",
+          "screenshot": "mcp-artifacts/persona-sweep/screenshots/super-admin__super-admin__settings.png",
+          "ok": true,
+          "navError": ""
+        }
+      ],
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": []
+    }
+  ],
+  "finishedAt": "2026-03-11T16:03:21.219Z"
+}

@@ -1,0 +1,18 @@
+{
+  "generated_at": "2026-03-11T11:22:04.204Z",
+  "organizationId": "cafe0b17-cee8-4278-8217-8e1e0e56ec67",
+  "invited": {
+    "status": 201,
+    "memberId": "b186a65a-18bb-46e0-814e-7756ebe4a587",
+    "role": "ADVISOR",
+    "email": "autotest-member-1773228123114@example.com"
+  },
+  "roleChanged": {
+    "status": 200,
+    "role": "COMPLIANCE"
+  },
+  "deactivated": {
+    "status": 200,
+    "message": "Member removed successfully."
+  }
+}

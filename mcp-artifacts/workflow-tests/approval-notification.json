@@ -1,0 +1,20 @@
+{
+  "generated_at": "2026-03-11T11:24:40.113Z",
+  "draftId": "3c4d82b0-031a-45c1-8b45-ceafb717d1ce",
+  "approvalNotificationFound": true,
+  "notification": {
+    "id": "94653fb4-9839-4b9b-a1b9-2e1afd8d8f77",
+    "userId": "40d0d057-42d4-4196-b721-b1fa4fcc85a5",
+    "organizationId": "cafe0b17-cee8-4278-8217-8e1e0e56ec67",
+    "type": "CONTENT_APPROVED",
+    "title": "Your content has been approved",
+    "body": "Your draft titled \"Q2 retirement planning market note\" has been approved by compliance.",
+    "isRead": false,
+    "readAt": null,
+    "metadata": {
+      "draftId": "3c4d82b0-031a-45c1-8b45-ceafb717d1ce",
+      "reviewerId": "9e28effa-9821-4b81-b39e-77d1804ad1e6"
+    },
+    "createdAt": "2026-03-11T11:24:38.706Z"
+  }
+}

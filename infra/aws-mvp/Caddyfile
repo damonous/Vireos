@@ -1,0 +1,7 @@
+vireos.mvp.dev {
+	reverse_proxy localhost:13443 {
+		transport http {
+			tls_insecure_skip_verify
+		}
+	}
+}

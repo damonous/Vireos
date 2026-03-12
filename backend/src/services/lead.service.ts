@@ -100,6 +100,8 @@ export async function createLead(
   user: AuthenticatedUser
 ): Promise<Lead> {
   const orgId = user.orgId;
+  const advisorAssignment =
+    user.role === UserRole.ADVISOR || user.role === UserRole.VIEWER ? user.id : null;
 
   // Check for existing lead with same email in the same org (upsert behavior)
   const existing = await prisma.lead.findUnique({
@@ -130,6 +132,7 @@ export async function createLead(
         linkedinUrl: dto.linkedinUrl ?? existing.linkedinUrl,
         notes: dto.notes ?? existing.notes,
         customFields: (dto.customFields ?? existing.customFields) as object,
+        assignedAdvisorId: existing.assignedAdvisorId ?? advisorAssignment,
       },
     });
 
@@ -156,6 +159,7 @@ export async function createLead(
       company: dto.company ?? null,
       title: dto.title ?? null,
       linkedinUrl: dto.linkedinUrl ?? null,
+      assignedAdvisorId: advisorAssignment,
       source: dto.source,
       notes: dto.notes ?? null,
       customFields: (dto.customFields ?? {}) as object,

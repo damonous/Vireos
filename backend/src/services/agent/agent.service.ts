@@ -62,7 +62,7 @@ async function writeAuditTrail(params: {
 }
 
 async function buildDynamicContext(user: AuthenticatedUser) {
-  const [org, connections, balance] = await Promise.all([
+  const [org, connections] = await Promise.all([
     prisma.organization.findUnique({
       where: { id: user.orgId },
       select: { name: true, creditBalance: true },
@@ -71,14 +71,13 @@ async function buildDynamicContext(user: AuthenticatedUser) {
       where: { userId: user.id, isActive: true },
       select: { platform: true },
     }),
-    Promise.resolve(0), // placeholder — creditBalance from org
   ]);
 
   return {
     orgName: org?.name ?? 'Unknown',
     userName: user.email,
     connectedPlatforms: connections.map((c) => c.platform),
-    creditBalance: org?.creditBalance ?? balance,
+    creditBalance: org?.creditBalance ?? 0,
   };
 }
 

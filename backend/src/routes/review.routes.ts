@@ -33,6 +33,13 @@ const requireAdvisorOrAdmin = requireRole(
   UserRole.SUPER_ADMIN
 ) as any;
 
+const requireAdvisorComplianceOrAdmin = requireRole(
+  UserRole.ADVISOR,
+  UserRole.VIEWER,
+  UserRole.ORG_ADMIN,
+  UserRole.SUPER_ADMIN
+) as any;
+
 // ---------------------------------------------------------------------------
 // GET /v1/reviews — compliance review queue
 // ---------------------------------------------------------------------------
@@ -40,7 +47,7 @@ const requireAdvisorOrAdmin = requireRole(
 router.get(
   '/',
   auth,
-  requireComplianceOrAdmin,
+  requireAdvisorComplianceOrAdmin,
   validateQuery(paginationQuerySchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -207,7 +214,7 @@ export const auditRouter = Router();
 auditRouter.get(
   '/',
   auth,
-  requireRole(UserRole.ORG_ADMIN, UserRole.SUPER_ADMIN) as any,
+  requireRole(UserRole.ORG_ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER) as any,
   validateQuery(auditTrailQuerySchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

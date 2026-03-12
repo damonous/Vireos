@@ -17,6 +17,9 @@ import { disconnectPrisma } from './db/client';
 import { disconnectRedis } from './utils/redis';
 import { closeQueues } from './queues';
 import http from 'http';
+import https from 'https';
+import fs from 'fs';
+import path from 'path';
 
 // ---------------------------------------------------------------------------
 // Bootstrap
@@ -31,9 +34,19 @@ async function bootstrap(): Promise<void> {
 
   // Create Express application
   const app = createApp();
+  const servers: http.Server[] = [];
 
-  // Create HTTP server (wrapping Express for graceful shutdown control)
-  const server = http.createServer(app);
+  // Create primary application server
+  const appServer: http.Server = config.ENABLE_HTTPS
+    ? https.createServer(
+        {
+          key: fs.readFileSync(path.resolve(config.SSL_KEY_PATH), 'utf8'),
+          cert: fs.readFileSync(path.resolve(config.SSL_CERT_PATH), 'utf8'),
+        },
+        app
+      )
+    : http.createServer(app);
+  servers.push(appServer);
 
   // ---------------------------------------------------------------------------
   // Infrastructure health checks
@@ -66,25 +79,58 @@ async function bootstrap(): Promise<void> {
   // ---------------------------------------------------------------------------
 
   await new Promise<void>((resolve, reject) => {
-    server.listen(config.PORT, () => {
+    const listenPort = config.ENABLE_HTTPS ? config.HTTPS_PORT : config.PORT;
+    appServer.listen(listenPort, () => {
       resolve();
     });
-
-    server.once('error', (err: NodeJS.ErrnoException) => {
+    appServer.once('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'EADDRINUSE') {
-        logger.error(`Port ${config.PORT} is already in use`, { error: err.message });
+        logger.error(`Port ${listenPort} is already in use`, { error: err.message });
       } else {
-        logger.error('Failed to start HTTP server', { error: err.message });
+        logger.error('Failed to start application server', { error: err.message });
       }
       reject(err);
     });
   });
 
-  logger.info(`Vireos API listening`, {
-    port: config.PORT,
-    url: `http://localhost:${config.PORT}`,
-    healthCheck: `http://localhost:${config.PORT}/health`,
-  });
+  if (config.ENABLE_HTTPS) {
+    const redirectServer = http.createServer((req, res) => {
+      const host = req.headers.host ?? 'localhost';
+      const hostname = host.split(':')[0];
+      const location = `https://${hostname}:${config.EXTERNAL_HTTPS_PORT}${req.url ?? '/'}`;
+      res.writeHead(301, { Location: location });
+      res.end();
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      redirectServer.listen(config.PORT, () => resolve());
+      redirectServer.once('error', (err: NodeJS.ErrnoException) => {
+        if (err.code === 'EADDRINUSE') {
+          logger.error(`HTTP redirect port ${config.PORT} is already in use`, {
+            error: err.message,
+          });
+        } else {
+          logger.error('Failed to start HTTP redirect server', { error: err.message });
+        }
+        reject(err);
+      });
+    });
+
+    servers.push(redirectServer);
+
+    logger.info(`Vireos API + Frontend listening`, {
+      httpRedirectPort: config.PORT,
+      httpsPort: config.HTTPS_PORT,
+      url: `https://localhost:${config.HTTPS_PORT}`,
+      healthCheck: `https://localhost:${config.HTTPS_PORT}/health`,
+    });
+  } else {
+    logger.info(`Vireos API listening`, {
+      port: config.PORT,
+      url: `http://localhost:${config.PORT}`,
+      healthCheck: `http://localhost:${config.PORT}/health`,
+    });
+  }
 
   // ---------------------------------------------------------------------------
   // Graceful shutdown
@@ -102,13 +148,20 @@ async function bootstrap(): Promise<void> {
     logger.info('Graceful shutdown initiated', { signal });
 
     // Step 1: Stop accepting new connections
-    server.close((err) => {
-      if (err) {
-        logger.error('Error closing HTTP server', { error: (err as Error).message });
-      } else {
-        logger.info('HTTP server closed');
-      }
-    });
+    await Promise.all(
+      servers.map(
+        (server) =>
+          new Promise<void>((resolve) => {
+            server.close((err) => {
+              if (err) {
+                logger.error('Error closing server', { error: (err as Error).message });
+              }
+              resolve();
+            });
+          })
+      )
+    );
+    logger.info('Server listeners closed');
 
     // Step 2: Close BullMQ queues
     try {

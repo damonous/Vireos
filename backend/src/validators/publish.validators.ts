@@ -25,6 +25,19 @@ export const publishSchema = z.object({
     ),
 });
 
+export const updatePublishSchema = z.object({
+  channel: z.nativeEnum(ContentChannel).optional(),
+  scheduledAt: z
+    .string()
+    .datetime({ message: 'scheduledAt must be a valid ISO 8601 datetime string' })
+    .refine((val) => new Date(val) > new Date(), {
+      message: 'scheduledAt must be a future date/time',
+    })
+    .optional(),
+}).refine((value) => Boolean(value.channel || value.scheduledAt), {
+  message: 'Provide at least one field to update.',
+});
+
 export const listPublishJobsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -38,4 +51,5 @@ export const listPublishJobsQuerySchema = z.object({
 // ---------------------------------------------------------------------------
 
 export type PublishDto = z.infer<typeof publishSchema>;
+export type UpdatePublishDto = z.infer<typeof updatePublishSchema>;
 export type ListPublishJobsQuery = z.infer<typeof listPublishJobsQuerySchema>;

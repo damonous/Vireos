@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-03-11T08:34:03.000Z",
+  "checks": {
+    "invalid_login": {
+      "status": 401,
+      "code": "UNAUTHORIZED",
+      "message": "Invalid email or password"
+    },
+    "forgot_password": {
+      "status": 200,
+      "message": "If an account with this email exists, a password reset link has been sent."
+    },
+    "admin_login": {
+      "status": 200,
+      "hasAccessToken": true
+    },
+    "content_drafts": {
+      "status": 200,
+      "count": 5,
+      "firstDraftId": "dce1eb3a-d163-4b13-b178-d803cfb9ac82"
+    },
+    "draft_detail": {
+      "status": 200,
+      "title": "Small business retirement plan explainer",
+      "statusValue": "DRAFT",
+      "hasLinkedin": true,
+      "hasEmail": true
+    }
+  },
+  "screenshots": [
+    "mcp-artifacts/persona-sweep/screenshots/auth__login.png",
+    "mcp-artifacts/persona-sweep/screenshots/auth__forgot-password.png",
+    "mcp-artifacts/persona-sweep/screenshots/auth__register.png",
+    "mcp-artifacts/persona-sweep/screenshots/advisor__content__generate.png",
+    "mcp-artifacts/persona-sweep/screenshots/admin__content__drafts.png",
+    "mcp-artifacts/persona-sweep/screenshots/admin__content-draft-detail.png"
+  ]
+}

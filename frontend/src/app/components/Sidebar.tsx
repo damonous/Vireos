@@ -1,5 +1,5 @@
-import { NavLink, useNavigate } from 'react-router';
-import { useState, useEffect, useRef } from 'react';
+import { NavLink, useNavigate, useLocation } from 'react-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { 
   LayoutDashboard, 
   Sparkles, 
@@ -24,14 +24,21 @@ import {
   Activity,
   Shield,
   Flag,
-  MessageSquare,
   SlidersHorizontal,
-  PenTool
+  PenTool,
+  FileUp
 } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import type { FrontendRole } from '../types/api';
+
+const easyNavItems = [
+  { path: '/home', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/billing', label: 'Billing', icon: CreditCard },
+];
 
 const advisorNavItems = [
   { path: '/home', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/ai-content', label: 'Create Content', icon: PenTool },
+  { path: '/content/generate', label: 'Create Content', icon: PenTool },
   { path: '/compliance', label: 'Compliance Queue', icon: CheckCircle2 },
   { path: '/calendar', label: 'Publishing Calendar', icon: Calendar },
   { path: '/linkedin', label: 'LinkedIn Outreach', icon: Linkedin },
@@ -46,7 +53,7 @@ const advisorNavItems = [
 
 const adminNavItems = [
   { path: '/admin/home', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/ai-content', label: 'Create Content', icon: PenTool },
+  { path: '/content/generate', label: 'Create Content', icon: PenTool },
   { path: '/compliance', label: 'Compliance Queue', icon: CheckCircle2 },
   { path: '/calendar', label: 'Publishing Calendar', icon: Calendar },
   { path: '/linkedin', label: 'LinkedIn Outreach', icon: Linkedin },
@@ -77,6 +84,8 @@ const superAdminNavItems = [
   { path: '/super-admin/home', label: 'Platform Overview', icon: LayoutDashboard },
   { path: '/super-admin/orgs', label: 'Organizations', icon: Building2 },
   { path: '/super-admin/users', label: 'Users', icon: Users },
+  { path: '/super-admin/prospects', label: 'Prospects', icon: FileUp },
+  { path: '/super-admin/tokens', label: 'Token Usage', icon: Sparkles },
   { path: '/super-admin/health', label: 'System Health', icon: Activity },
   { path: '/super-admin/billing', label: 'Billing', icon: CreditCard },
   { path: '/super-admin/flags', label: 'Feature Flags', icon: Flag },
@@ -87,76 +96,73 @@ interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+function formatRole(role: FrontendRole): string {
+  switch (role) {
+    case 'admin':
+      return 'Admin';
+    case 'compliance-officer':
+      return 'Compliance Officer';
+    case 'super-admin':
+      return 'Super Admin';
+    default:
+      return 'Advisor';
+  }
+}
+
+function initials(firstName?: string, lastName?: string): string {
+  const a = firstName?.[0] ?? '';
+  const b = lastName?.[0] ?? '';
+  return `${a}${b}`.toUpperCase() || 'U';
+}
+
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [showDropdown, setShowDropdown] = useState(false);
-  const [userName, setUserName] = useState('Sarah Mitchell');
-  const [userInitials, setUserInitials] = useState('SM');
-  const [userRole, setUserRole] = useState('advisor');
-  const [userRoleLabel, setUserRoleLabel] = useState('Advisor');
-  const [companyName, setCompanyName] = useState('Pinnacle Financial');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user, logout } = useAuth();
+
+  // Persist Easy/Boss mode across navigation within Easy mode pages
+  const [isEasy, setIsEasy] = useState(() => sessionStorage.getItem('vireos-mode') === 'easy');
 
   useEffect(() => {
-    // Load user info from localStorage
-    const storedName = localStorage.getItem('vireos_user_name');
-    const storedInitials = localStorage.getItem('vireos_user_initials');
-    const storedRole = localStorage.getItem('vireos_role');
-    if (storedName) setUserName(storedName);
-    if (storedInitials) setUserInitials(storedInitials);
-    if (storedRole) {
-      setUserRole(storedRole);
-      // Set role label and user info based on role
-      if (storedRole === 'admin') {
-        setUserRoleLabel('Admin');
-        setCompanyName('Pinnacle Financial');
-      } else if (storedRole === 'compliance-officer') {
-        setUserRoleLabel('Compliance Officer');
-        setCompanyName('Pinnacle Financial');
-      } else if (storedRole === 'super-admin') {
-        setUserRoleLabel('Super Admin');
-        setCompanyName('Vireos');
-      } else {
-        setUserRoleLabel('Advisor');
-        setCompanyName('Pinnacle Financial');
-      }
+    if (location.pathname === '/easy') {
+      sessionStorage.setItem('vireos-mode', 'easy');
+      setIsEasy(true);
     }
+  }, [location.pathname]);
 
-    // Close dropdown when clicking outside
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
-      }
-    };
+  const activateEasy = useCallback(() => {
+    sessionStorage.setItem('vireos-mode', 'easy');
+    setIsEasy(true);
+    navigate('/easy');
+  }, [navigate]);
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  const activateBoss = useCallback(() => {
+    sessionStorage.setItem('vireos-mode', 'boss');
+    setIsEasy(false);
+    navigate('/home');
+  }, [navigate]);
+
+  const role = user?.role ?? 'advisor';
+  const navConfig = useMemo(() => {
+    if (isEasy) return { items: easyNavItems, showAdminSection: false };
+    if (role === 'admin') return { items: adminNavItems, showAdminSection: true };
+    if (role === 'compliance-officer') return { items: complianceOfficerNavItems, showAdminSection: false };
+    if (role === 'super-admin') return { items: superAdminNavItems, showAdminSection: false };
+    return { items: advisorNavItems, showAdminSection: false };
+  }, [role, isEasy]);
 
   const handleSwitchRole = () => {
     setShowDropdown(false);
     navigate('/login');
   };
 
-  const handleSignOut = () => {
-    localStorage.removeItem('vireos_role');
-    localStorage.removeItem('vireos_user_name');
-    localStorage.removeItem('vireos_user_initials');
+  const handleSignOut = async () => {
+    await logout();
     navigate('/login');
   };
-
-  // Determine which nav items to show based on role
-  let navItems = advisorNavItems;
-  let showAdminSection = false;
-
-  if (userRole === 'admin') {
-    navItems = adminNavItems;
-    showAdminSection = true;
-  } else if (userRole === 'compliance-officer') {
-    navItems = complianceOfficerNavItems;
-  } else if (userRole === 'super-admin') {
-    navItems = superAdminNavItems;
-  }
 
   return (
     <div 
@@ -178,14 +184,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Easy/Boss Mode Toggle */}
       <div className="bg-[#1a334d]/50 rounded-full p-0.5 mx-3 mb-4 flex">
         <button
-          onClick={() => navigate('/easy')}
-          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-colors text-gray-400 hover:text-gray-300"
+          onClick={activateEasy}
+          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-colors ${isEasy ? 'bg-[#152d44] text-white font-medium' : 'text-gray-400 hover:text-gray-300'}`}
         >
           <Sparkles className="w-3 h-3" />
           <span>Easy</span>
         </button>
         <button
-          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-colors bg-[#152d44] text-white font-medium"
+          onClick={activateBoss}
+          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-colors ${isEasy ? 'text-gray-400 hover:text-gray-300' : 'bg-[#152d44] text-white font-medium'}`}
         >
           <SlidersHorizontal className="w-3 h-3" />
           <span>Boss</span>
@@ -194,7 +201,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-2 overflow-y-auto">
-        {navItems.map((item) => {
+        {navConfig.items.map((item) => {
           const Icon = item.icon;
           return (
             <NavLink
@@ -216,7 +223,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         })}
 
         {/* Admin Section */}
-        {showAdminSection && (
+        {navConfig.showAdminSection && (
           <>
             <div className="my-4 border-t border-[#2B4A6F]"></div>
             <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -252,11 +259,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           className="flex items-center gap-3 w-full hover:bg-[#2B4A6F] p-2 rounded-lg transition-colors"
         >
           <div className="w-10 h-10 rounded-full bg-[#0EA5E9] flex items-center justify-center text-white font-medium">
-            {userInitials}
+            {initials(user?.firstName, user?.lastName)}
           </div>
           <div className="flex-1 text-left">
-            <div className="text-white text-sm font-medium">{userName}</div>
-            <div className="text-gray-400 text-xs">{userRoleLabel} · {companyName}</div>
+            <div className="text-white text-sm font-medium">
+              {`${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || user?.email || 'User'}
+            </div>
+            <div className="text-gray-400 text-xs">{formatRole(role)} · {user?.organization?.name ?? 'Organization'}</div>
           </div>
           <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
         </button>
@@ -283,7 +292,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </button>
             <div className="border-t border-gray-200 my-1"></div>
             <button
-              onClick={handleSignOut}
+              onClick={() => void handleSignOut()}
               className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
             >
               <LogOut className="w-4 h-4" />

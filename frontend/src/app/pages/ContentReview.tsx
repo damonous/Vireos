@@ -1,582 +1,523 @@
-import { useState } from 'react';
-import { Check, X, Edit, Linkedin, Facebook, Mail, AlertCircle, Calendar, Clock } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Check, Edit3, Facebook, Linkedin, Mail, Search, X } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { EmptyState } from '../components/ui/empty-state';
+import { ErrorState } from '../components/ui/error-state';
+import { LoadingState } from '../components/ui/loading-state';
+import { Toast } from '../components/ui/toast';
+import { useApiData } from '../hooks/useApiData';
+import { useAuth } from '../hooks/useAuth';
+import { apiClient } from '../lib/api-client';
+import { PageShell } from '../components/page-shell';
 
-interface ContentSubmission {
-  id: number;
-  advisor: {
-    name: string;
-    initials: string;
-  };
-  platform: 'linkedin' | 'facebook' | 'email';
-  submittedTime: string;
-  content: string;
-  isUrgent?: boolean;
-  prohibitedTerms?: string[];
-  demoState?: 'rejected-with-notes' | 'rejected-final' | 'approved';
-  demoNotes?: string;
+interface DraftReview {
+  id: string;
+  title: string;
+  status: string;
+  creatorId: string;
+  reviewerId: string | null;
+  reviewNotes: string | null;
+  originalPrompt: string;
+  linkedinContent: string | null;
+  facebookContent: string | null;
+  emailContent: string | null;
+  adCopyContent: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
-const contentSubmissions: ContentSubmission[] = [
-  {
-    id: 1,
-    advisor: { name: 'Sarah Mitchell', initials: 'SM' },
-    platform: 'linkedin',
-    submittedTime: '2 hrs ago',
-    content: 'Q1 Market Outlook: We guaranteed strong returns this quarter based on our proprietary analysis. Our investment strategies have consistently outperformed the market.',
-    isUrgent: true,
-    prohibitedTerms: ['guaranteed'],
-    demoState: 'rejected-with-notes',
-    demoNotes: 'The term \'guaranteed\' violates FINRA Rule 2210. Please replace with \'historically strong\' or similar non-promissory language. Also remove \'consistently outperformed\' as it implies guaranteed future performance.',
-  },
-  {
-    id: 2,
-    advisor: { name: 'Michael Chen', initials: 'MC' },
-    platform: 'facebook',
-    submittedTime: '3 hrs ago',
-    content: 'Tax Workshop: We promise our strategies will reduce your taxes significantly. Join us next Thursday for an exclusive workshop on tax-efficient investing.',
-    isUrgent: true,
-    prohibitedTerms: ['promise'],
-    demoState: 'rejected-final',
-    demoNotes: 'Remove the word \'promise\' — FINRA prohibits promissory language in marketing materials.',
-  },
-  {
-    id: 3,
-    advisor: { name: 'Jennifer Walsh', initials: 'JW' },
-    platform: 'linkedin',
-    submittedTime: '4 hrs ago',
-    content: 'Estate Planning basics for high-net-worth individuals. Schedule a consultation to discuss how we can help protect your legacy and ensure your wishes are honored.',
-    demoState: 'approved',
-  },
-  {
-    id: 4,
-    advisor: { name: 'David Park', initials: 'DP' },
-    platform: 'linkedin',
-    submittedTime: '5 hrs ago',
-    content: 'Connecting with fellow financial professionals to discuss market trends and share insights on portfolio diversification strategies in the current economic climate.',
-  },
-  {
-    id: 5,
-    advisor: { name: 'Lisa Nguyen', initials: 'LN' },
-    platform: 'email',
-    submittedTime: '6 hrs ago',
-    content: 'Monthly Newsletter: Market update for February 2026. No investment is risk-free, but proper diversification can help manage your portfolio exposure to market volatility.',
-    prohibitedTerms: ['risk-free'],
-  },
-  {
-    id: 6,
-    advisor: { name: 'Tom Bradley', initials: 'TB' },
-    platform: 'linkedin',
-    submittedTime: '7 hrs ago',
-    content: 'Retirement planning tips: Start early, contribute regularly, and consider working with a financial advisor to create a comprehensive retirement strategy.',
-  },
-  {
-    id: 7,
-    advisor: { name: 'Sarah Mitchell', initials: 'SM' },
-    platform: 'facebook',
-    submittedTime: '8 hrs ago',
-    content: 'Did you know that compound interest is one of the most powerful tools for building wealth? Let\'s discuss how to make it work for your financial goals.',
-  },
-  {
-    id: 8,
-    advisor: { name: 'Jennifer Walsh', initials: 'JW' },
-    platform: 'email',
-    submittedTime: '9 hrs ago',
-    content: 'Quarterly Review Reminder: It\'s time to review your portfolio performance and discuss any adjustments needed to stay aligned with your financial objectives.',
-  },
-];
+interface OrganizationResponse {
+  id: string;
+  prohibitedTerms: string[];
+  requiredDisclosures?: Record<string, unknown> | string[] | null;
+}
 
-const getPlatformIcon = (platform: string) => {
+interface Member {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+interface MemberResponse {
+  items: Member[];
+}
+
+type PlatformFilter = 'all' | 'linkedin' | 'facebook' | 'email' | 'ad-copy';
+type ActivePane = 'content' | 'notes';
+
+const platformIcons = {
+  linkedin: Linkedin,
+  facebook: Facebook,
+  email: Mail,
+  'ad-copy': Edit3,
+} as const;
+
+function getDraftPlatforms(draft: DraftReview): PlatformFilter[] {
+  const platforms: PlatformFilter[] = [];
+  if (draft.linkedinContent) platforms.push('linkedin');
+  if (draft.facebookContent) platforms.push('facebook');
+  if (draft.emailContent) platforms.push('email');
+  if (draft.adCopyContent) platforms.push('ad-copy');
+  return platforms;
+}
+
+function getPrimaryPlatform(draft: DraftReview): PlatformFilter {
+  return getDraftPlatforms(draft)[0] ?? 'email';
+}
+
+function getContentByPlatform(draft: DraftReview, platform: PlatformFilter): string {
   switch (platform) {
     case 'linkedin':
-      return <Linkedin className="w-4 h-4 text-blue-600" />;
+      return draft.linkedinContent ?? '';
     case 'facebook':
-      return <Facebook className="w-4 h-4 text-blue-700" />;
+      return draft.facebookContent ?? '';
     case 'email':
-      return <Mail className="w-4 h-4 text-gray-600" />;
+      return draft.emailContent ?? '';
+    case 'ad-copy':
+      return draft.adCopyContent ?? '';
     default:
-      return null;
+      return '';
   }
-};
+}
 
-const highlightProhibitedTerms = (text: string, terms?: string[]) => {
-  if (!terms || terms.length === 0) {
+function buildEditPayload(platform: PlatformFilter, value: string): Record<string, string> {
+  switch (platform) {
+    case 'linkedin':
+      return { linkedinContent: value };
+    case 'facebook':
+      return { facebookContent: value };
+    case 'email':
+      return { emailContent: value };
+    case 'ad-copy':
+      return { adCopyContent: value };
+    default:
+      return {};
+  }
+}
+
+function renderHighlightedText(text: string, prohibitedTerms: string[]) {
+  if (!text) {
+    return <span className="text-gray-400">No content stored for this channel.</span>;
+  }
+
+  if (prohibitedTerms.length === 0) {
     return <span>{text}</span>;
   }
 
-  const parts: JSX.Element[] = [];
-  let remainingText = text;
-  let keyCounter = 0;
+  const escapedTerms = prohibitedTerms
+    .map((term) => term.trim())
+    .filter(Boolean)
+    .map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
-  terms.forEach((term) => {
-    const regex = new RegExp(`(${term})`, 'gi');
-    const newParts: JSX.Element[] = [];
-    
-    if (parts.length === 0) {
-      const matches = remainingText.split(regex);
-      matches.forEach((part, index) => {
-        if (part.toLowerCase() === term.toLowerCase()) {
-          newParts.push(
-            <span key={`${keyCounter++}`} className="bg-red-200 text-red-900 px-1 rounded">
-              {part}
-            </span>
-          );
-        } else if (part) {
-          newParts.push(<span key={`${keyCounter++}`}>{part}</span>);
-        }
-      });
-    }
-    
-    if (newParts.length > 0) {
-      parts.push(...newParts);
-    }
-  });
+  if (escapedTerms.length === 0) {
+    return <span>{text}</span>;
+  }
 
-  if (parts.length === 0) {
-    // Fallback: highlight all terms in one pass
-    let processedText = remainingText;
-    terms.forEach((term) => {
-      const regex = new RegExp(`(${term})`, 'gi');
-      const segments = processedText.split(regex);
-      processedText = segments.map((segment, i) => 
-        segment.toLowerCase() === term.toLowerCase() 
-          ? `|||HIGHLIGHT|||${segment}|||END|||`
-          : segment
-      ).join('');
+  const regex = new RegExp(`(${escapedTerms.join('|')})`, 'gi');
+  const parts = text.split(regex);
+
+  return (
+    <>
+      {parts.map((part, index) => {
+        const flagged = prohibitedTerms.some((term) => term.toLowerCase() === part.toLowerCase());
+        return flagged ? (
+          <mark key={`${part}-${index}`} className="rounded bg-red-100 px-1 text-red-800">
+            {part}
+          </mark>
+        ) : (
+          <span key={`${part}-${index}`}>{part}</span>
+        );
+      })}
+    </>
+  );
+}
+
+export default function ContentReview() {
+  const { user } = useAuth();
+  const reviews = useApiData<DraftReview[]>('/reviews?page=1&limit=100');
+  const organization = useApiData<OrganizationResponse>(
+    user?.orgId ? `/organizations/${user.orgId}` : '/organizations/unknown',
+    [user?.orgId],
+    Boolean(user?.orgId)
+  );
+  const members = useApiData<MemberResponse>(
+    user?.orgId ? `/organizations/${user.orgId}/members?page=1&limit=100` : '/organizations/unknown/members?page=1&limit=100',
+    [user?.orgId],
+    Boolean(user?.orgId)
+  );
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const detail = useApiData<DraftReview>(`/reviews/${selectedId ?? ''}`, [selectedId], Boolean(selectedId));
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>('all');
+  const [search, setSearch] = useState('');
+  const [activePane, setActivePane] = useState<ActivePane>('content');
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformFilter>('linkedin');
+  const [editedContent, setEditedContent] = useState('');
+  const [reviewNotes, setReviewNotes] = useState('');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const firstId = reviews.data?.[0]?.id ?? null;
+    setSelectedId((current) => current ?? firstId);
+  }, [reviews.data]);
+
+  useEffect(() => {
+    const current = detail.data;
+    if (!current) {
+      return;
+    }
+    const nextPlatform = getPrimaryPlatform(current);
+    setSelectedPlatform(nextPlatform);
+    setEditedContent(getContentByPlatform(current, nextPlatform));
+    setReviewNotes(current.reviewNotes ?? '');
+  }, [detail.data]);
+
+  const filteredReviews = useMemo(() => {
+    const rows = reviews.data ?? [];
+    return rows.filter((draft) => {
+      const channels = getDraftPlatforms(draft);
+      const matchesPlatform = platformFilter === 'all' || channels.includes(platformFilter);
+      const normalizedSearch = search.trim().toLowerCase();
+      const matchesSearch =
+        normalizedSearch.length === 0 ||
+        draft.title.toLowerCase().includes(normalizedSearch) ||
+        draft.originalPrompt.toLowerCase().includes(normalizedSearch) ||
+        draft.id.toLowerCase().includes(normalizedSearch);
+
+      return matchesPlatform && matchesSearch;
     });
+  }, [platformFilter, reviews.data, search]);
 
+  const selectedDraft = detail.data ?? reviews.data?.find((draft) => draft.id === selectedId) ?? null;
+  const prohibitedTerms = organization.data?.prohibitedTerms ?? [];
+  const memberMap = useMemo(
+    () =>
+      new Map((members.data?.items ?? []).map((member) => [
+        member.id,
+        `${member.firstName} ${member.lastName}`.trim() || member.email,
+      ])),
+    [members.data]
+  );
+
+  const disclosureRows = useMemo(() => {
+    const raw = organization.data?.requiredDisclosures;
+    if (Array.isArray(raw)) {
+      return raw.map(String).filter(Boolean);
+    }
+    if (raw && typeof raw === 'object') {
+      return Object.values(raw).map(String).filter(Boolean);
+    }
+    return [];
+  }, [organization.data?.requiredDisclosures]);
+
+  const currentPlatforms = selectedDraft ? getDraftPlatforms(selectedDraft) : [];
+  const currentContent = selectedDraft ? getContentByPlatform(selectedDraft, selectedPlatform) : '';
+
+  useEffect(() => {
+    if (!selectedDraft) {
+      return;
+    }
+    if (!currentPlatforms.includes(selectedPlatform)) {
+      const fallback = getPrimaryPlatform(selectedDraft);
+      setSelectedPlatform(fallback);
+      setEditedContent(getContentByPlatform(selectedDraft, fallback));
+      return;
+    }
+    setEditedContent(currentContent);
+  }, [currentContent, currentPlatforms, selectedDraft, selectedPlatform]);
+
+  if (reviews.loading || organization.loading || members.loading) {
+    return <LoadingState label="Loading review queue..." />;
+  }
+
+  if (reviews.error || organization.error || members.error) {
     return (
-      <>
-        {processedText.split('|||').map((part, i) => {
-          if (part === 'HIGHLIGHT') return null;
-          if (part === 'END') return null;
-          
-          const prevPart = i > 0 ? processedText.split('|||')[i - 1] : '';
-          if (prevPart === 'HIGHLIGHT') {
-            return (
-              <span key={i} className="bg-red-200 text-red-900 px-1 rounded">
-                {part}
-              </span>
-            );
+      <ErrorState
+        message={reviews.error || organization.error || members.error || 'Failed to load review data.'}
+        onRetry={() => {
+          void reviews.reload();
+          void organization.reload();
+          void members.reload();
+          if (selectedId) {
+            void detail.reload();
           }
-          return <span key={i}>{part}</span>;
-        })}
-      </>
+        }}
+      />
     );
   }
 
-  return <>{parts}</>;
-};
+  const handleSaveEdits = async () => {
+    if (!selectedDraft) {
+      return;
+    }
 
-export default function ContentReview() {
-  const [activeTab, setActiveTab] = useState('pending');
-  const [platformFilter, setPlatformFilter] = useState('all');
-  const [advisorFilter, setAdvisorFilter] = useState('all');
-  const [showingNotesFor, setShowingNotesFor] = useState<{ id: number; type: 'reject' | 'edits' } | null>(null);
-  const [notesText, setNotesText] = useState('');
-  const [contentStatus, setContentStatus] = useState<{ 
-    [key: number]: { 
-      status: 'approved' | 'rejected' | 'edits';
-      notes?: string;
-    } 
-  }>({});
-
-  const handleApprove = (id: number) => {
-    setContentStatus({
-      ...contentStatus,
-      [id]: { status: 'approved' },
-    });
+    setSubmitting(true);
+    try {
+      await apiClient.patch(`/reviews/${selectedDraft.id}/edit`, buildEditPayload(selectedPlatform, editedContent));
+      await Promise.all([reviews.reload(), detail.reload()]);
+      setToastMessage('Draft content updated.');
+    } catch (err) {
+      setToastMessage(err instanceof Error ? err.message : 'Failed to save draft edits.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleRejectClick = (id: number) => {
-    setShowingNotesFor({ id, type: 'reject' });
-    setNotesText('');
-  };
+  const handleAction = async (action: 'approve' | 'reject' | 'request-changes') => {
+    if (!selectedDraft) {
+      return;
+    }
 
-  const handleRequestEditsClick = (id: number) => {
-    setShowingNotesFor({ id, type: 'edits' });
-    setNotesText('');
-  };
+    const body =
+      action === 'approve'
+        ? undefined
+        : action === 'reject'
+          ? { reason: reviewNotes.trim() }
+          : { notes: reviewNotes.trim() };
 
-  const handleConfirmReject = (id: number) => {
-    setContentStatus({
-      ...contentStatus,
-      [id]: { status: 'rejected', notes: notesText },
-    });
-    setShowingNotesFor(null);
-    setNotesText('');
-  };
-
-  const handleConfirmEdits = (id: number) => {
-    setContentStatus({
-      ...contentStatus,
-      [id]: { status: 'edits', notes: notesText },
-    });
-    setShowingNotesFor(null);
-    setNotesText('');
-  };
-
-  const handleCancel = () => {
-    setShowingNotesFor(null);
-    setNotesText('');
+    setSubmitting(true);
+    try {
+      await apiClient.patch(`/reviews/${selectedDraft.id}/${action}`, body);
+      await Promise.all([reviews.reload(), detail.reload()]);
+      setToastMessage(
+        action === 'approve'
+          ? 'Draft approved.'
+          : action === 'reject'
+            ? 'Draft rejected.'
+            : 'Changes requested from advisor.'
+      );
+    } catch (err) {
+      setToastMessage(err instanceof Error ? err.message : 'Review action failed.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <div className="flex-1 overflow-auto bg-gray-50">
-      {/* Top Bar with Filters */}
-      <div className="bg-white border-b border-gray-200 px-8 py-4">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-[#1E3A5F]">Content Review</h1>
-            <p className="text-sm text-gray-500 mt-1">Review and approve content submissions</p>
+    <PageShell
+      title="Content Review"
+      subtitle="Live compliance queue with real backend approval actions"
+      actions={
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search title, prompt, or draft ID"
+              className="h-10 rounded-lg border border-gray-300 bg-white pl-10 pr-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]"
+            />
           </div>
-          <div className="flex items-center gap-3">
-            <select
-              value={platformFilter}
-              onChange={(e) => setPlatformFilter(e.target.value)}
-              className="h-9 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]"
-            >
-              <option value="all">All Platforms</option>
-              <option value="linkedin">LinkedIn</option>
-              <option value="facebook">Facebook</option>
-              <option value="email">Email</option>
-            </select>
-            <select
-              value={advisorFilter}
-              onChange={(e) => setAdvisorFilter(e.target.value)}
-              className="h-9 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]"
-            >
-              <option value="all">All Advisors</option>
-              <option value="sarah">Sarah Mitchell</option>
-              <option value="michael">Michael Chen</option>
-              <option value="jennifer">Jennifer Walsh</option>
-              <option value="david">David Park</option>
-              <option value="lisa">Lisa Nguyen</option>
-              <option value="tom">Tom Bradley</option>
-            </select>
-            <Button className="bg-white text-gray-700 border border-gray-300 hover:bg-gray-50">
-              <Calendar className="w-4 h-4 mr-2" />
-              Date Range
-            </Button>
-          </div>
+          <select
+            value={platformFilter}
+            onChange={(event) => setPlatformFilter(event.target.value as PlatformFilter)}
+            className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]"
+          >
+            <option value="all">All Channels</option>
+            <option value="linkedin">LinkedIn</option>
+            <option value="facebook">Facebook</option>
+            <option value="email">Email</option>
+            <option value="ad-copy">Ad Copy</option>
+          </select>
         </div>
-
-        {/* Tabs */}
-        <div className="flex gap-6 border-b border-gray-200 -mb-px">
-          <button
-            onClick={() => setActiveTab('pending')}
-            className={`pb-3 px-1 text-sm font-medium transition-colors relative ${
-              activeTab === 'pending'
-                ? 'text-[#0EA5E9]'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Pending Review (8)
-            {activeTab === 'pending' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0EA5E9]" />
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('approved')}
-            className={`pb-3 px-1 text-sm font-medium transition-colors relative ${
-              activeTab === 'approved'
-                ? 'text-[#0EA5E9]'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Approved
-            {activeTab === 'approved' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0EA5E9]" />
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('rejected')}
-            className={`pb-3 px-1 text-sm font-medium transition-colors relative ${
-              activeTab === 'rejected'
-                ? 'text-[#0EA5E9]'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Rejected
-            {activeTab === 'rejected' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0EA5E9]" />
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Content List */}
-      <div className="p-8">
-        {activeTab === 'pending' && (
-          <>
-            {/* Stats Bar */}
-            <div className="flex items-center gap-6 mb-6 bg-white border border-gray-200 rounded-lg px-6 py-3">
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-green-600" />
-                <span className="text-sm text-gray-700">Today: <span className="font-semibold text-[#1E3A5F]">3 reviewed</span>, <span className="font-semibold text-[#1E3A5F]">5 pending</span></span>
-              </div>
-              <div className="h-4 w-px bg-gray-300"></div>
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-[#0EA5E9]" />
-                <span className="text-sm text-gray-700">Avg review time: <span className="font-semibold text-[#1E3A5F]">4 min</span></span>
-              </div>
+      }
+    >
+      {filteredReviews.length === 0 ? (
+        <Card className="border border-gray-200 p-10 shadow-sm">
+          <EmptyState
+            title="No matching review items"
+            description="Submitted drafts will appear here once advisors send them to compliance."
+          />
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.15fr_1.85fr]">
+          <Card className="overflow-hidden border border-gray-200 shadow-sm">
+            <div className="border-b border-gray-200 px-6 py-4">
+              <h2 className="text-lg font-semibold text-[#1E3A5F]">Queue</h2>
+              <p className="mt-1 text-sm text-gray-500">{filteredReviews.length} live drafts require review visibility.</p>
             </div>
-
-            <div className="space-y-4">
-              {contentSubmissions.map((submission) => {
-                const status = contentStatus[submission.id];
-                const showingNotes = showingNotesFor?.id === submission.id;
-                
-                // Determine card state
-                let borderColor = 'border-gray-200';
-                if (submission.demoState === 'approved' || status?.status === 'approved') {
-                  borderColor = 'border-l-4 border-l-green-500';
-                } else if (submission.demoState === 'rejected-final' || status?.status === 'rejected') {
-                  borderColor = 'border-l-4 border-l-red-500';
-                } else if (status?.status === 'edits') {
-                  borderColor = 'border-l-4 border-l-amber-500';
-                }
-
+            <div className="max-h-[760px] overflow-y-auto">
+              {filteredReviews.map((draft) => {
+                const platforms = getDraftPlatforms(draft);
+                const active = selectedId === draft.id;
                 return (
-                  <Card key={submission.id} className={`p-6 rounded-lg shadow-sm border ${borderColor}`}>
-                    {submission.isUrgent && !status?.status && submission.demoState !== 'approved' && submission.demoState !== 'rejected-final' && (
-                      <div className="absolute top-4 right-4 bg-red-600 text-white text-xs font-semibold px-2 py-1 rounded">
-                        URGENT
-                      </div>
-                    )}
-                    
-                    <div className="flex items-start gap-6">
-                      {/* Left: Advisor Info */}
-                      <div className="flex items-center gap-3 min-w-[200px]">
-                        <div className="w-10 h-10 rounded-full bg-[#0EA5E9] flex items-center justify-center text-white font-medium text-sm flex-shrink-0">
-                          {submission.advisor.initials}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-[#1E3A5F] truncate">
-                            {submission.advisor.name}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            {getPlatformIcon(submission.platform)}
-                            <span className="text-xs text-gray-500">{submission.submittedTime}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Center: Content */}
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-700">
-                          {highlightProhibitedTerms(submission.content, submission.prohibitedTerms)}
+                  <button
+                    key={draft.id}
+                    onClick={() => setSelectedId(draft.id)}
+                    className={`w-full border-b border-gray-100 px-6 py-4 text-left transition-colors ${active ? 'bg-sky-50' : 'bg-white hover:bg-gray-50'}`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-[#1E3A5F]">{draft.title}</p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {memberMap.get(draft.creatorId) ?? draft.creatorId} · {new Date(draft.updatedAt).toLocaleString()}
                         </p>
-                        {submission.prohibitedTerms && submission.prohibitedTerms.length > 0 && !status?.status && submission.demoState !== 'approved' && submission.demoState !== 'rejected-final' && submission.demoState !== 'rejected-with-notes' && (
-                          <div className="flex items-center gap-2 mt-3 text-xs text-red-600">
-                            <AlertCircle className="w-4 h-4" />
-                            <span>Contains prohibited terms</span>
-                          </div>
-                        )}
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          {platforms.map((platform) => {
+                            const Icon = platformIcons[platform];
+                            return (
+                              <span key={`${draft.id}-${platform}`} className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700">
+                                <Icon className="h-3.5 w-3.5" />
+                                {platform}
+                              </span>
+                            );
+                          })}
+                        </div>
                       </div>
-
-                      {/* Right: Action Buttons or Status Badge */}
-                      <div className="flex flex-col gap-2 min-w-[140px]">
-                        {/* Demo State: Approved */}
-                        {submission.demoState === 'approved' && !status?.status && (
-                          <div className="space-y-2">
-                            <div className="bg-green-100 text-green-800 px-3 py-2 rounded text-sm font-medium text-center">
-                              Approved ✓
-                            </div>
-                            <p className="text-xs text-gray-600 text-center">Queued for auto-distribution</p>
-                          </div>
-                        )}
-
-                        {/* Demo State: Rejected Final */}
-                        {submission.demoState === 'rejected-final' && !status?.status && (
-                          <div className="space-y-2">
-                            <div className="bg-red-100 text-red-800 px-3 py-2 rounded text-sm font-medium text-center">
-                              Rejected ✗
-                            </div>
-                            <p className="text-xs text-gray-600 text-center">Sent to advisor for revision</p>
-                          </div>
-                        )}
-
-                        {/* Regular Status: Approved */}
-                        {!submission.demoState && status?.status === 'approved' && (
-                          <div className="space-y-2">
-                            <div className="bg-green-100 text-green-800 px-3 py-2 rounded text-sm font-medium text-center">
-                              Approved ✓
-                            </div>
-                            <p className="text-xs text-gray-600 text-center">Queued for auto-distribution</p>
-                          </div>
-                        )}
-
-                        {/* Regular Status: Rejected */}
-                        {!submission.demoState && status?.status === 'rejected' && (
-                          <div className="space-y-2">
-                            <div className="bg-red-100 text-red-800 px-3 py-2 rounded text-sm font-medium text-center">
-                              Rejected ✗
-                            </div>
-                            <p className="text-xs text-gray-600 text-center">Sent to advisor for revision</p>
-                          </div>
-                        )}
-
-                        {/* Regular Status: Edits Requested */}
-                        {!submission.demoState && status?.status === 'edits' && (
-                          <div className="space-y-2">
-                            <div className="bg-amber-100 text-amber-800 px-3 py-2 rounded text-sm font-medium text-center">
-                              Edits Requested ✎
-                            </div>
-                            <p className="text-xs text-gray-600 text-center">Advisor notified</p>
-                          </div>
-                        )}
-
-                        {/* Pending - Show Action Buttons */}
-                        {!status?.status && submission.demoState !== 'approved' && submission.demoState !== 'rejected-final' && submission.demoState !== 'rejected-with-notes' && (
-                          <>
-                            <Button className="bg-green-600 hover:bg-green-700 text-white text-sm h-9" onClick={() => handleApprove(submission.id)}>
-                              <Check className="w-4 h-4 mr-2" />
-                              Approve
-                            </Button>
-                            <Button className="bg-red-600 hover:bg-red-700 text-white text-sm h-9" onClick={() => handleRejectClick(submission.id)}>
-                              <X className="w-4 h-4 mr-2" />
-                              Reject
-                            </Button>
-                            <Button className="bg-amber-600 hover:bg-amber-700 text-white text-sm h-9" onClick={() => handleRequestEditsClick(submission.id)}>
-                              <Edit className="w-4 h-4 mr-2" />
-                              Request Edits
-                            </Button>
-                          </>
-                        )}
-                      </div>
+                      <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
+                        {draft.status.replace(/_/g, ' ')}
+                      </span>
                     </div>
-
-                    {/* Demo State: Show Rejection Notes Form (Item 1) */}
-                    {submission.demoState === 'rejected-with-notes' && !status?.status && (
-                      <div className="mt-6 pt-6 border-t border-gray-200">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Rejection Notes
-                        </label>
-                        <textarea
-                          className="w-full h-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
-                          placeholder="Explain why this content was rejected and what needs to change..."
-                          value={submission.demoNotes}
-                          readOnly
-                        />
-                        <div className="flex items-center gap-3 mt-3">
-                          <Button className="bg-red-600 hover:bg-red-700 text-white">
-                            Confirm Rejection
-                          </Button>
-                          <button className="text-sm text-gray-600 hover:text-[#1E3A5F]">
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Show Notes Section after Rejection (Demo Item 2) */}
-                    {submission.demoState === 'rejected-final' && !status?.status && submission.demoNotes && (
-                      <div className="mt-6 pt-6 border-t border-gray-200">
-                        <p className="text-sm font-medium text-gray-700 mb-2">Rejection Notes:</p>
-                        <p className="text-sm text-gray-600 bg-red-50 p-3 rounded-lg border border-red-200">
-                          {submission.demoNotes}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Show Notes Section after Regular Status */}
-                    {status?.status === 'rejected' && status.notes && (
-                      <div className="mt-6 pt-6 border-t border-gray-200">
-                        <p className="text-sm font-medium text-gray-700 mb-2">Rejection Notes:</p>
-                        <p className="text-sm text-gray-600 bg-red-50 p-3 rounded-lg border border-red-200">
-                          {status.notes}
-                        </p>
-                      </div>
-                    )}
-
-                    {status?.status === 'edits' && status.notes && (
-                      <div className="mt-6 pt-6 border-t border-gray-200">
-                        <p className="text-sm font-medium text-gray-700 mb-2">Edit Notes:</p>
-                        <p className="text-sm text-gray-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
-                          {status.notes}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Interactive Notes Form (for user interactions) */}
-                    {showingNotes && (
-                      <div className="mt-6 pt-6 border-t border-gray-200">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          {showingNotesFor?.type === 'reject' ? 'Rejection Notes' : 'Edit Notes'}
-                        </label>
-                        <textarea
-                          className="w-full h-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] resize-none"
-                          placeholder={
-                            showingNotesFor?.type === 'reject'
-                              ? 'Explain why this content was rejected and what needs to change...'
-                              : 'Describe what changes are needed...'
-                          }
-                          value={notesText}
-                          onChange={(e) => setNotesText(e.target.value)}
-                          autoFocus
-                        />
-                        <div className="flex items-center gap-3 mt-3">
-                          {showingNotesFor?.type === 'reject' ? (
-                            <Button 
-                              className="bg-red-600 hover:bg-red-700 text-white"
-                              onClick={() => handleConfirmReject(submission.id)}
-                            >
-                              Confirm Rejection
-                            </Button>
-                          ) : (
-                            <Button 
-                              className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
-                              onClick={() => handleConfirmEdits(submission.id)}
-                            >
-                              Send Edit Request
-                            </Button>
-                          )}
-                          <button 
-                            className="text-sm text-gray-600 hover:text-[#1E3A5F]"
-                            onClick={handleCancel}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </Card>
+                  </button>
                 );
               })}
             </div>
-          </>
-        )}
-
-        {activeTab === 'approved' && (
-          <Card className="p-12 rounded-lg shadow-sm border border-gray-200 text-center">
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <Check className="w-8 h-8 text-green-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-[#1E3A5F] mb-2">No Approved Content</h3>
-              <p className="text-sm text-gray-500">
-                Approved content will appear here
-              </p>
-            </div>
           </Card>
-        )}
 
-        {activeTab === 'rejected' && (
-          <Card className="p-12 rounded-lg shadow-sm border border-gray-200 text-center">
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                <X className="w-8 h-8 text-red-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-[#1E3A5F] mb-2">No Rejected Content</h3>
-              <p className="text-sm text-gray-500">
-                Rejected content will appear here
-              </p>
-            </div>
-          </Card>
-        )}
-      </div>
-    </div>
+          <div className="space-y-6">
+            {selectedDraft ? (
+              <>
+                <Card className="border border-gray-200 shadow-sm">
+                  <div className="border-b border-gray-200 px-6 py-4">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <h2 className="text-xl font-semibold text-[#1E3A5F]">{selectedDraft.title}</h2>
+                        <p className="mt-1 text-sm text-gray-500">
+                          Created by {memberMap.get(selectedDraft.creatorId) ?? selectedDraft.creatorId}
+                          {selectedDraft.reviewerId ? ` · reviewer ${memberMap.get(selectedDraft.reviewerId) ?? selectedDraft.reviewerId}` : ''}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {currentPlatforms.map((platform) => {
+                          const Icon = platformIcons[platform];
+                          return (
+                            <button
+                              key={platform}
+                              onClick={() => setSelectedPlatform(platform)}
+                              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${
+                                selectedPlatform === platform
+                                  ? 'border-[#0EA5E9] bg-sky-50 text-[#0EA5E9]'
+                                  : 'border-gray-200 bg-white text-gray-600'
+                              }`}
+                            >
+                              <Icon className="h-4 w-4" />
+                              {platform}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="px-6 py-4">
+                    <div className="mb-4 flex gap-2">
+                      <button
+                        onClick={() => setActivePane('content')}
+                        className={`rounded-full px-3 py-1.5 text-sm ${activePane === 'content' ? 'bg-[#1E3A5F] text-white' : 'bg-gray-100 text-gray-600'}`}
+                      >
+                        Review Content
+                      </button>
+                      <button
+                        onClick={() => setActivePane('notes')}
+                        className={`rounded-full px-3 py-1.5 text-sm ${activePane === 'notes' ? 'bg-[#1E3A5F] text-white' : 'bg-gray-100 text-gray-600'}`}
+                      >
+                        Reviewer Notes
+                      </button>
+                    </div>
+
+                    {activePane === 'content' ? (
+                      <div className="space-y-4">
+                        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Original Prompt</p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700">{selectedDraft.originalPrompt}</p>
+                        </div>
+                        <div className="rounded-xl border border-gray-200 bg-white p-4">
+                          <div className="flex items-center justify-between gap-4">
+                            <p className="text-sm font-semibold text-[#1E3A5F]">Channel Copy</p>
+                            <Button variant="outline" onClick={() => void handleSaveEdits()} disabled={submitting}>
+                              Save Reviewer Edit
+                            </Button>
+                          </div>
+                          <textarea
+                            value={editedContent}
+                            onChange={(event) => setEditedContent(event.target.value)}
+                            className="mt-4 min-h-[220px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]"
+                          />
+                          <div className="mt-4 rounded-lg border border-red-100 bg-red-50 p-4">
+                            <p className="text-sm font-semibold text-red-800">Compliance scan against stored prohibited terms</p>
+                            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-700">
+                              {renderHighlightedText(editedContent, prohibitedTerms)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="rounded-xl border border-gray-200 bg-white p-4">
+                          <p className="text-sm font-semibold text-[#1E3A5F]">Required disclosures on record</p>
+                          {disclosureRows.length === 0 ? (
+                            <p className="mt-2 text-sm text-gray-500">No disclosures are currently stored for this organization.</p>
+                          ) : (
+                            <ul className="mt-3 space-y-2 text-sm text-gray-700">
+                              {disclosureRows.map((disclosure, index) => (
+                                <li key={`${disclosure}-${index}`} className="rounded-lg bg-gray-50 px-3 py-2">
+                                  {disclosure}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+
+                        <div className="rounded-xl border border-gray-200 bg-white p-4">
+                          <label className="text-sm font-semibold text-[#1E3A5F]">Review notes</label>
+                          <textarea
+                            value={reviewNotes}
+                            onChange={(event) => setReviewNotes(event.target.value)}
+                            className="mt-3 min-h-[180px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]"
+                            placeholder="Record the exact compliance guidance for this draft."
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+
+                <Card className="border border-gray-200 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-[#1E3A5F]">Decision</h3>
+                      <p className="mt-1 text-sm text-gray-500">Use the real review workflow endpoints. Reject and request-changes require notes.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      <Button className="bg-emerald-600 text-white hover:bg-emerald-700" disabled={submitting} onClick={() => void handleAction('approve')}>
+                        <Check className="mr-2 h-4 w-4" />
+                        Approve
+                      </Button>
+                      <Button className="bg-amber-500 text-white hover:bg-amber-600" disabled={submitting || reviewNotes.trim().length === 0} onClick={() => void handleAction('request-changes')}>
+                        <Edit3 className="mr-2 h-4 w-4" />
+                        Request Changes
+                      </Button>
+                      <Button className="bg-rose-600 text-white hover:bg-rose-700" disabled={submitting || reviewNotes.trim().length === 0} onClick={() => void handleAction('reject')}>
+                        <X className="mr-2 h-4 w-4" />
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              </>
+            ) : (
+              <Card className="border border-gray-200 p-10 shadow-sm">
+                <EmptyState title="Select a draft" description="Choose a review item from the queue to inspect live content and take action." />
+              </Card>
+            )}
+          </div>
+        </div>
+      )}
+
+      {toastMessage ? <Toast type="success" message={toastMessage} onClose={() => setToastMessage(null)} /> : null}
+    </PageShell>
   );
 }

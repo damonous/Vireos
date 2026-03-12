@@ -1,85 +1,310 @@
-import { Calendar, TrendingUp, FileText, Target, Users, Linkedin, Facebook, Mail, DollarSign, ArrowUpRight } from 'lucide-react';
-import { Card } from '../components/ui/card';
-import { Button } from '../components/ui/button';
 import {
-  LineChart,
-  Line,
-  BarChart,
+  Calendar,
+  TrendingUp,
+  FileText,
+  Target,
+  Users,
+  Linkedin,
+  Facebook,
+  Mail,
+  DollarSign,
+  ArrowUpRight,
+} from 'lucide-react';
+import {
   Bar,
-  PieChart,
-  Pie,
+  BarChart,
+  CartesianGrid,
   Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
 } from 'recharts';
+import { Card } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { EmptyState } from '../components/ui/empty-state';
+import { ErrorState } from '../components/ui/error-state';
+import { LoadingState } from '../components/ui/loading-state';
+import { useApiData } from '../hooks/useApiData';
 
-// Engagement over time data (30 days)
-const engagementData = [
-  { day: '1', linkedin: 245, facebook: 180, email: 120 },
-  { day: '3', linkedin: 280, facebook: 210, email: 150 },
-  { day: '5', linkedin: 320, facebook: 190, email: 140 },
-  { day: '7', linkedin: 295, facebook: 230, email: 160 },
-  { day: '9', linkedin: 310, facebook: 250, email: 180 },
-  { day: '11', linkedin: 340, facebook: 270, email: 190 },
-  { day: '13', linkedin: 380, facebook: 290, email: 200 },
-  { day: '15', linkedin: 360, facebook: 310, email: 210 },
-  { day: '17', linkedin: 390, facebook: 300, email: 220 },
-  { day: '19', linkedin: 410, facebook: 320, email: 230 },
-  { day: '21', linkedin: 385, facebook: 310, email: 215 },
-  { day: '23', linkedin: 420, facebook: 340, email: 240 },
-  { day: '25', linkedin: 450, facebook: 360, email: 250 },
-  { day: '27', linkedin: 440, facebook: 380, email: 260 },
-  { day: '30', linkedin: 480, facebook: 390, email: 270 },
-];
+interface OverviewMetrics {
+  contentCreated: number;
+  contentPublished: number;
+  totalLeads: number;
+  newLeads: number;
+  totalEmailsSent: number;
+  emailOpenRate: number;
+  activeCampaigns: number;
+  creditsUsed: number;
+}
 
-// Content by platform data
-const contentData = [
-  { platform: 'LinkedIn', count: 22 },
-  { platform: 'Facebook', count: 14 },
-  { platform: 'Email', count: 11 },
-];
+interface LinkedInMetrics {
+  postsPublished: number;
+  activeCampaigns: number;
+  totalEnrolled: number;
+  totalReplied: number;
+  replyRate: number;
+  campaignList: Array<{
+    id: string;
+    name: string;
+    status: string;
+    enrolled: number;
+    replied: number;
+  }>;
+}
 
-// Lead sources data
-const leadSourceData = [
-  { name: 'LinkedIn', value: 45, color: '#0A66C2' },
-  { name: 'Facebook', value: 28, color: '#1877F2' },
-  { name: 'Email', value: 18, color: '#0EA5E9' },
-  { name: 'Referral', value: 9, color: '#8B5CF6' },
-];
+interface FacebookMetrics {
+  postsPublished: number;
+  activeCampaigns: number;
+  totalImpressions: number;
+  totalClicks: number;
+  ctr: number;
+  totalLeads: number;
+  totalSpend: number;
+  cpl: number;
+  campaignList: Array<{
+    id: string;
+    name: string;
+    status: string;
+    impressions: number;
+    clicks: number;
+    leads: number;
+    spend: number;
+  }>;
+}
 
-// Top performing content
-const topContent = [
-  { title: 'Understanding 401k Rollovers', platform: 'linkedin', impressions: 12400, clicks: 847, leads: 18, aumBroughtIn: '$1.2M' },
-  { title: 'Tax Season Workshop', platform: 'facebook', impressions: 8200, clicks: 612, leads: 12, aumBroughtIn: '$890K' },
-  { title: 'Estate Planning Basics', platform: 'linkedin', impressions: 7800, clicks: 523, leads: 9, aumBroughtIn: '$720K' },
-  { title: 'Retirement Income Guide', platform: 'email', impressions: 4200, clicks: 389, leads: 7, aumBroughtIn: '$580K' },
-  { title: 'Social Security Tips', platform: 'linkedin', impressions: 6100, clicks: 412, leads: 8, aumBroughtIn: '$650K' },
-];
+interface EmailMetrics {
+  totalSent: number;
+  totalDelivered: number;
+  totalOpened: number;
+  totalClicked: number;
+  deliveryRate: number;
+  openRate: number;
+  clickRate: number;
+  bounceRate: number;
+  unsubscribeCount: number;
+}
 
-// AUM Growth data (6 months)
-const aumGrowthData = [
-  { month: 'Oct', aum: 32 },
-  { month: 'Nov', aum: 33.5 },
-  { month: 'Dec', aum: 34.1 },
-  { month: 'Jan', aum: 35.8 },
-  { month: 'Feb', aum: 37.2 },
-  { month: 'Mar', aum: 38.4 },
-];
+interface LeadMetrics {
+  total: number;
+  byStatus: Record<string, number>;
+  bySource: Record<string, number>;
+  conversionRate: number;
+  averageTimeToClient: number | null;
+}
 
-// Lead Pipeline with AUM data
-const leadPipeline = [
-  { stage: 'New Leads', count: 24, aum: null },
-  { stage: 'Contacted', count: 18, aum: '$3.1M' },
-  { stage: 'Meeting Scheduled', count: 12, aum: '$2.4M' },
-  { stage: 'Proposal Sent', count: 8, aum: '$1.8M' },
-  { stage: 'New Clients — AUM Acquired', count: 5, aum: '$4.2M' },
-];
+function formatCount(value: number): string {
+  if (value >= 1000000) {
+    return `${(value / 1000000).toFixed(1)}M`;
+  }
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(1)}K`;
+  }
+  return value.toString();
+}
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: value >= 1000 ? 0 : 2,
+  }).format(value);
+}
+
+function humanizeKey(value: string): string {
+  return value
+    .toLowerCase()
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
 
 export default function Analytics() {
+  const overview = useApiData<OverviewMetrics>('/analytics/overview?preset=30d');
+  const linkedIn = useApiData<LinkedInMetrics>('/analytics/linkedin?preset=30d');
+  const facebook = useApiData<FacebookMetrics>('/analytics/facebook?preset=30d');
+  const email = useApiData<EmailMetrics>('/analytics/email?preset=30d');
+  const leads = useApiData<LeadMetrics>('/analytics/leads?preset=30d');
+
+  const isLoading =
+    overview.loading ||
+    linkedIn.loading ||
+    facebook.loading ||
+    email.loading ||
+    leads.loading;
+
+  const hasError =
+    overview.error ||
+    linkedIn.error ||
+    facebook.error ||
+    email.error ||
+    leads.error;
+
+  if (isLoading) {
+    return <LoadingState label="Loading analytics..." />;
+  }
+
+  if (hasError) {
+    return (
+      <ErrorState
+        message={hasError}
+        onRetry={() => {
+          void overview.reload();
+          void linkedIn.reload();
+          void facebook.reload();
+          void email.reload();
+          void leads.reload();
+        }}
+      />
+    );
+  }
+
+  const overviewData = overview.data ?? {
+    contentCreated: 0,
+    contentPublished: 0,
+    totalLeads: 0,
+    newLeads: 0,
+    totalEmailsSent: 0,
+    emailOpenRate: 0,
+    activeCampaigns: 0,
+    creditsUsed: 0,
+  };
+
+  const linkedInData = linkedIn.data ?? {
+    postsPublished: 0,
+    activeCampaigns: 0,
+    totalEnrolled: 0,
+    totalReplied: 0,
+    replyRate: 0,
+    campaignList: [],
+  };
+
+  const facebookData = facebook.data ?? {
+    postsPublished: 0,
+    activeCampaigns: 0,
+    totalImpressions: 0,
+    totalClicks: 0,
+    ctr: 0,
+    totalLeads: 0,
+    totalSpend: 0,
+    cpl: 0,
+    campaignList: [],
+  };
+
+  const emailData = email.data ?? {
+    totalSent: 0,
+    totalDelivered: 0,
+    totalOpened: 0,
+    totalClicked: 0,
+    deliveryRate: 0,
+    openRate: 0,
+    clickRate: 0,
+    bounceRate: 0,
+    unsubscribeCount: 0,
+  };
+
+  const leadData = leads.data ?? {
+    total: 0,
+    byStatus: {},
+    bySource: {},
+    conversionRate: 0,
+    averageTimeToClient: null,
+  };
+
+  const engagementData = [
+    { channel: 'LinkedIn', engagements: linkedInData.totalReplied, reach: linkedInData.totalEnrolled },
+    { channel: 'Facebook', engagements: facebookData.totalClicks, reach: facebookData.totalImpressions },
+    { channel: 'Email', engagements: emailData.totalClicked, reach: emailData.totalSent },
+  ];
+
+  const contentData = [
+    { platform: 'LinkedIn', count: linkedInData.postsPublished },
+    { platform: 'Facebook', count: facebookData.postsPublished },
+    { platform: 'Email', count: overviewData.totalEmailsSent },
+  ];
+
+  const leadSourceData = Object.entries(leadData.bySource).map(([name, value], index) => ({
+    name: humanizeKey(name),
+    value,
+    color: ['#0A66C2', '#1877F2', '#0EA5E9', '#10B981', '#8B5CF6'][index % 5] ?? '#94A3B8',
+  }));
+
+  const topContent = [
+    ...linkedInData.campaignList.slice(0, 2).map((campaign) => ({
+      id: campaign.id,
+      title: campaign.name,
+      platform: 'linkedin',
+      primaryMetric: `${campaign.enrolled} enrolled`,
+      secondaryMetric: `${campaign.replied} replies`,
+      tertiaryMetric: `${campaign.status.toLowerCase()}`,
+      value: `${campaign.replied} replies`,
+    })),
+    ...facebookData.campaignList.slice(0, 2).map((campaign) => ({
+      id: campaign.id,
+      title: campaign.name,
+      platform: 'facebook',
+      primaryMetric: `${formatCount(campaign.impressions)} impressions`,
+      secondaryMetric: `${campaign.clicks} clicks`,
+      tertiaryMetric: `${campaign.leads} leads`,
+      value: formatCurrency(campaign.spend),
+    })),
+    {
+      id: 'email-performance',
+      title: 'Email Performance',
+      platform: 'email',
+      primaryMetric: `${emailData.totalOpened} opens`,
+      secondaryMetric: `${emailData.totalClicked} clicks`,
+      tertiaryMetric: `${emailData.unsubscribeCount} unsubscribes`,
+      value: `${emailData.openRate}% open rate`,
+    },
+  ].slice(0, 5);
+  const exportAnalytics = () => {
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      overview: overviewData,
+      linkedIn: linkedInData,
+      facebook: facebookData,
+      email: emailData,
+      leads: leadData,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'vireos-analytics.json';
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const leadPipeline = Object.entries(leadData.byStatus).map(([stage, count]) => ({
+    stage: humanizeKey(stage),
+    count,
+    aum:
+      stage === 'CLIENT' && leadData.averageTimeToClient !== null
+        ? `${leadData.averageTimeToClient} days avg`
+        : null,
+  }));
+
+  const aumGrowthData = [
+    { metric: 'Credits Used', value: Math.abs(overviewData.creditsUsed) },
+    { metric: 'Spend', value: facebookData.totalSpend },
+    { metric: 'Reply Rate', value: linkedInData.replyRate },
+    { metric: 'Open Rate', value: emailData.openRate },
+    { metric: 'Conversion', value: leadData.conversionRate },
+  ];
+
+  const hasAnyData =
+    overviewData.contentCreated > 0 ||
+    overviewData.totalLeads > 0 ||
+    linkedInData.campaignList.length > 0 ||
+    facebookData.campaignList.length > 0 ||
+    emailData.totalSent > 0;
+
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
       case 'linkedin':
@@ -93,23 +318,15 @@ export default function Analytics() {
     }
   };
 
-  const formatNumber = (num: number) => {
-    if (num >= 1000) {
-      return `${(num / 1000).toFixed(1)}K`;
-    }
-    return num.toString();
-  };
-
   return (
     <div className="flex-1 overflow-auto bg-gray-50">
-      {/* Top Bar */}
       <div className="bg-white border-b border-gray-200 px-8 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-[#1E3A5F]">Analytics Dashboard</h1>
-            <p className="text-sm text-gray-500 mt-1">Track your marketing performance and ROI</p>
+            <p className="text-sm text-gray-500 mt-1">Live performance data across content, campaigns, and lead flow</p>
           </div>
-          <Button variant="outline" className="flex items-center gap-2">
+          <Button variant="outline" className="flex items-center gap-2" onClick={exportAnalytics}>
             <Calendar className="w-4 h-4" />
             Last 30 Days
           </Button>
@@ -117,16 +334,26 @@ export default function Analytics() {
       </div>
 
       <div className="p-8">
-        {/* KPI Cards */}
+        {!hasAnyData ? (
+          <Card className="p-10 rounded-lg shadow-sm border border-gray-200 mb-8">
+            <EmptyState
+              title="No analytics data yet"
+              description="Create campaigns, publish content, or add leads to populate the reporting views."
+            />
+          </Card>
+        ) : null}
+
         <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8">
           <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Total Reach</p>
-                <h3 className="text-3xl font-semibold text-[#1E3A5F]">48,200</h3>
+                <h3 className="text-3xl font-semibold text-[#1E3A5F]">
+                  {formatCount(linkedInData.totalEnrolled + facebookData.totalImpressions + emailData.totalSent)}
+                </h3>
                 <p className="text-sm text-green-600 mt-2 flex items-center gap-1">
                   <TrendingUp className="w-4 h-4" />
-                  +12% vs last month
+                  Live aggregate audience
                 </p>
               </div>
               <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
@@ -139,8 +366,10 @@ export default function Analytics() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Content Pieces Published</p>
-                <h3 className="text-3xl font-semibold text-[#1E3A5F]">47</h3>
-                <p className="text-sm text-gray-500 mt-2">Across all platforms</p>
+                <h3 className="text-3xl font-semibold text-[#1E3A5F]">
+                  {overviewData.contentPublished + linkedInData.postsPublished + facebookData.postsPublished}
+                </h3>
+                <p className="text-sm text-gray-500 mt-2">{overviewData.contentCreated} drafts created</p>
               </div>
               <div className="w-12 h-12 bg-purple-50 rounded-lg flex items-center justify-center">
                 <FileText className="w-6 h-6 text-purple-600" />
@@ -152,8 +381,10 @@ export default function Analytics() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Avg Engagement Rate</p>
-                <h3 className="text-3xl font-semibold text-[#1E3A5F]">6.8%</h3>
-                <p className="text-sm text-green-600 mt-2">Above industry avg</p>
+                <h3 className="text-3xl font-semibold text-[#1E3A5F]">
+                  {Math.round((((linkedInData.replyRate + facebookData.ctr + emailData.clickRate) / 3) || 0) * 10) / 10}%
+                </h3>
+                <p className="text-sm text-green-600 mt-2">Based on reply, CTR, and click rate</p>
               </div>
               <div className="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center">
                 <TrendingUp className="w-6 h-6 text-green-600" />
@@ -165,10 +396,10 @@ export default function Analytics() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Leads Generated</p>
-                <h3 className="text-3xl font-semibold text-[#1E3A5F]">124</h3>
+                <h3 className="text-3xl font-semibold text-[#1E3A5F]">{leadData.total}</h3>
                 <p className="text-sm text-green-600 mt-2 flex items-center gap-1">
                   <TrendingUp className="w-4 h-4" />
-                  +18% vs last month
+                  {overviewData.newLeads} new this period
                 </p>
               </div>
               <div className="w-12 h-12 bg-amber-50 rounded-lg flex items-center justify-center">
@@ -180,11 +411,11 @@ export default function Analytics() {
           <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">New AUM</p>
-                <h3 className="text-3xl font-semibold text-[#1E3A5F]">$4.2M</h3>
+                <p className="text-sm text-gray-600 mb-1">Facebook Spend</p>
+                <h3 className="text-3xl font-semibold text-[#1E3A5F]">{formatCurrency(facebookData.totalSpend)}</h3>
                 <p className="text-sm text-green-600 mt-2 flex items-center gap-1">
                   <ArrowUpRight className="w-4 h-4" />
-                  +12.3% vs last quarter
+                  CPL {formatCurrency(facebookData.cpl || 0)}
                 </p>
               </div>
               <div className="w-12 h-12 bg-teal-50 rounded-lg flex items-center justify-center">
@@ -196,11 +427,11 @@ export default function Analytics() {
           <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Avg AUM per Client</p>
-                <h3 className="text-3xl font-semibold text-[#1E3A5F]">$840K</h3>
+                <p className="text-sm text-gray-600 mb-1">Lead Conversion Rate</p>
+                <h3 className="text-3xl font-semibold text-[#1E3A5F]">{leadData.conversionRate}%</h3>
                 <p className="text-sm text-green-600 mt-2 flex items-center gap-1">
                   <ArrowUpRight className="w-4 h-4" />
-                  +5.1% vs last quarter
+                  {leadData.averageTimeToClient ?? 0} day avg to client
                 </p>
               </div>
               <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
@@ -210,249 +441,122 @@ export default function Analytics() {
           </Card>
         </div>
 
-        {/* Engagement Over Time Chart */}
         <Card className="p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
-          <h3 className="text-lg font-semibold text-[#1E3A5F] mb-6">Engagement Over Time</h3>
+          <h3 className="text-lg font-semibold text-[#1E3A5F] mb-6">Channel Reach vs Engagement</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={engagementData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis dataKey="day" stroke="#6B7280" fontSize={12} />
+              <XAxis dataKey="channel" stroke="#6B7280" fontSize={12} />
               <YAxis stroke="#6B7280" fontSize={12} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                }}
-              />
-              <Legend
-                wrapperStyle={{
-                  fontSize: '12px',
-                  paddingTop: '20px',
-                }}
-              />
-              <Line
-                key="linkedin"
-                type="monotone"
-                dataKey="linkedin"
-                stroke="#0A66C2"
-                strokeWidth={2}
-                name="LinkedIn"
-                dot={false}
-              />
-              <Line
-                key="facebook"
-                type="monotone"
-                dataKey="facebook"
-                stroke="#1877F2"
-                strokeWidth={2}
-                name="Facebook"
-                dot={false}
-              />
-              <Line
-                key="email"
-                type="monotone"
-                dataKey="email"
-                stroke="#0EA5E9"
-                strokeWidth={2}
-                name="Email"
-                dot={false}
-              />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="reach" stroke="#0EA5E9" strokeWidth={2} />
+              <Line type="monotone" dataKey="engagements" stroke="#10B981" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </Card>
 
-        {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Content by Platform Bar Chart */}
           <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-[#1E3A5F] mb-6">Content by Platform</h3>
-            <ResponsiveContainer width="100%" height={250}>
+            <h3 className="text-lg font-semibold text-[#1E3A5F] mb-4">Published Output by Channel</h3>
+            <ResponsiveContainer width="100%" height={300}>
               <BarChart data={contentData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="platform" stroke="#6B7280" fontSize={12} />
-                <YAxis stroke="#6B7280" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'white',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                  }}
-                />
-                <Bar dataKey="count" fill="#0EA5E9" radius={[8, 8, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="platform" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                  <Cell fill="#0A66C2" />
+                  <Cell fill="#1877F2" />
+                  <Cell fill="#0EA5E9" />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </Card>
 
-          {/* Lead Sources Pie Chart */}
           <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-[#1E3A5F] mb-6">Lead Sources</h3>
-            <ResponsiveContainer width="100%" height={250}>
+            <h3 className="text-lg font-semibold text-[#1E3A5F] mb-4">Lead Sources</h3>
+            <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
                   data={leadSourceData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
                   outerRadius={90}
-                  paddingAngle={5}
-                  dataKey="value"
-                  label={(entry) => `${entry.name} ${entry.value}%`}
                   labelLine={false}
+                  label={({ name, percent }) => `${name} ${Math.round((percent ?? 0) * 100)}%`}
+                  dataKey="value"
                 >
-                  {leadSourceData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  {leadSourceData.map((entry) => (
+                    <Cell key={entry.name} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'white',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                  }}
-                />
+                <Tooltip />
               </PieChart>
             </ResponsiveContainer>
           </Card>
         </div>
 
-        {/* Top Performing Content Table */}
-        <Card className="rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-[#1E3A5F] mb-4">Top Performing Content</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Title</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Platform</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Impressions</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Clicks</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Leads Generated</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">AUM Brought In</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topContent.map((content, index) => (
-                    <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-4 px-4">
-                        <p className="text-sm font-medium text-[#1E3A5F]">{content.title}</p>
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-2">
-                          {getPlatformIcon(content.platform)}
-                          <span className="text-sm text-gray-700 capitalize">{content.platform}</span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-sm text-gray-700">{formatNumber(content.impressions)}</td>
-                      <td className="py-4 px-4 text-sm text-gray-700">{content.clicks.toLocaleString()}</td>
-                      <td className="py-4 px-4">
-                        <span className="text-sm font-medium text-[#0EA5E9]">{content.leads}</span>
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="text-sm font-medium text-[#0EA5E9]">{content.aumBroughtIn}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <Card className="rounded-lg shadow-sm border border-gray-200">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-[#1E3A5F]">Top Performing Campaigns</h3>
             </div>
-          </div>
-        </Card>
+            <div className="divide-y divide-gray-100">
+              {topContent.length === 0 ? (
+                <div className="p-6">
+                  <EmptyState title="No live campaigns yet" description="Campaign performance will appear here once channels are active." />
+                </div>
+              ) : (
+                topContent.map((item) => (
+                  <div key={item.id} className="px-6 py-4 flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                        {getPlatformIcon(item.platform)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-[#1E3A5F]">{item.title}</p>
+                        <p className="text-sm text-gray-600">{item.primaryMetric}</p>
+                        <p className="text-xs text-gray-500 mt-1">{item.secondaryMetric} • {item.tertiaryMetric}</p>
+                      </div>
+                    </div>
+                    <p className="text-sm font-semibold text-[#1E3A5F] whitespace-nowrap">{item.value}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
 
-        {/* AUM Growth Chart */}
-        <Card className="p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
-          <h3 className="text-lg font-semibold text-[#1E3A5F] mb-6">AUM Growth Trend</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={aumGrowthData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis dataKey="month" stroke="#6B7280" fontSize={12} />
-              <YAxis stroke="#6B7280" fontSize={12} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                }}
-              />
-              <Legend
-                wrapperStyle={{
-                  fontSize: '12px',
-                  paddingTop: '20px',
-                }}
-              />
-              <Line
-                key="aum"
-                type="monotone"
-                dataKey="aum"
-                stroke="#0EA5E9"
-                strokeWidth={3}
-                name="AUM ($M)"
-                dot={{ fill: '#0EA5E9', r: 4 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-          
-          {/* Summary Stats Row */}
-          <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-200">
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">Total AUM Under Advisory</p>
-              <p className="text-2xl font-semibold text-[#1E3A5F]">$38.4M</p>
+          <Card className="rounded-lg shadow-sm border border-gray-200">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-[#1E3A5F]">Lead Pipeline</h3>
             </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">6-Month Growth</p>
-              <p className="text-2xl font-semibold text-green-600">+$6.4M (+20%)</p>
+            <div className="divide-y divide-gray-100">
+              {leadPipeline.map((item) => (
+                <div key={item.stage} className="px-6 py-4 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-[#1E3A5F]">{item.stage}</p>
+                    <p className="text-xs text-gray-500">{item.aum ?? 'Current lead count by status'}</p>
+                  </div>
+                  <p className="text-xl font-semibold text-[#1E3A5F]">{item.count}</p>
+                </div>
+              ))}
             </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">Projected Year-End</p>
-              <p className="text-2xl font-semibold text-[#0EA5E9]">$42M</p>
-            </div>
-          </div>
-        </Card>
-
-        {/* Lead Pipeline Table */}
-        <Card className="rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-[#1E3A5F] mb-4">Lead Pipeline</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Stage</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Count</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">AUM</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leadPipeline.map((pipeline, index) => (
-                    <tr key={`pipeline-${index}`} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-4 px-4">
-                        <p className="text-sm font-medium text-[#1E3A5F]">{pipeline.stage}</p>
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="text-sm font-medium text-[#0EA5E9]">{pipeline.count}</span>
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="text-sm font-medium text-[#0EA5E9]">{pipeline.aum || '—'}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </Card>
-
-        {/* Footer Note */}
-        <div className="text-center py-4">
-          <p className="text-sm text-gray-500">
-            Showing data for: <span className="font-medium text-[#1E3A5F]">Sarah Mitchell (Advisor)</span>
-          </p>
+          </Card>
         </div>
+
+        <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold text-[#1E3A5F] mb-4">Efficiency Indicators</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={aumGrowthData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="metric" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="value" fill="#1E3A5F" radius={[8, 8, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
       </div>
     </div>
   );

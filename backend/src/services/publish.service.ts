@@ -13,7 +13,7 @@ import { Errors } from '../middleware/errorHandler';
 import { decrypt, encrypt } from '../utils/crypto';
 import { publishQueue, notificationQueue } from '../queues';
 import type { AuthenticatedUser, PublishJobData } from '../types';
-import type { PublishDto } from '../validators/publish.validators';
+import type { PublishDto, UpdatePublishDto } from '../validators/publish.validators';
 import {
   buildOffsetPaginationResult,
   calcSkip,
@@ -356,6 +356,104 @@ export async function cancelJob(
   });
 
   logger.info('Publish job cancelled', { jobId, cancelledBy: user.id });
+}
+
+export async function updateJob(
+  jobId: string,
+  dto: UpdatePublishDto,
+  user: AuthenticatedUser
+): Promise<PublishJob> {
+  const publishJob = await prisma.publishJob.findUnique({
+    where: { id: jobId },
+  });
+
+  if (!publishJob) {
+    throw Errors.notFound('PublishJob');
+  }
+
+  if (publishJob.organizationId !== user.orgId) {
+    throw Errors.forbidden('Access denied.');
+  }
+
+  if (user.role === 'advisor' && publishJob.advisorId !== user.id) {
+    throw Errors.forbidden('You can only edit your own publish jobs.');
+  }
+
+  if (publishJob.status !== PublishJobStatus.QUEUED) {
+    throw Errors.badRequest(
+      `Cannot edit a job in ${publishJob.status} status. Only QUEUED jobs can be edited.`
+    );
+  }
+
+  let platform = publishJob.platform;
+  if (dto.channel && dto.channel !== publishJob.channel) {
+    platform = channelToPlatform(dto.channel);
+    const connection = await prisma.socialConnection.findUnique({
+      where: {
+        userId_platform: {
+          userId: publishJob.advisorId,
+          platform,
+        },
+      },
+    });
+
+    if (!connection || !connection.isActive) {
+      throw Errors.badRequest(
+        `No active ${platform} connection found. Please connect your ${platform} account first.`
+      );
+    }
+  }
+
+  const scheduledAt = dto.scheduledAt ? new Date(dto.scheduledAt) : publishJob.scheduledAt;
+  const updated = await prisma.publishJob.update({
+    where: { id: jobId },
+    data: {
+      channel: dto.channel ?? publishJob.channel,
+      platform,
+      scheduledAt,
+    },
+  });
+
+  try {
+    const bullJob = await publishQueue.getJob(jobId);
+    if (bullJob && scheduledAt) {
+      const delay = Math.max(0, scheduledAt.getTime() - Date.now());
+      await bullJob.updateData({
+        ...bullJob.data,
+        scheduledAt: scheduledAt.toISOString(),
+        platforms: [platform],
+      });
+      await bullJob.changeDelay(delay);
+    }
+  } catch (err) {
+    logger.warn('Failed to update BullMQ schedule', {
+      jobId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  await writeAuditTrail({
+    organizationId: publishJob.organizationId,
+    actorId: user.id,
+    entityType: 'PublishJob',
+    entityId: jobId,
+    action: AuditAction.UPDATED,
+    metadata: {
+      previousChannel: publishJob.channel,
+      newChannel: updated.channel,
+      previousScheduledAt: publishJob.scheduledAt,
+      newScheduledAt: updated.scheduledAt,
+    },
+  });
+
+  logger.info('Publish job updated', {
+    jobId,
+    updatedBy: user.id,
+    channel: updated.channel,
+    scheduledAt: updated.scheduledAt,
+  });
+
+  return updated;
 }
 
 /**

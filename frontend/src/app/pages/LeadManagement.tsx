@@ -1,506 +1,449 @@
-import { Bell, Linkedin, Facebook, Users as UsersIcon, Plus, MoreVertical, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, Facebook, Linkedin, LoaderCircle, Plus, Users as UsersIcon, X } from 'lucide-react';
+import { Label } from '../components/ui/label';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { useState } from 'react';
-import { DndProvider, useDrag, useDrop } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
+import { EmptyState } from '../components/ui/empty-state';
+import { ErrorState } from '../components/ui/error-state';
+import { LoadingState } from '../components/ui/loading-state';
+import { useApiData } from '../hooks/useApiData';
+import { apiClient } from '../lib/api-client';
 
-const kanbanData = {
-  'new': [
-    { id: 1, name: 'Robert Johnson', company: 'Tech Innovations Inc.', source: 'linkedin', score: 85 },
-    { id: 2, name: 'Emily Davis', company: 'Global Consulting', source: 'facebook', score: 72 },
-    { id: 3, name: 'James Wilson', company: 'Finance Corp', source: 'referral', score: 90 },
-    { id: 4, name: 'Lisa Anderson', company: 'Healthcare Systems', source: 'linkedin', score: 68 },
-  ],
-  'contacted': [
-    { id: 5, name: 'Michael Brown', company: 'Real Estate Partners', source: 'linkedin', score: 78 },
-    { id: 6, name: 'Sarah Martinez', company: 'Digital Marketing Co', source: 'facebook', score: 81 },
-    { id: 7, name: 'David Thompson', company: 'Manufacturing Ltd', source: 'referral', score: 88 },
-    { id: 8, name: 'Jennifer Garcia', company: 'Retail Solutions', source: 'linkedin', score: 75 },
-    { id: 9, name: 'William Lee', company: 'Software Systems', source: 'facebook', score: 70 },
-    { id: 10, name: 'Amanda White', company: 'Legal Services', source: 'linkedin', score: 83 },
-  ],
-  'meeting': [
-    { id: 11, name: 'Christopher Hall', company: 'Investment Group', source: 'referral', score: 92 },
-    { id: 12, name: 'Michelle Young', company: 'Education Trust', source: 'linkedin', score: 87 },
-    { id: 13, name: 'Daniel King', company: 'Energy Solutions', source: 'facebook', score: 79 },
-  ],
-  'proposal': [
-    { id: 14, name: 'Jessica Wright', company: 'Biotech Ventures', source: 'linkedin', score: 94 },
-    { id: 15, name: 'Thomas Lopez', company: 'Construction Inc', source: 'referral', score: 89 },
-  ],
-  'closed': [
-    { id: 16, name: 'Patricia Hill', company: 'Aerospace Corp', source: 'referral', score: 96 },
-  ],
-};
-
-const sourceConfig = {
-  linkedin: { icon: Linkedin, color: 'bg-blue-100 text-blue-700' },
-  facebook: { icon: Facebook, color: 'bg-indigo-100 text-indigo-700' },
-  referral: { icon: UsersIcon, color: 'bg-green-100 text-green-700' },
-};
-
-const getScoreColor = (score: number) => {
-  if (score >= 85) return 'text-green-600 bg-green-100';
-  if (score >= 70) return 'text-amber-600 bg-amber-100';
-  return 'text-gray-600 bg-gray-100';
-};
-
-interface LeadCardProps {
-  lead: {
-    id: number;
-    name: string;
-    company: string;
-    source: 'linkedin' | 'facebook' | 'referral';
-    score: number;
-    email?: string;
-    phone?: string;
-  };
-  stage: string;
-  onRemove: (leadId: number) => void;
-  onViewDetails: (lead: any) => void;
+interface Lead {
+  id: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+  company?: string | null;
+  status: string;
+  source?: string | null;
 }
 
-function LeadCard({ lead, stage, onRemove, onViewDetails }: LeadCardProps) {
-  const SourceIcon = sourceConfig[lead.source].icon;
-  const [showDropdown, setShowDropdown] = useState(false);
-  
-  const [{ isDragging }, dragRef] = useDrag({
-    type: 'LEAD',
-    item: () => ({ id: lead.id, fromStage: stage }),
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  });
-  
-  return (
-    <div
-      ref={dragRef}
-      style={{ opacity: isDragging ? 0.5 : 1 }}
-      className="p-4 mb-3 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow bg-white relative cursor-move"
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1">
-          <h4 className="text-sm font-semibold text-[#1E3A5F] mb-1">{lead.name}</h4>
-          <p className="text-xs text-gray-600">{lead.company}</p>
-        </div>
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm ${getScoreColor(lead.score)}`}>
-          {lead.score}
-        </div>
-      </div>
-      <div className="flex items-center justify-between">
-        <Badge className={`${sourceConfig[lead.source].color} border-0 text-xs`}>
-          <SourceIcon className="w-3 h-3 mr-1" />
-          {lead.source === 'referral' ? 'Referral' : lead.source.charAt(0).toUpperCase() + lead.source.slice(1)}
-        </Badge>
-        <div className="flex items-center gap-1">
-          <div className="relative">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowDropdown(!showDropdown);
-              }}
-              className="p-1.5 hover:bg-gray-100 rounded transition-colors"
-            >
-              <MoreVertical className="w-4 h-4 text-gray-600" />
-            </button>
-            {showDropdown && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
-                <div className="absolute right-0 top-8 z-20 bg-white shadow-lg rounded-lg border border-gray-200 py-1 min-w-[140px]">
-                  <button
-                    onClick={() => {
-                      onViewDetails(lead);
-                      setShowDropdown(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    View Details
-                  </button>
-                  <button
-                    onClick={() => {
-                      onRemove(lead.id);
-                      setShowDropdown(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface KanbanColumnProps {
+interface CreateLeadForm {
+  firstName: string;
+  lastName: string;
+  email: string;
+  company: string;
   title: string;
-  count: number;
-  leads: any[];
-  color: string;
-  stage: string;
-  onDrop: (leadId: number, fromStage: string, toStage: string) => void;
-  onRemove: (leadId: number) => void;
-  onViewDetails: (lead: any) => void;
+  phone: string;
+  source: 'WEBSITE' | 'LINKEDIN' | 'FACEBOOK_ADS' | 'PROSPECT_FINDER' | 'MANUAL_IMPORT';
 }
 
-function KanbanColumn({ title, count, leads, color, stage, onDrop, onRemove, onViewDetails }: KanbanColumnProps) {
-  const [{ isOver }, drop] = useDrop(() => ({
-    accept: 'LEAD',
-    drop: (item: { id: number; fromStage: string }) => {
-      if (item.fromStage !== stage) {
-        onDrop(item.id, item.fromStage, stage);
-      }
-    },
-    collect: (monitor) => ({
-      isOver: monitor.isOver(),
-    }),
-  }));
+const columns = [
+  { key: 'NEW', label: 'New', color: 'bg-blue-50' },
+  { key: 'CONTACTED', label: 'Contacted', color: 'bg-amber-50' },
+  { key: 'ENGAGED', label: 'Engaged', color: 'bg-cyan-50' },
+  { key: 'MEETING_SCHEDULED', label: 'Meeting', color: 'bg-purple-50' },
+  { key: 'CLIENT', label: 'Closed Won', color: 'bg-green-50' },
+  { key: 'LOST', label: 'Closed Lost', color: 'bg-slate-100' },
+] as const;
 
-  return (
-    <div className="flex-shrink-0 w-80">
-      <div className={`bg-white rounded-lg border border-gray-200 shadow-sm ${isOver ? 'ring-2 ring-[#0EA5E9]' : ''}`}>
-        <div className={`px-4 py-3 ${color} rounded-t-lg border-b border-gray-200`}>
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-[#1E3A5F]">{title}</h3>
-            <Badge className="bg-white text-[#1E3A5F] border-0 font-semibold">
-              {count}
-            </Badge>
-          </div>
-        </div>
-        <div ref={drop} className="p-4 max-h-[calc(100vh-280px)] overflow-y-auto min-h-[300px]">
-          {leads.map((lead) => (
-            <LeadCard 
-              key={`${stage}-${lead.id}`}
-              lead={lead} 
-              stage={stage}
-              onRemove={onRemove}
-              onViewDetails={onViewDetails}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+type LeadStatus = typeof columns[number]['key'];
+
+function isLeadStatus(value: string): value is LeadStatus {
+  return columns.some((column) => column.key === value);
+}
+
+function fullName(lead: Lead): string {
+  return `${lead.firstName ?? ''} ${lead.lastName ?? ''}`.trim() || lead.email || 'Unnamed lead';
+}
+
+function humanizeLabel(value: string): string {
+  return value
+    .toLowerCase()
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 }
 
 export default function LeadManagement() {
-  const [leads, setLeads] = useState(kanbanData);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newLead, setNewLead] = useState({ name: '', company: '', email: '', phone: '', stage: 'new' });
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [viewingLead, setViewingLead] = useState<any>(null);
+  const [search, setSearch] = useState('');
+  const [dragLeadId, setDragLeadId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<LeadStatus | null>(null);
+  const [pendingLeadId, setPendingLeadId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [submittingLead, setSubmittingLead] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [form, setForm] = useState<CreateLeadForm>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    company: '',
+    title: '',
+    phone: '',
+    source: 'WEBSITE',
+  });
+  const leads = useApiData<Lead[]>(`/leads?page=1&limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`, [search]);
+  const rows = Array.isArray(leads.data) ? leads.data : [];
+  const grouped = useMemo(() => ({
+    NEW: rows.filter((item) => item.status === 'NEW'),
+    CONTACTED: rows.filter((item) => item.status === 'CONTACTED'),
+    ENGAGED: rows.filter((item) => item.status === 'ENGAGED'),
+    MEETING_SCHEDULED: rows.filter((item) => item.status === 'MEETING_SCHEDULED'),
+    CLIENT: rows.filter((item) => item.status === 'CLIENT'),
+    LOST: rows.filter((item) => item.status === 'LOST'),
+  }), [rows]);
 
-  const stageOrder = ['new', 'contacted', 'meeting', 'proposal', 'closed'];
-  
-  const handleAddLead = () => {
-    const newLeadData = {
-      id: Date.now(),
-      name: newLead.name,
-      company: newLead.company,
-      email: newLead.email,
-      phone: newLead.phone,
-      source: 'linkedin' as const,
-      score: Math.floor(Math.random() * 30) + 70,
-    };
-    
-    setLeads(prev => ({
-      ...prev,
-      [newLead.stage]: [...prev[newLead.stage as keyof typeof prev], newLeadData]
-    }));
-    
-    setToastMessage('Lead added!');
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
-    setShowAddModal(false);
-    setNewLead({ name: '', company: '', email: '', phone: '', stage: 'new' });
-  };
+  if (leads.loading) {
+    return <LoadingState label="Loading leads..." />;
+  }
 
-  const handleDropLead = (leadId: number, fromStage: string, toStage: string) => {
-    const lead = leads[fromStage as keyof typeof leads].find((l: any) => l.id === leadId);
-    
-    if (!lead) return;
-    
-    // Check if moving to "closed" stage to show celebration
-    if (toStage === 'closed' && fromStage !== 'closed') {
-      setToastMessage('🎉 Won!');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
+  if (leads.error) {
+    return <ErrorState message={leads.error} onRetry={() => void leads.reload()} />;
+  }
+
+  const sourceBadge = (source?: string | null) => {
+    const normalized = (source ?? '').toUpperCase();
+    if (normalized.includes('LINKEDIN')) {
+      return <Badge className="bg-blue-100 text-blue-700 border-0 text-xs"><Linkedin className="w-3 h-3 mr-1" />LinkedIn</Badge>;
     }
-    
-    setLeads(prev => ({
-      ...prev,
-      [fromStage]: prev[fromStage as keyof typeof prev].filter((l: any) => l.id !== leadId),
-      [toStage]: [...prev[toStage as keyof typeof prev], lead]
-    }));
+    if (normalized.includes('FACEBOOK')) {
+      return <Badge className="bg-indigo-100 text-indigo-700 border-0 text-xs"><Facebook className="w-3 h-3 mr-1" />Facebook</Badge>;
+    }
+    return <Badge className="bg-green-100 text-green-700 border-0 text-xs"><UsersIcon className="w-3 h-3 mr-1" />{source ? humanizeLabel(source) : 'Manual'}</Badge>;
   };
 
-  const handleRemoveLead = (leadId: number) => {
-    const stage = stageOrder.find(s => 
-      leads[s as keyof typeof leads].some((l: any) => l.id === leadId)
-    );
-    
-    if (!stage) return;
-    
-    setLeads(prev => ({
-      ...prev,
-      [stage]: prev[stage as keyof typeof prev].filter((l: any) => l.id !== leadId)
-    }));
+  const setLeadStatusLocal = (leadId: string, status: LeadStatus) => {
+    leads.setData((current) => {
+      if (!Array.isArray(current)) {
+        return current;
+      }
+      return current.map((item) => (item.id === leadId ? { ...item, status } : item));
+    });
+  };
+
+  const moveLead = async (lead: Lead, status: LeadStatus) => {
+    if (lead.status === status || pendingLeadId === lead.id) {
+      return;
+    }
+
+    const previousStatus = isLeadStatus(lead.status) ? lead.status : null;
+    setActionError(null);
+    setPendingLeadId(lead.id);
+    setLeadStatusLocal(lead.id, status);
+
+    try {
+      await apiClient.patch(`/leads/${lead.id}/status`, { status });
+    } catch (err) {
+      if (previousStatus) {
+        setLeadStatusLocal(lead.id, previousStatus);
+      }
+      setActionError(err instanceof Error ? err.message : 'Unable to move lead.');
+    } finally {
+      setPendingLeadId(null);
+      setDragLeadId(null);
+      setDropTarget(null);
+    }
+  };
+
+  const resetForm = () => {
+    setForm({
+      firstName: '',
+      lastName: '',
+      email: '',
+      company: '',
+      title: '',
+      phone: '',
+      source: 'WEBSITE',
+    });
+    setCreateError(null);
+  };
+
+  const handleCreateLead = async () => {
+    setCreateError(null);
+    setSubmittingLead(true);
+
+    try {
+      await apiClient.post('/leads', {
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        email: form.email.trim(),
+        company: form.company.trim() || undefined,
+        title: form.title.trim() || undefined,
+        phone: form.phone.trim() || undefined,
+        source: form.source,
+      });
+      setShowCreateModal(false);
+      resetForm();
+      await leads.reload();
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'Unable to create lead.');
+    } finally {
+      setSubmittingLead(false);
+    }
   };
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <div className="flex-1 overflow-auto">
-        {/* Top Bar */}
-        <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-[#1E3A5F]">Lead Management</h1>
-            <p className="text-sm text-gray-500 mt-1">Track and manage your prospect pipeline</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button 
-              className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
-              onClick={() => setShowAddModal(true)}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Lead
-            </Button>
-          </div>
-        </div>
-
-        {/* Add Lead Modal */}
-        {showAddModal && (
-          <div 
-            className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50 p-4"
-            onClick={() => setShowAddModal(false)}
-          >
-            <div 
-              className="bg-white rounded-lg shadow-xl w-full max-w-md"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+    <div className="flex-1 overflow-auto">
+      {showCreateModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+              <div>
                 <h2 className="text-xl font-semibold text-[#1E3A5F]">Add Lead</h2>
-                <button onClick={() => setShowAddModal(false)}>
-                  <X className="w-5 h-5 text-gray-500" />
-                </button>
+                <p className="mt-1 text-sm text-slate-500">Create a real lead record in the live pipeline.</p>
               </div>
-              
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Name</label>
-                  <Input
-                    value={newLead.name}
-                    onChange={(e) => setNewLead({ ...newLead, name: e.target.value })}
-                    placeholder="Enter lead name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Company</label>
-                  <Input
-                    value={newLead.company}
-                    onChange={(e) => setNewLead({ ...newLead, company: e.target.value })}
-                    placeholder="Enter company name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
-                  <Input
-                    type="email"
-                    value={newLead.email}
-                    onChange={(e) => setNewLead({ ...newLead, email: e.target.value })}
-                    placeholder="email@example.com"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone</label>
-                  <Input
-                    type="tel"
-                    value={newLead.phone}
-                    onChange={(e) => setNewLead({ ...newLead, phone: e.target.value })}
-                    placeholder="(555) 123-4567"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Stage</label>
-                  <select
-                    value={newLead.stage}
-                    onChange={(e) => setNewLead({ ...newLead, stage: e.target.value })}
-                    className="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]"
-                  >
-                    <option value="new">New Lead</option>
-                    <option value="contacted">Contacted</option>
-                    <option value="meeting">Meeting Set</option>
-                    <option value="proposal">Proposal</option>
-                  </select>
-                </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setShowCreateModal(false);
+                  resetForm();
+                }}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="grid gap-4 px-6 py-5 md:grid-cols-2">
+              <div>
+                <Label htmlFor="leadFirstName">First Name</Label>
+                <Input
+                  id="leadFirstName"
+                  name="leadFirstName"
+                  value={form.firstName}
+                  onChange={(event) => setForm((current) => ({ ...current, firstName: event.target.value }))}
+                />
               </div>
-              
-              <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
-                <Button
-                  className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
-                  onClick={() => setShowAddModal(false)}
+              <div>
+                <Label htmlFor="leadLastName">Last Name</Label>
+                <Input
+                  id="leadLastName"
+                  name="leadLastName"
+                  value={form.lastName}
+                  onChange={(event) => setForm((current) => ({ ...current, lastName: event.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="leadEmail">Email</Label>
+                <Input
+                  id="leadEmail"
+                  name="leadEmail"
+                  type="email"
+                  value={form.email}
+                  onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="leadCompany">Company</Label>
+                <Input
+                  id="leadCompany"
+                  name="leadCompany"
+                  value={form.company}
+                  onChange={(event) => setForm((current) => ({ ...current, company: event.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="leadTitle">Title</Label>
+                <Input
+                  id="leadTitle"
+                  name="leadTitle"
+                  value={form.title}
+                  onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="leadPhone">Phone</Label>
+                <Input
+                  id="leadPhone"
+                  name="leadPhone"
+                  value={form.phone}
+                  onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="leadSource">Source</Label>
+                <select
+                  id="leadSource"
+                  name="leadSource"
+                  value={form.source}
+                  onChange={(event) => setForm((current) => ({ ...current, source: event.target.value as CreateLeadForm['source'] }))}
+                  className="mt-2 flex h-9 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-offset-white focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
                 >
-                  Cancel
-                </Button>
-                <Button
-                  className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
-                  onClick={handleAddLead}
-                  disabled={!newLead.name || !newLead.company}
-                >
-                  Add Lead
-                </Button>
+                  <option value="WEBSITE">Website</option>
+                  <option value="LINKEDIN">LinkedIn</option>
+                  <option value="FACEBOOK_ADS">Facebook Ads</option>
+                  <option value="PROSPECT_FINDER">Prospect Finder</option>
+                  <option value="MANUAL_IMPORT">Manual Import</option>
+                </select>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* View Details Modal */}
-        {viewingLead && (
-          <div 
-            className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50 p-4"
-            onClick={() => setViewingLead(null)}
-          >
-            <div 
-              className="bg-white rounded-lg shadow-xl w-full max-w-md"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-[#1E3A5F]">Lead Details</h2>
-                <button onClick={() => setViewingLead(null)}>
-                  <X className="w-5 h-5 text-gray-500" />
-                </button>
-              </div>
-              
-              <div className="p-6 space-y-3">
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Name</label>
-                  <p className="text-[#1E3A5F] font-medium">{viewingLead.name}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Company</label>
-                  <p className="text-[#1E3A5F] font-medium">{viewingLead.company}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Email</label>
-                  <p className="text-[#1E3A5F] font-medium">{viewingLead.email || 'Not provided'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Phone</label>
-                  <p className="text-[#1E3A5F] font-medium">{viewingLead.phone || 'Not provided'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Lead Score</label>
-                  <p className="text-[#1E3A5F] font-medium">{viewingLead.score}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Source</label>
-                  <p className="text-[#1E3A5F] font-medium capitalize">{viewingLead.source}</p>
-                </div>
-              </div>
-              
-              <div className="p-6 border-t border-gray-200 flex justify-end">
-                <Button
-                  className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
-                  onClick={() => setViewingLead(null)}
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Toast */}
-        {showToast && (
-          <div className="fixed bottom-4 right-4 z-50 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg">
-            {toastMessage}
-          </div>
-        )}
-
-        {/* Pipeline Stats */}
-        <div className="bg-white border-b border-gray-200 px-8 py-4">
-          <div className="flex gap-8">
-            <div>
-              <p className="text-xs text-gray-600 uppercase tracking-wider mb-1">Total Leads</p>
-              <p className="text-2xl font-semibold text-[#1E3A5F]">16</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-600 uppercase tracking-wider mb-1">Conversion Rate</p>
-              <p className="text-2xl font-semibold text-green-600">23%</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-600 uppercase tracking-wider mb-1">Avg Deal Size</p>
-              <p className="text-2xl font-semibold text-[#1E3A5F]">$127K</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-600 uppercase tracking-wider mb-1">Pipeline Value</p>
-              <p className="text-2xl font-semibold text-[#0EA5E9]">$2.3M</p>
+            {createError ? <p className="px-6 pb-2 text-sm text-red-600">{createError}</p> : null}
+            <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowCreateModal(false);
+                  resetForm();
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
+                disabled={submittingLead || !form.firstName.trim() || !form.lastName.trim() || !form.email.trim()}
+                onClick={() => void handleCreateLead()}
+              >
+                {submittingLead ? 'Saving...' : 'Create Lead'}
+              </Button>
             </div>
           </div>
         </div>
-
-        {/* Kanban Board */}
-        <div className="p-8">
-          <div className="flex gap-6 overflow-x-auto pb-4">
-            <KanbanColumn
-              title="New Lead"
-              count={leads.new.length}
-              leads={leads.new}
-              color="bg-gray-50"
-              stage="new"
-              onDrop={handleDropLead}
-              onRemove={handleRemoveLead}
-              onViewDetails={setViewingLead}
-            />
-            <KanbanColumn
-              title="Contacted"
-              count={leads.contacted.length}
-              leads={leads.contacted}
-              color="bg-blue-50"
-              stage="contacted"
-              onDrop={handleDropLead}
-              onRemove={handleRemoveLead}
-              onViewDetails={setViewingLead}
-            />
-            <KanbanColumn
-              title="Meeting Set"
-              count={leads.meeting.length}
-              leads={leads.meeting}
-              color="bg-purple-50"
-              stage="meeting"
-              onDrop={handleDropLead}
-              onRemove={handleRemoveLead}
-              onViewDetails={setViewingLead}
-            />
-            <KanbanColumn
-              title="Proposal"
-              count={leads.proposal.length}
-              leads={leads.proposal}
-              color="bg-amber-50"
-              stage="proposal"
-              onDrop={handleDropLead}
-              onRemove={handleRemoveLead}
-              onViewDetails={setViewingLead}
-            />
-            <KanbanColumn
-              title="Closed Won"
-              count={leads.closed.length}
-              leads={leads.closed}
-              color="bg-green-50"
-              stage="closed"
-              onDrop={handleDropLead}
-              onRemove={handleRemoveLead}
-              onViewDetails={setViewingLead}
-            />
-          </div>
+      ) : null}
+      <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-[#1E3A5F]">Lead Management</h1>
+          <p className="text-sm text-gray-500 mt-1">Live lead pipeline. Drag cards between stages or use the arrow controls.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Input
+            id="leadSearch"
+            name="leadSearch"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search leads..."
+            className="w-64"
+          />
+          <Button className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white" onClick={() => setShowCreateModal(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Lead
+          </Button>
         </div>
       </div>
-    </DndProvider>
+
+      <div className="p-8">
+        {actionError ? (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {actionError}
+          </div>
+        ) : null}
+        {rows.length === 0 ? (
+          <Card className="p-10 rounded-lg shadow-sm border border-gray-200">
+            <EmptyState title="No leads yet" description="Leads created from campaigns, imports, or manual entry will appear here." />
+          </Card>
+        ) : (
+          <div className="flex gap-6 overflow-x-auto pb-4">
+            {columns.map((column) => {
+              const columnRows = grouped[column.key];
+              return (
+                <div key={column.key} className="flex-shrink-0 w-80">
+                  <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <div className={`px-4 py-3 ${column.color} rounded-t-lg border-b border-gray-200`}>
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold text-[#1E3A5F]">{column.label}</h3>
+                        <Badge className="bg-white text-[#1E3A5F] border-0 font-semibold">{columnRows.length}</Badge>
+                      </div>
+                    </div>
+                    <div
+                      className={`p-4 max-h-[calc(100vh-280px)] overflow-y-auto min-h-[300px] rounded-b-lg transition-colors ${
+                        dropTarget === column.key ? 'bg-sky-50' : ''
+                      }`}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        if (dragLeadId) {
+                          setDropTarget(column.key);
+                        }
+                      }}
+                      onDragLeave={() => {
+                        if (dropTarget === column.key) {
+                          setDropTarget(null);
+                        }
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        const leadId = event.dataTransfer.getData('text/plain') || dragLeadId;
+                        const lead = rows.find((item) => item.id === leadId);
+                        if (!lead) {
+                          setDropTarget(null);
+                          return;
+                        }
+                        void moveLead(lead, column.key);
+                      }}
+                    >
+                      {columnRows.length === 0 ? (
+                        <p className="text-sm text-gray-500">No leads in this stage.</p>
+                      ) : columnRows.map((lead) => (
+                        <div
+                          key={lead.id}
+                          draggable={pendingLeadId !== lead.id}
+                          onDragStart={(event) => {
+                            event.dataTransfer.setData('text/plain', lead.id);
+                            event.dataTransfer.effectAllowed = 'move';
+                            setDragLeadId(lead.id);
+                            setActionError(null);
+                          }}
+                          onDragEnd={() => {
+                            setDragLeadId(null);
+                            setDropTarget(null);
+                          }}
+                          className={`p-4 mb-3 rounded-lg shadow-sm border hover:shadow-md transition-shadow bg-white ${
+                            dragLeadId === lead.id ? 'border-sky-400 shadow-md' : 'border-gray-200'
+                          } ${pendingLeadId === lead.id ? 'opacity-70' : ''}`}
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="min-w-0 flex-1">
+                              <h4 className="truncate text-sm font-semibold text-[#1E3A5F] mb-1">{fullName(lead)}</h4>
+                              <p className="truncate text-xs text-gray-600">{lead.company || 'No company provided'}</p>
+                            </div>
+                            {pendingLeadId === lead.id ? (
+                              <LoaderCircle className="ml-3 h-4 w-4 shrink-0 animate-spin text-sky-600" />
+                            ) : null}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="shrink-0">{sourceBadge(lead.source)}</div>
+                            <span className="min-w-0 truncate text-right text-xs text-gray-500">{lead.email || 'No email'}</span>
+                          </div>
+                          <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2 text-xs text-gray-600"
+                              disabled={pendingLeadId === lead.id || columns.findIndex((item) => item.key === column.key) === 0}
+                              onClick={() => {
+                                const index = columns.findIndex((item) => item.key === column.key);
+                                const previousColumn = columns[index - 1];
+                                if (previousColumn) {
+                                  void moveLead(lead, previousColumn.key);
+                                }
+                              }}
+                            >
+                              <ChevronLeft className="mr-1 h-4 w-4" />
+                              Back
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2 text-xs text-gray-600"
+                              disabled={pendingLeadId === lead.id || columns.findIndex((item) => item.key === column.key) === columns.length - 1}
+                              onClick={() => {
+                                const index = columns.findIndex((item) => item.key === column.key);
+                                const nextColumn = columns[index + 1];
+                                if (nextColumn) {
+                                  void moveLead(lead, nextColumn.key);
+                                }
+                              }}
+                            >
+                              Next
+                              <ChevronRight className="ml-1 h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

@@ -1,5 +1,3 @@
-version: "3.9"
-
 # =============================================================================
 # Vireos Backend — Docker Compose Development Override
 # =============================================================================
@@ -20,10 +18,10 @@ services:
   # ---------------------------------------------------------------------------
   app:
     build:
-      context: .
-      dockerfile: docker/Dockerfile
+      context: ..
+      dockerfile: backend/docker/Dockerfile
       # Use builder stage which includes devDependencies (ts-node-dev)
-      target: builder
+      target: backend-builder
     command:
       - "npx"
       - "ts-node-dev"
@@ -33,31 +31,37 @@ services:
       - "--watch"
       - "src"
       - "src/server.ts"
+    working_dir: /app/backend
     environment:
       NODE_ENV: development
       LOG_LEVEL: debug
       DATABASE_URL: postgresql://vireos:vireos_dev@postgres:5432/vireos?schema=public
       REDIS_URL: redis://redis:6379
+      ENABLE_HTTPS: "true"
+      HTTPS_PORT: 3443
+      SSL_CERT_PATH: /app/backend/certs/dev-cert.pem
+      SSL_KEY_PATH: /app/backend/certs/dev-key.pem
     volumes:
       # Mount source code for hot reload — changes reflect instantly
-      - ./src:/app/src:delegated
+      - ./src:/app/backend/src:delegated
       # Mount tests directory
-      - ./tests:/app/tests:delegated
+      - ./tests:/app/backend/tests:delegated
       # Mount tsconfig and package.json for ts-node-dev
-      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./tsconfig.json:/app/backend/tsconfig.json:ro
       # Persist node_modules (use container's installed version, not host's)
-      - /app/node_modules
+      - /app/backend/node_modules
     ports:
-      - "${PORT:-3000}:3000"
+      - "${HOST_PORT:-13000}:3000"
+      - "${HOST_HTTPS_PORT:-13443}:3443"
 
   # ---------------------------------------------------------------------------
   # Worker — development mode with hot reload
   # ---------------------------------------------------------------------------
   worker:
     build:
-      context: .
-      dockerfile: docker/Dockerfile
-      target: builder
+      context: ..
+      dockerfile: backend/docker/Dockerfile
+      target: backend-builder
     command:
       - "npx"
       - "ts-node-dev"
@@ -65,15 +69,16 @@ services:
       - "--transpile-only"
       - "--exit-child"
       - "src/queues/workers/index.ts"
+    working_dir: /app/backend
     environment:
       NODE_ENV: development
       LOG_LEVEL: debug
       DATABASE_URL: postgresql://vireos:vireos_dev@postgres:5432/vireos?schema=public
       REDIS_URL: redis://redis:6379
     volumes:
-      - ./src:/app/src:delegated
-      - ./tsconfig.json:/app/tsconfig.json:ro
-      - /app/node_modules
+      - ./src:/app/backend/src:delegated
+      - ./tsconfig.json:/app/backend/tsconfig.json:ro
+      - /app/backend/node_modules
 
   # ---------------------------------------------------------------------------
   # pgAdmin 4 — PostgreSQL web GUI
@@ -88,7 +93,7 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: "False"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
     ports:
-      - "5050:80"
+      - "${PGADMIN_PORT:-15050}:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
@@ -106,7 +111,7 @@ services:
     environment:
       REDIS_HOSTS: "local:redis:6379"
     ports:
-      - "8081:8081"
+      - "${REDIS_COMMANDER_PORT:-18082}:8081"
     depends_on:
       - redis
     networks:

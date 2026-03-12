@@ -1,0 +1,968 @@
+{
+  "schema_version": "2.0",
+  "metadata": {
+    "project": "Vireos Platform - MVP Phase 1 (Compliance & Security)",
+    "rtm_source": "docs/RTM.json",
+    "frd_source": "docs/FRD.md",
+    "generated": {
+      "iso": "2026-03-11T00:00:00Z",
+      "revision": 4
+    },
+    "run": {
+      "env": "local-docker",
+      "build_sha": "",
+      "test_run_id": "artifact-refresh-20260311",
+      "started_at": "2026-03-11T06:50:00.000Z",
+      "finished_at": "2026-03-11T07:00:00.000Z"
+    },
+    "source_hash": "59db14b7c29fe81d308a2e4a083ef8f32c4858939b9b163ea2ccd1e923adb777"
+  },
+  "summary": {
+    "requirements_total": 21,
+    "requirements_verified": 3,
+    "criteria_total": 63,
+    "criteria_passed": 11
+  },
+  "entries": [
+    {
+      "requirement_id": "FR-001",
+      "title": "Multi-tenant isolation with organization_id and Row-Level Security (RLS)",
+      "priority": "MUST",
+      "dependencies": [],
+      "tests": [
+        "TC-SEC-001"
+      ],
+      "criteria": [
+        {
+          "id": "FR-001-AC-1",
+          "text": "Given a user from Org A, when querying any table, then rows from Org B are never returned.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-001-AC-2",
+          "text": "Given direct ID references, when accessing resources, then RLS denies cross-tenant access.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-001-AC-3",
+          "text": "Given admin tooling, when viewing system data, then cross-tenant views require Super Admin role.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "test_coverage": false,
+        "verification_passed": false,
+        "last_verified": null,
+        "evidence_bundle": []
+      }
+    },
+    {
+      "requirement_id": "FR-002",
+      "title": "Role-Based Access Control (RBAC) per permission matrix",
+      "priority": "MUST",
+      "dependencies": [
+        "FR-021"
+      ],
+      "tests": [
+        "TC-SEC-002"
+      ],
+      "criteria": [
+        {
+          "id": "FR-002-AC-1",
+          "text": "Given an Advisor, when attempting to publish, then action is blocked until Approved by Compliance/Admin.",
+          "critical": true,
+          "passed": true,
+          "last_checked": "2026-03-11T08:35:04.194Z",
+          "evidence": [
+            "mcp-artifacts/workflow-tests/publish-gating.json",
+            "mcp-artifacts/persona-sweep/report.json"
+          ]
+        },
+        {
+          "id": "FR-002-AC-2",
+          "text": "Given a Compliance user, when reviewing content, then approve/reject/edit is permitted.",
+          "critical": true,
+          "passed": true,
+          "last_checked": "2026-03-11T08:35:04.194Z",
+          "evidence": [
+            "mcp-artifacts/workflow-tests/compliance-review-flow.json",
+            "mcp-artifacts/persona-sweep/screenshots/compliance__compliance-officer__review.png"
+          ]
+        },
+        {
+          "id": "FR-002-AC-3",
+          "text": "Given an Admin, when managing users, then invite/remove/role-change is permitted.",
+          "critical": true,
+          "passed": true,
+          "last_checked": "2026-03-11T08:35:04.194Z",
+          "evidence": [
+            "mcp-artifacts/workflow-tests/admin-user-lifecycle.json",
+            "mcp-artifacts/persona-sweep/screenshots/admin__admin__users.png"
+          ]
+        }
+      ],
+      "verification": {
+        "test_coverage": true,
+        "verification_passed": true,
+        "last_verified": "2026-03-11T08:35:04.194Z",
+        "evidence_bundle": [
+          "mcp-artifacts/artifacts/artifact_manifest.json",
+          "mcp-artifacts/workflow-tests/publish-gating.json",
+          "mcp-artifacts/workflow-tests/compliance-review-flow.json",
+          "mcp-artifacts/workflow-tests/admin-user-lifecycle.json",
+          "mcp-artifacts/persona-sweep/report.json"
+        ]
+      }
+    },
+    {
+      "requirement_id": "FR-003",
+      "title": "AI pre-generation compliance guardrails",
+      "priority": "MUST",
+      "dependencies": [],
+      "tests": [
+        "TC-SEC-003"
+      ],
+      "criteria": [
+        {
+          "id": "FR-003-AC-1",
+          "text": "Given a prompt with prohibited terms, when generating, then block or sanitize before send to model.",
+          "critical": true,
+          "passed": true,
+          "last_checked": "2026-03-11T08:35:04.194Z",
+          "evidence": [
+            "mcp-artifacts/workflow-tests/ai-guardrails.json"
+          ]
+        },
+        {
+          "id": "FR-003-AC-2",
+          "text": "Given investment content, when generating, then required risk disclosures are included.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-003-AC-3",
+          "text": "Given ICP config, when generating, then ICP-specific rules are applied.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "test_coverage": false,
+        "verification_passed": false,
+        "last_verified": null,
+        "evidence_bundle": []
+      }
+    },
+    {
+      "requirement_id": "FR-004",
+      "title": "Post-generation compliance validation and auto-disclaimers",
+      "priority": "MUST",
+      "dependencies": [],
+      "tests": [
+        "TC-RBAC-004"
+      ],
+      "criteria": [
+        {
+          "id": "FR-004-AC-1",
+          "text": "Given generated content, when scanned, then violations are flagged and content routed to review.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-004-AC-2",
+          "text": "Given missing disclosure, when detected, then system auto-inserts compliant disclaimer text.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-004-AC-3",
+          "text": "Given uncertain compliance score, when below threshold, then content is forced to Pending Review.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "test_coverage": false,
+        "verification_passed": false,
+        "last_verified": null,
+        "evidence_bundle": []
+      }
+    },
+    {
+      "requirement_id": "FR-005",
+      "title": "Compliance workflow enforcement (Draft → Review → Approved/Rejected)",
+      "priority": "MUST",
+      "dependencies": [
+        "FR-002"
+      ],
+      "tests": [
+        "TC-ANL-021",
+        "TC-MT-005"
+      ],
+      "criteria": [
+        {
+          "id": "FR-005-AC-1",
+          "text": "Given Draft content, when Advisor submits, then status changes to Pending Review and notifies Compliance.",
+          "critical": true,
+          "passed": true,
+          "last_checked": "2026-03-11T07:00:00.000Z",
+          "evidence": [
+            "mcp-artifacts/workflow-tests/compliance-review-flow.json",
+            "mcp-artifacts/persona-sweep/report.json",
+            "mcp-artifacts/persona-sweep/screenshots/compliance__compliance-officer__review.png",
+            "backend/src/services/review.service.ts (notification creation on submit)"
+          ]
+        },
+        {
+          "id": "FR-005-AC-2",
+          "text": "Given Rejected content, when Advisor edits, then it can be resubmitted with change notes.",
+          "critical": true,
+          "passed": true,
+          "last_checked": "2026-03-11T07:00:00.000Z",
+          "evidence": [
+            "mcp-artifacts/workflow-tests/compliance-review-flow.json",
+            "backend/src/services/review.service.ts"
+          ]
+        },
+        {
+          "id": "FR-005-AC-3",
+          "text": "Given Approved content, when publishing, then only permitted roles can publish.",
+          "critical": true,
+          "passed": true,
+          "last_checked": "2026-03-11T07:00:00.000Z",
+          "evidence": [
+            "mcp-artifacts/workflow-tests/publish-gating.json",
+            "backend/src/services/publish.service.ts"
+          ]
+        }
+      ],
+      "verification": {
+        "test_coverage": true,
+        "verification_passed": true,
+        "last_verified": "2026-03-11T07:00:00.000Z",
+        "evidence_bundle": [
+          "mcp-artifacts/artifacts/artifact_manifest.json",
+          "mcp-artifacts/workflow-tests/compliance-review-flow.json",
+          "mcp-artifacts/workflow-tests/publish-gating.json",
+          "mcp-artifacts/persona-sweep/report.json"
+        ]
+      }
+    },
+    {
+      "requirement_id": "FR-006",
+      "title": "Immutable audit trail for content and user actions",
+      "priority": "MUST",
+      "dependencies": [],
+      "tests": [
+        "TC-AI-006",
+        "TC-AI-007"
+      ],
+      "criteria": [
+        {
+          "id": "FR-006-AC-1",
+          "text": "Given any content change, when saved, then an audit record is appended with before/after diffs.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-006-AC-2",
+          "text": "Given a status change, when performed, then actor, timestamp, and reason are recorded.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-006-AC-3",
+          "text": "Given an audit export, when requested, then entries are ordered, complete, and non-editable.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "test_coverage": false,
+        "verification_passed": false,
+        "last_verified": null,
+        "evidence_bundle": []
+      }
+    },
+    {
+      "requirement_id": "FR-007",
+      "title": "Compliance export to PDF/Word",
+      "priority": "MUST",
+      "dependencies": [
+        "FR-006"
+      ],
+      "tests": [
+        "TC-AI-007"
+      ],
+      "criteria": [
+        {
+          "id": "FR-007-AC-1",
+          "text": "Given an Approved item, when exporting, then PDF/Word includes content, disclosures, and approvals.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-007-AC-2",
+          "text": "Given Pending Review, when exporting, then reviewer notes are included.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-007-AC-3",
+          "text": "Given export, when downloaded, then file is accessible to authorized roles only.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "test_coverage": false,
+        "verification_passed": false,
+        "last_verified": null,
+        "evidence_bundle": []
+      }
+    },
+    {
+      "requirement_id": "FR-008",
+      "title": "Secrets management and token encryption",
+      "priority": "MUST",
+      "dependencies": [
+        "FR-021"
+      ],
+      "tests": [
+        "TC-COMP-008"
+      ],
+      "criteria": [
+        {
+          "id": "FR-008-AC-1",
+          "text": "Given stored tokens, when inspected at DB layer, then values are encrypted.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-008-AC-2",
+          "text": "Given key rotation, when executed, then services continue without token leakage.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-008-AC-3",
+          "text": "Given service startup, when loading secrets, then only least-privileged processes can read them.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "test_coverage": false,
+        "verification_passed": false,
+        "last_verified": null,
+        "evidence_bundle": []
+      }
+    },
+    {
+      "requirement_id": "FR-009",
+      "title": "Encryption in transit and at rest",
+      "priority": "MUST",
+      "dependencies": [],
+      "tests": [
+        "TC-AUD-009",
+        "TC-CRED-020",
+        "TC-EXP-010",
+        "TC-NOT-016",
+        "TC-USG-019"
+      ],
+      "criteria": [
+        {
+          "id": "FR-009-AC-1",
+          "text": "Given any API call, when intercepted, then traffic is TLS 1.2+ encrypted.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-009-AC-2",
+          "text": "Given database storage, when querying encryption status, then at-rest encryption is enabled.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-009-AC-3",
+          "text": "Given backups, when created, then backups are encrypted with managed keys.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "test_coverage": false,
+        "verification_passed": false,
+        "last_verified": null,
+        "evidence_bundle": []
+      }
+    },
+    {
+      "requirement_id": "FR-010",
+      "title": "API rate limiting and input validation",
+      "priority": "MUST",
+      "dependencies": [],
+      "tests": [
+        "TC-EXP-010"
+      ],
+      "criteria": [
+        {
+          "id": "FR-010-AC-1",
+          "text": "Given excessive requests, when limits exceeded, then 429 is returned and logged.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-010-AC-2",
+          "text": "Given invalid input, when submitted, then request is rejected with detailed but safe errors.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-010-AC-3",
+          "text": "Given known bad patterns, when detected, then requests are blocked and alerted.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "test_coverage": false,
+        "verification_passed": false,
+        "last_verified": null,
+        "evidence_bundle": []
+      }
+    },
+    {
+      "requirement_id": "FR-011",
+      "title": "Security event logging and monitoring",
+      "priority": "MUST",
+      "dependencies": [],
+      "tests": [
+        "TC-ENC-011"
+      ],
+      "criteria": [
+        {
+          "id": "FR-011-AC-1",
+          "text": "Given repeated auth failures, when threshold reached, then alert is sent to ops channel.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-011-AC-2",
+          "text": "Given privilege escalation attempt, when detected, then event is logged with context.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-011-AC-3",
+          "text": "Given rate limit bursts, when anomalous, then alerts include tenant and IP.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "test_coverage": false,
+        "verification_passed": false,
+        "last_verified": null,
+        "evidence_bundle": []
+      }
+    },
+    {
+      "requirement_id": "FR-012",
+      "title": "Access logging for PII and sensitive records",
+      "priority": "MUST",
+      "dependencies": [
+        "FR-021",
+        "FR-002"
+      ],
+      "tests": [
+        "TC-PII-012"
+      ],
+      "criteria": [
+        {
+          "id": "FR-012-AC-1",
+          "text": "Given a user views a lead with PII, when accessed, then a view log entry is created.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-012-AC-2",
+          "text": "Given CSV export with PII, when executed, then actor, scope, and reason are logged.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-012-AC-3",
+          "text": "Given audit search, when filtered by user or record, then matching access events are returned.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "test_coverage": false,
+        "verification_passed": false,
+        "last_verified": null,
+        "evidence_bundle": []
+      }
+    },
+    {
+      "requirement_id": "FR-013",
+      "title": "Publish gating: only approved content can be published",
+      "priority": "MUST",
+      "dependencies": [
+        "FR-002",
+        "FR-005",
+        "FR-004"
+      ],
+      "tests": [
+        "TC-SEC-013"
+      ],
+      "criteria": [
+        {
+          "id": "FR-013-AC-1",
+          "text": "Given content not Approved, when publish is attempted, then action is denied with reason.",
+          "critical": true,
+          "passed": true,
+          "last_checked": "2026-03-11T07:00:00.000Z",
+          "evidence": [
+            "mcp-artifacts/workflow-tests/publish-gating.json",
+            "backend/src/services/publish.service.ts"
+          ]
+        },
+        {
+          "id": "FR-013-AC-2",
+          "text": "Given Approved content, when published, then publication event is audited.",
+          "critical": true,
+          "passed": false,
+          "last_checked": "2026-03-11T07:00:00.000Z",
+          "evidence": []
+        },
+        {
+          "id": "FR-013-AC-3",
+          "text": "Given bypass attempts, when detected, then system prevents and logs the attempt.",
+          "critical": true,
+          "passed": false,
+          "last_checked": "2026-03-11T07:00:00.000Z",
+          "evidence": [
+            "mcp-artifacts/workflow-tests/publish-gating.json"
+          ]
+        }
+      ],
+      "verification": {
+        "test_coverage": false,
+        "verification_passed": false,
+        "last_verified": "2026-03-11T07:00:00.000Z",
+        "evidence_bundle": [
+          "mcp-artifacts/workflow-tests/publish-gating.json"
+        ]
+      }
+    },
+    {
+      "requirement_id": "FR-014",
+      "title": "Compliance notifications for key events",
+      "priority": "SHOULD",
+      "dependencies": [],
+      "tests": [
+        "TC-ENC-011",
+        "TC-SEC-014",
+        "TC-SOC-018"
+      ],
+      "criteria": [
+        {
+          "id": "FR-014-AC-1",
+          "text": "Given content submitted, when event occurs, then Compliance receives Email and in-app alerts.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-014-AC-2",
+          "text": "Given content approved/rejected, when event occurs, then Advisor is notified with details.",
+          "critical": false,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-014-AC-3",
+          "text": "Given changes needed, when sent, then Advisor sees notes inline.",
+          "critical": false,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "test_coverage": false,
+        "verification_passed": false,
+        "last_verified": null,
+        "evidence_bundle": []
+      }
+    },
+    {
+      "requirement_id": "FR-015",
+      "title": "ICP-specific compliance rules configuration",
+      "priority": "SHOULD",
+      "dependencies": [],
+      "tests": [
+        "TC-RATE-015"
+      ],
+      "criteria": [
+        {
+          "id": "FR-015-AC-1",
+          "text": "Given an ICP config change, when saved, then new rules apply to subsequent generations.",
+          "critical": false,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-015-AC-2",
+          "text": "Given firm-specific disclosure text, when configured, then it appears in generated outputs.",
+          "critical": false,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-015-AC-3",
+          "text": "Given prohibited list updates, when applied, then pre-checks enforce them.",
+          "critical": false,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "test_coverage": false,
+        "verification_passed": false,
+        "last_verified": null,
+        "evidence_bundle": []
+      }
+    },
+    {
+      "requirement_id": "FR-016",
+      "title": "Prohibited terms list management and enforcement",
+      "priority": "SHOULD",
+      "dependencies": [],
+      "tests": [
+        "TC-NOT-016"
+      ],
+      "criteria": [
+        {
+          "id": "FR-016-AC-1",
+          "text": "Given prohibited terms, when present in prompts, then generation is blocked or sanitized.",
+          "critical": false,
+          "passed": true,
+          "last_checked": "2026-03-11T08:35:04.194Z",
+          "evidence": [
+            "mcp-artifacts/workflow-tests/ai-guardrails.json"
+          ]
+        },
+        {
+          "id": "FR-016-AC-2",
+          "text": "Given prohibited terms in outputs, when detected, then content is flagged for review.",
+          "critical": false,
+          "passed": true,
+          "last_checked": "2026-03-11T11:08:34.023Z",
+          "evidence": [
+            "mcp-artifacts/workflow-tests/post-generation-flags.json"
+          ]
+        },
+        {
+          "id": "FR-016-AC-3",
+          "text": "Given term updates, when saved, then enforcement takes effect immediately.",
+          "critical": false,
+          "passed": true,
+          "last_checked": "2026-03-11T08:35:04.194Z",
+          "evidence": [
+            "mcp-artifacts/workflow-tests/compliance-settings-guardrails.json"
+          ]
+        }
+      ],
+      "verification": {
+        "test_coverage": true,
+        "verification_passed": true,
+        "last_verified": "2026-03-11T11:08:34.023Z",
+        "evidence_bundle": [
+          "mcp-artifacts/workflow-tests/ai-guardrails.json",
+          "mcp-artifacts/workflow-tests/post-generation-flags.json",
+          "mcp-artifacts/workflow-tests/compliance-settings-guardrails.json"
+        ]
+      }
+    },
+    {
+      "requirement_id": "FR-017",
+      "title": "Data credits audit trail and deduction logs",
+      "priority": "SHOULD",
+      "dependencies": [],
+      "tests": [
+        "TC-BILL-017",
+        "TC-CRED-020"
+      ],
+      "criteria": [
+        {
+          "id": "FR-017-AC-1",
+          "text": "Given a list import, when credits are deducted, then entries record counts and costs.",
+          "critical": false,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-017-AC-2",
+          "text": "Given a credit purchase, when completed, then balance and ledger reflect transaction.",
+          "critical": false,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-017-AC-3",
+          "text": "Given audit query, when filtered by org/date, then credit events are returned.",
+          "critical": false,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "test_coverage": false,
+        "verification_passed": false,
+        "last_verified": null,
+        "evidence_bundle": []
+      }
+    },
+    {
+      "requirement_id": "FR-018",
+      "title": "Stripe PCI-safe handling and webhook verification",
+      "priority": "MUST",
+      "dependencies": [],
+      "tests": [
+        "TC-SOC-018"
+      ],
+      "criteria": [
+        {
+          "id": "FR-018-AC-1",
+          "text": "Given payment methods, when managed, then Stripe-hosted components are used exclusively.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-018-AC-2",
+          "text": "Given webhooks, when received, then signatures are verified and idempotency enforced.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-018-AC-3",
+          "text": "Given webhook replay, when detected, then duplicate effects are prevented.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "test_coverage": false,
+        "verification_passed": false,
+        "last_verified": null,
+        "evidence_bundle": []
+      }
+    },
+    {
+      "requirement_id": "FR-019",
+      "title": "OAuth scopes minimization, refresh, and revocation",
+      "priority": "MUST",
+      "dependencies": [],
+      "tests": [
+        "TC-USG-019"
+      ],
+      "criteria": [
+        {
+          "id": "FR-019-AC-1",
+          "text": "Given account connect, when authorizing, then only documented minimal scopes are requested.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-019-AC-2",
+          "text": "Given user disconnect, when triggered, then tokens are revoked and deleted.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-019-AC-3",
+          "text": "Given token expiry, when occurring, then refresh is automatic without user impact.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "test_coverage": false,
+        "verification_passed": false,
+        "last_verified": null,
+        "evidence_bundle": []
+      }
+    },
+    {
+      "requirement_id": "FR-020",
+      "title": "Content versioning and history with diffs",
+      "priority": "SHOULD",
+      "dependencies": [],
+      "tests": [
+        "TC-CRED-020"
+      ],
+      "criteria": [
+        {
+          "id": "FR-020-AC-1",
+          "text": "Given content edits, when saved, then a new version is created and linked.",
+          "critical": false,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-020-AC-2",
+          "text": "Given two versions, when compared, then field-level diffs are shown.",
+          "critical": false,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-020-AC-3",
+          "text": "Given rollback, when requested by authorized role, then previous version becomes current and is audited.",
+          "critical": false,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "test_coverage": false,
+        "verification_passed": false,
+        "last_verified": null,
+        "evidence_bundle": []
+      }
+    },
+    {
+      "requirement_id": "FR-021",
+      "title": "Authentication and session security",
+      "priority": "MUST",
+      "dependencies": [],
+      "tests": [
+        "TC-ANL-021",
+        "TC-MT-005",
+        "TC-PII-012",
+        "TC-RBAC-004"
+      ],
+      "criteria": [
+        {
+          "id": "FR-021-AC-1",
+          "text": "Given password policy, when weak password is set, then it is rejected per policy.",
+          "critical": true,
+          "passed": true,
+          "last_checked": "2026-03-11T08:35:04.194Z",
+          "evidence": [
+            "mcp-artifacts/workflow-tests/registration-security.json"
+          ]
+        },
+        {
+          "id": "FR-021-AC-2",
+          "text": "Given session cookies, when transmitted, then they are HttpOnly, Secure, SameSite=Lax or Strict.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        },
+        {
+          "id": "FR-021-AC-3",
+          "text": "Given password reset, when requested, then tokenized flow expires and is audited.",
+          "critical": true,
+          "passed": false,
+          "last_checked": null,
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "test_coverage": false,
+        "verification_passed": false,
+        "last_verified": null,
+        "evidence_bundle": []
+      }
+    }
+  ]
+}
