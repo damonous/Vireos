@@ -150,9 +150,9 @@ export async function createCheckoutSession(
   const customerId = await getOrCreateCustomer(org);
 
   const successUrl =
-    `${config.API_BASE_URL}/billing/success?session_id={CHECKOUT_SESSION_ID}`;
+    `${config.API_BASE_URL}/home?subscription=success&session_id={CHECKOUT_SESSION_ID}`;
   const cancelUrl =
-    `${config.API_BASE_URL}/billing/cancel`;
+    `${config.API_BASE_URL}/billing?checkout=cancelled`;
 
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
@@ -198,7 +198,7 @@ export async function createBillingPortalSession(
 
   const customerId = await getOrCreateCustomer(org);
 
-  const returnUrl = `${config.API_BASE_URL}/billing`;
+  const returnUrl = `${config.API_BASE_URL}/billing?portal=returned`;
 
   const session = await stripe.billingPortal.sessions.create({
     customer: customerId,
@@ -250,9 +250,9 @@ export async function purchaseCredits(
   const customerId = await getOrCreateCustomer(org);
 
   const successUrl =
-    `${config.API_BASE_URL}/billing/credits/success?session_id={CHECKOUT_SESSION_ID}`;
+    `${config.API_BASE_URL}/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
   const cancelUrl =
-    `${config.API_BASE_URL}/billing/credits/cancel`;
+    `${config.API_BASE_URL}/billing?checkout=cancelled`;
 
   const session = await stripe.checkout.sessions.create({
     customer: customerId,

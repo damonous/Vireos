@@ -1,9 +1,9 @@
-import { Bell, TrendingUp, AlertCircle, Users, Target, Sparkles, CheckCircle2, Calendar, UserPlus } from 'lucide-react';
+import { Bell, TrendingUp, AlertCircle, Users, Target, Sparkles, CheckCircle2, Calendar, UserPlus, X } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useNavigate } from 'react-router';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useApiData } from '../hooks/useApiData';
 import { useAuth } from '../hooks/useAuth';
 
@@ -45,6 +45,16 @@ export default function Dashboard() {
   const overview = useApiData<OverviewMetrics>('/analytics/overview?preset=7d');
   const drafts = useApiData<DraftRow[]>('/content/drafts?limit=5');
   const leads = useApiData<{ items: LeadRow[] }>('/leads?limit=5&sortBy=createdAt&sortOrder=desc');
+  const [showSubscriptionSuccess, setShowSubscriptionSuccess] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('subscription') === 'success') {
+      setShowSubscriptionSuccess(true);
+      // Clean up URL without refreshing
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   const chartData = useMemo(() => {
     const content = overview.data?.contentCreated ?? 0;
@@ -141,6 +151,22 @@ export default function Dashboard() {
 
   return (
     <div className="flex-1 overflow-auto">
+      {showSubscriptionSuccess && (
+        <div className="bg-green-50 border-b border-green-200 px-4 md:px-8 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-green-600" />
+            <p className="text-sm text-green-800 font-medium">
+              Subscription activated successfully! Welcome to Vireos.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowSubscriptionSuccess(false)}
+            className="p-1 hover:bg-green-100 rounded transition-colors"
+          >
+            <X className="w-4 h-4 text-green-600" />
+          </button>
+        </div>
+      )}
       <div className="bg-white border-b border-gray-200 px-4 md:px-8 py-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
