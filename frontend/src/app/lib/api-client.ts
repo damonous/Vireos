@@ -104,7 +104,14 @@ async function parseResponse<T>(response: Response): Promise<T> {
 
   if (!response.ok) {
     const errorBody = body as ApiErrorEnvelope | null;
-    const message = errorBody?.error?.message ?? `Request failed with status ${response.status}`;
+    let message = errorBody?.error?.message ?? `Request failed with status ${response.status}`;
+
+    // If there are validation details, build a user-friendly message
+    const details = errorBody?.error?.details as Array<{ field: string; message: string }> | undefined;
+    if (details && Array.isArray(details) && details.length > 0) {
+      message = details.map((d) => d.message).join('. ');
+    }
+
     const code = errorBody?.error?.code ?? 'HTTP_ERROR';
     throw new ApiError(message, response.status, code, errorBody?.error?.details);
   }
