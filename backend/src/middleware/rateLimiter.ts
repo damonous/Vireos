@@ -47,7 +47,7 @@ function createRedisStore(prefix: string): RedisStore {
 
 /**
  * Applies to all routes.
- * Default: 100 requests per 15-minute window per IP.
+ * Default: 5000 requests per 15-minute window per IP.
  */
 export const globalRateLimit = rateLimit({
   windowMs: config.RATE_LIMIT_GLOBAL_WINDOW_MS,
@@ -66,8 +66,8 @@ export const globalRateLimit = rateLimit({
 // ---------------------------------------------------------------------------
 
 /**
- * Stricter limit for authentication endpoints to prevent brute-force attacks.
- * Default: 10 requests per minute per IP.
+ * Stricter limit for public authentication endpoints to prevent brute-force attacks.
+ * Default: 100 requests per minute per IP.
  */
 export const authRateLimit = rateLimit({
   windowMs: config.RATE_LIMIT_AUTH_WINDOW_MS,
@@ -77,9 +77,9 @@ export const authRateLimit = rateLimit({
   store: createRedisStore('auth'),
   handler: rateLimitHandler,
   keyGenerator: (req) => req.ip ?? req.socket.remoteAddress ?? 'unknown',
-  // Count failed requests only — don't penalise successful logins
-  skipSuccessfulRequests: false,
-  // Always apply; skip only health checks
+  // Successful auth requests should not burn quota.
+  skipSuccessfulRequests: true,
+  // This limiter is attached only to public auth mutation routes.
   skip: (req) => req.path === '/health',
 });
 

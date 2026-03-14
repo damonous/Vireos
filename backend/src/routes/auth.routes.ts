@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
+import { authRateLimit } from '../middleware/rateLimiter';
 import { validateBody } from '../middleware/validate';
 import {
   registerSchema,
@@ -23,7 +24,7 @@ const auth = authenticate as any;
 // POST /register
 // ---------------------------------------------------------------------------
 
-router.post('/register', validateBody(registerSchema), async (
+router.post('/register', authRateLimit, validateBody(registerSchema), async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -41,7 +42,7 @@ router.post('/register', validateBody(registerSchema), async (
 // POST /login
 // ---------------------------------------------------------------------------
 
-router.post('/login', validateBody(loginSchema), async (
+router.post('/login', authRateLimit, validateBody(loginSchema), async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -59,7 +60,7 @@ router.post('/login', validateBody(loginSchema), async (
 // POST /refresh
 // ---------------------------------------------------------------------------
 
-router.post('/refresh', validateBody(refreshTokenSchema), async (
+router.post('/refresh', authRateLimit, validateBody(refreshTokenSchema), async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -96,7 +97,7 @@ router.post('/logout', auth, async (
 // POST /forgot-password
 // ---------------------------------------------------------------------------
 
-router.post('/forgot-password', validateBody(forgotPasswordSchema), async (
+router.post('/forgot-password', authRateLimit, validateBody(forgotPasswordSchema), async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -121,7 +122,7 @@ router.post('/forgot-password', validateBody(forgotPasswordSchema), async (
 // POST /reset-password
 // ---------------------------------------------------------------------------
 
-router.post('/reset-password', validateBody(resetPasswordSchema), async (
+router.post('/reset-password', authRateLimit, validateBody(resetPasswordSchema), async (
   req: Request,
   res: Response,
   next: NextFunction
