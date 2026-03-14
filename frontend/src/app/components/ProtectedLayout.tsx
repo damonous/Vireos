@@ -9,6 +9,7 @@ export function ProtectedLayout() {
   const location = useLocation();
   const { isAuthenticated, isLoading, user } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const isEasyModeRoute = location.pathname === '/easy';
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -48,27 +49,25 @@ export function ProtectedLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F8F9FB]">
-      {/* Hamburger Button - Only visible on mobile */}
-      <button
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 bg-white rounded-lg shadow-lg flex items-center justify-center text-[#0EA5E9] hover:bg-gray-50 transition-colors"
-      >
-        <Menu className="w-6 h-6" />
-      </button>
+      {!isEasyModeRoute ? (
+        <button
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 bg-white rounded-lg shadow-lg flex items-center justify-center text-[#0EA5E9] hover:bg-gray-50 transition-colors"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+      ) : null}
 
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
+      {isSidebarOpen && !isEasyModeRoute && (
         <div
           className="md:hidden fixed inset-0 bg-black/50 z-30"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      {!isEasyModeRoute ? <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} /> : null}
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-y-auto md:ml-64">
+      <div className={`flex-1 overflow-y-auto ${isEasyModeRoute ? '' : 'md:ml-64'}`}>
         <Outlet />
       </div>
     </div>
