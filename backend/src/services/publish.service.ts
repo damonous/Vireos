@@ -496,6 +496,7 @@ export async function listJobs(
   const [jobs, totalCount] = await Promise.all([
     prisma.publishJob.findMany({
       where: { organizationId: orgId },
+      include: { draft: { select: { id: true, title: true, status: true } } },
       orderBy: { createdAt: 'desc' },
       skip,
       take: pagination.limit,
