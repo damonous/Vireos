@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { apiClient, clearAuthStorage } from '../lib/api-client';
+import { ApiError, apiClient, clearAuthStorage } from '../lib/api-client';
 import type { AuthTokens, User, FrontendRole } from '../types/api';
 
 interface AuthContextValue {
@@ -58,6 +58,10 @@ function persistTokens(tokens: AuthTokens): void {
 
 function persistUser(user: User): void {
   localStorage.setItem(apiClient.keys.user, JSON.stringify(user));
+}
+
+function shouldClearSession(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -137,10 +141,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         await refresh();
-      } catch {
-        clearAuthStorage();
-        setUser(null);
-        setSessionExpiresAt(null);
+      } catch (error) {
+        if (shouldClearSession(error)) {
+          clearAuthStorage();
+          setUser(null);
+          setSessionExpiresAt(null);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -184,10 +190,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const refreshInMs = Math.max(sessionExpiresAt - Date.now() - 60_000, 5_000);
     const timeout = window.setTimeout(() => {
-      void refreshSession().catch(() => {
-        clearAuthStorage();
-        setUser(null);
-        setSessionExpiresAt(null);
+      void refreshSession().catch((error) => {
+        if (shouldClearSession(error)) {
+          clearAuthStorage();
+          setUser(null);
+          setSessionExpiresAt(null);
+          return;
+        }
+
+        // Keep the current session on transient refresh failures and retry shortly.
+        setSessionExpiresAt(Date.now() + 60_000);
       });
     }, refreshInMs);
 

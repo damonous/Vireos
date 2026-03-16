@@ -1,6 +1,5 @@
 import { Router, Request, Response } from 'express';
 import { version } from '../../package.json';
-import { authRateLimit } from '../middleware/rateLimiter';
 import authRoutes from './auth.routes';
 import orgRoutes from './org.routes';
 import analyticsRoutes from './analytics.routes';
@@ -61,7 +60,7 @@ router.use(healthRoutes);
  * PATCH  /api/v1/auth/change-password
  * GET    /api/v1/auth/me
  */
-router.use('/api/v1/auth', authRateLimit, authRoutes);
+router.use('/api/v1/auth', authRoutes);
 
 /**
  * Organization management

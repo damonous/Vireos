@@ -495,12 +495,19 @@ describe('GET /api/v1/billing/subscription', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns 403 for advisor role', async () => {
+  it('returns subscription data for advisor role (read-only access)', async () => {
+    (prisma.subscription.findUnique as jest.Mock).mockResolvedValue(mockSubscription);
     const token = makeAdvisorToken();
     const res = await client
       .get('/api/v1/billing/subscription')
       .set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toMatchObject({
+      id: mockSubscription.id,
+      organizationId: TEST_ORG_ID,
+      status: 'ACTIVE',
+    });
   });
 });
 
@@ -1079,11 +1086,25 @@ describe('GET /api/v1/billing/invoices', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns 403 for advisor role', async () => {
+  it('returns invoices for advisor role (read-only access)', async () => {
+    (prisma.organization.findUnique as jest.Mock).mockResolvedValue(mockOrg);
+    mockStripeInvoicesList.mockResolvedValue({
+      data: [
+        {
+          id: 'in_test_1',
+          status: 'paid',
+          amount_paid: 29900,
+          currency: 'usd',
+          created: 1_706_000_000,
+        },
+      ],
+    });
     const token = makeAdvisorToken();
     const res = await client
       .get('/api/v1/billing/invoices')
       .set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data[0]).toMatchObject({ id: 'in_test_1', status: 'paid' });
   });
 });

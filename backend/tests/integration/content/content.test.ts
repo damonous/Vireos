@@ -84,10 +84,8 @@ jest.mock('openai', () => {
   // This factory is hoisted to the top by Jest, so we define the mock fn here.
   const mockCreate = jest.fn();
   const MockOpenAI = jest.fn().mockImplementation(() => ({
-    chat: {
-      completions: {
-        create: mockCreate,
-      },
+    responses: {
+      create: mockCreate,
     },
   }));
   // Expose mockCreate on the constructor so we can access it after mock resolution.
@@ -195,16 +193,12 @@ const mockDraft = {
 };
 
 const mockOpenAISuccessResponse = {
-  choices: [{
-    message: {
-      content: JSON.stringify({
-        linkedin: 'LinkedIn content here',
-        facebook: 'Facebook content here',
-        email: 'Email content here',
-        adCopy: 'Ad copy here',
-      }),
-    },
-  }],
+  output_text: JSON.stringify({
+    linkedin: 'LinkedIn content here',
+    facebook: 'Facebook content here',
+    email: 'Email content here',
+    adCopy: 'Ad copy here',
+  }),
   usage: { total_tokens: 500 },
   model: 'gpt-4o-mini',
 };
