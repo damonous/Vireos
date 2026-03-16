@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { creditBundleConfigSchema } from '../services/platform-setting.service';
 
 // ---------------------------------------------------------------------------
 // Billing validators
@@ -11,12 +12,10 @@ export const createCheckoutSchema = z.object({
 });
 
 export const purchaseCreditsSchema = z.object({
-  bundleId: z.enum(['bundle-1k', 'bundle-5k', 'bundle-10k'], {
-    errorMap: () => ({
-      message: 'Bundle ID must be one of: bundle-1k, bundle-5k, bundle-10k',
-    }),
-  }),
+  bundleId: z.string().trim().min(1, 'Bundle ID is required'),
 });
+
+export const updateCreditBundlesSchema = creditBundleConfigSchema;
 
 // ---------------------------------------------------------------------------
 // Inferred types
@@ -24,3 +23,4 @@ export const purchaseCreditsSchema = z.object({
 
 export type CreateCheckoutDto = z.infer<typeof createCheckoutSchema>;
 export type PurchaseCreditsDto = z.infer<typeof purchaseCreditsSchema>;
+export type UpdateCreditBundlesDto = z.infer<typeof updateCreditBundlesSchema>;

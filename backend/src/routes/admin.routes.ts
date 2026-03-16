@@ -2,9 +2,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { authenticate, requireRole } from '../middleware/auth';
-import { validateQuery } from '../middleware/validate';
+import { validateBody, validateQuery } from '../middleware/validate';
 import { prisma } from '../db/client';
 import { UserRole } from '../types';
+import { updateCreditBundlesSchema } from '../validators/billing.validators';
+import * as platformSettingService from '../services/platform-setting.service';
 
 const router = Router();
 const auth = authenticate as any;
@@ -153,6 +155,37 @@ router.get(
           subscriptions,
         },
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.get(
+  '/v1/admin/billing/credit-bundles',
+  auth,
+  requireRole(UserRole.SUPER_ADMIN) as any,
+  async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const config = await platformSettingService.getCreditBundleConfig();
+      res.status(200).json({ success: true, data: config });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.put(
+  '/v1/admin/billing/credit-bundles',
+  auth,
+  requireRole(UserRole.SUPER_ADMIN) as any,
+  validateBody(updateCreditBundlesSchema),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const config = await platformSettingService.updateCreditBundleConfig(
+        req.body as z.infer<typeof updateCreditBundlesSchema>
+      );
+      res.status(200).json({ success: true, data: config });
     } catch (err) {
       next(err);
     }

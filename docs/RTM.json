@@ -990,66 +990,72 @@
     },
     {
       "id": "FR-011",
-      "title": "Security event logging and monitoring",
-      "description": "Log auth failures, permission denials, rate limit hits, and suspicious activities with alerts.",
-      "type": "chore",
+      "title": "Stripe subscriptions and credit purchases",
+      "description": "Manage plans, invoices, payment collection, and configurable credit bundles with Stripe-backed subscription and credit purchase flows.",
+      "type": "feature",
       "priority": "MUST",
       "components": [
-        "Security",
-        "Audit Logging"
+        "Billing",
+        "Credits",
+        "Stripe"
       ],
       "dependencies": [],
       "acceptance_criteria": [
-        "Given repeated auth failures, when threshold reached, then alert is sent to ops channel.",
-        "Given privilege escalation attempt, when detected, then event is logged with context.",
-        "Given rate limit bursts, when anomalous, then alerts include tenant and IP."
+        "Given paid invoice for 1,000 credits, when webhook processed, then the credit ledger increases by 1,000 with a trace back to the Stripe invoice.",
+        "Given failed payment, when Stripe webhook is received, then the subscription is set to PAST_DUE and the organization admins are notified.",
+        "Given a super admin updates the credit bundle catalog, when `/api/v1/billing/plans` is loaded or a credit purchase starts, then the latest configured bundle definitions are returned and accepted."
       ],
       "test_cases": [
         {
-          "id": "TC-ENC-011",
-          "title": "Encryption at rest and TLS in transit",
-          "description": "Verify TLS enforcement and encrypted sensitive fields.",
+          "id": "TC-BIL-011",
+          "title": "Billing catalog, checkout, and webhook reconciliation",
+          "description": "Verify billing plans, configurable credit bundles, credit purchases, and Stripe webhook handling for subscription and payment-state changes.",
           "requirement_ids": [
-            "FR-011",
-            "FR-014"
+            "FR-011"
           ],
           "priority": "MUST",
           "type": "functional",
           "components": [
-            "ENCRYPTION_KEYS",
-            "PII_PROTECTION"
+            "BILLING",
+            "CREDITS",
+            "STRIPE"
           ],
           "preconditions": [
-            "Staging uses valid TLS; DB has encrypted columns for secrets/tokens"
+            "Stripe credentials and webhook secret are configured for the target environment"
           ],
           "steps": [
-            "Attempt HTTP access; inspect redirect/blocking",
-            "Inspect DB for ciphered OAuth token fields (no plaintext)",
-            "Intercept traffic with proxy to confirm TLS"
+            "Load `/api/v1/billing/plans` and confirm the current credit bundle catalog is returned",
+            "Update the bundle catalog through the super-admin billing endpoint and reload the public plans endpoint",
+            "Create checkout sessions for subscription and credit purchases",
+            "Submit representative Stripe webhook events for subscription creation, updates, deletion, and payment failure"
           ],
           "expected_results": [
-            "HTTP blocked or redirected to HTTPS; HSTS present",
-            "Secrets/tokens stored encrypted; no plaintext found",
-            "All traffic encrypted end-to-end"
+            "Configured credit bundles are returned in sorted order and accepted by credit purchase checkout",
+            "Subscription and payment-state records are persisted correctly",
+            "Payment failure transitions the org to PAST_DUE and creates notifications for admins"
           ],
           "frameworks": [
-            "PYTEST_PLAYWRIGHT"
+            "JEST",
+            "SUPERTEST"
           ],
           "tags": [
-            "encryption",
-            "security"
+            "billing",
+            "stripe",
+            "credits"
           ],
-          "artifacts": [],
-          "status": "Planned"
+          "artifacts": [
+            "backend/tests/integration/billing/billing.test.ts"
+          ],
+          "status": "Completed"
         }
       ],
-      "status": "Planned",
+      "status": "Completed",
       "priority_score": 3.6,
       "risk": 8,
       "time_criticality": 5,
       "value": 5,
       "weight": 5,
-      "implementation_notes": "Centralized log aggregation; alert rules; retain logs per compliance policy."
+      "implementation_notes": "Billing plans and Stripe webhook handling are implemented. On 2026-03-16, super-admin configurable credit bundles were added via persisted platform settings, `/api/v1/admin/billing/credit-bundles`, and the `/api/v1/billing/plans` catalog. Subscription reconciliation now repairs stale local billing state from Stripe when seeded/demo subscription rows do not match the live Stripe subscription."
     },
     {
       "id": "FR-012",
