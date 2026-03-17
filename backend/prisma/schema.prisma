@@ -766,6 +766,18 @@ model FeatureFlag {
   @@map("feature_flags")
 }
 
+/// Platform-global settings managed by super admins.
+/// Used for configuration that should not be scoped to a single tenant,
+/// such as the live credit bundle catalog exposed in billing.
+model PlatformSetting {
+  key       String   @id
+  value     Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("platform_settings")
+}
+
 // =============================================================================
 // AGENT MODELS (Easy Mode — Agentic AI)
 // =============================================================================

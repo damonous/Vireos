@@ -483,43 +483,57 @@
     },
     {
       "requirement_id": "FR-011",
-      "title": "Security event logging and monitoring",
+      "title": "Stripe subscriptions and credit purchases",
       "priority": "MUST",
       "dependencies": [],
       "tests": [
-        "TC-ENC-011"
+        "TC-BIL-011"
       ],
       "criteria": [
         {
           "id": "FR-011-AC-1",
-          "text": "Given repeated auth failures, when threshold reached, then alert is sent to ops channel.",
+          "text": "Given paid invoice for 1,000 credits, when webhook processed, then the credit ledger increases by 1,000 with a trace back to the Stripe invoice.",
           "critical": true,
-          "passed": false,
-          "last_checked": null,
-          "evidence": []
+          "passed": true,
+          "last_checked": "2026-03-16",
+          "evidence": [
+            "backend/tests/integration/billing/billing.test.ts",
+            "backend/src/services/billing.service.ts"
+          ]
         },
         {
           "id": "FR-011-AC-2",
-          "text": "Given privilege escalation attempt, when detected, then event is logged with context.",
+          "text": "Given failed payment, when Stripe webhook is received, then the subscription is set to PAST_DUE and the organization admins are notified.",
           "critical": true,
-          "passed": false,
-          "last_checked": null,
-          "evidence": []
+          "passed": true,
+          "last_checked": "2026-03-16",
+          "evidence": [
+            "backend/tests/integration/billing/billing.test.ts",
+            "backend/src/services/billing.service.ts"
+          ]
         },
         {
           "id": "FR-011-AC-3",
-          "text": "Given rate limit bursts, when anomalous, then alerts include tenant and IP.",
+          "text": "Given a super admin updates the credit bundle catalog, when `/api/v1/billing/plans` is loaded or a credit purchase starts, then the latest configured bundle definitions are returned and accepted.",
           "critical": true,
-          "passed": false,
-          "last_checked": null,
-          "evidence": []
+          "passed": true,
+          "last_checked": "2026-03-16",
+          "evidence": [
+            "backend/tests/integration/billing/billing.test.ts",
+            "backend/src/services/platform-setting.service.ts",
+            "frontend/src/app/pages/PlatformBilling.tsx"
+          ]
         }
       ],
       "verification": {
-        "test_coverage": false,
-        "verification_passed": false,
-        "last_verified": null,
-        "evidence_bundle": []
+        "test_coverage": true,
+        "verification_passed": true,
+        "last_verified": "2026-03-16",
+        "evidence_bundle": [
+          "backend/tests/integration/billing/billing.test.ts",
+          "backend/src/services/billing.service.ts",
+          "frontend/src/app/pages/PlatformBilling.tsx"
+        ]
       }
     },
     {

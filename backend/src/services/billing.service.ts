@@ -14,6 +14,7 @@ import { logger } from '../utils/logger';
 import { Errors } from '../middleware/errorHandler';
 import { UserRole } from '../types';
 import type { AuthenticatedUser } from '../types';
+import { findCreditBundle } from './platform-setting.service';
 
 // ---------------------------------------------------------------------------
 // Stripe client
@@ -23,17 +24,7 @@ const stripe = new Stripe(config.STRIPE_SECRET_KEY, {
   apiVersion: '2024-06-20' as Stripe.LatestApiVersion,
 });
 
-// ---------------------------------------------------------------------------
-// Credit bundle constants
-// ---------------------------------------------------------------------------
-
-export const CREDIT_BUNDLES = {
-  'bundle-1k': { credits: 1000, amount: 9900, label: '1,000 Credits' },
-  'bundle-5k': { credits: 5000, amount: 39900, label: '5,000 Credits' },
-  'bundle-10k': { credits: 10000, amount: 69900, label: '10,000 Credits' },
-} as const;
-
-export type CreditBundleId = keyof typeof CREDIT_BUNDLES;
+export type CreditBundleId = string;
 
 // ---------------------------------------------------------------------------
 // Plan constants
@@ -223,7 +214,7 @@ export async function getSubscription(
     where: { organizationId: orgId },
   });
 
-  return subscription;
+  return reconcileSubscription(orgId, subscription);
 }
 
 /**
@@ -237,7 +228,7 @@ export async function purchaseCredits(
 ): Promise<{ url: string }> {
   requireAdminRole(user);
 
-  const bundle = CREDIT_BUNDLES[bundleId];
+  const bundle = await findCreditBundle(bundleId);
   if (!bundle) {
     throw Errors.badRequest(`Invalid bundle ID: ${bundleId}`);
   }
@@ -572,45 +563,7 @@ async function handleSubscriptionCreated(sub: Stripe.Subscription): Promise<void
     return;
   }
 
-  const priceId = sub.items.data[0]?.price.id ?? '';
-  const planName = resolvePlanName(priceId);
-
-  const periodStart = new Date((sub.current_period_start ?? 0) * 1000);
-  const periodEnd = new Date((sub.current_period_end ?? 0) * 1000);
-
-  // Upsert so that re-delivery of the same event is idempotent
-  await prisma.subscription.upsert({
-    where: { stripeSubscriptionId: sub.id },
-    create: {
-      organizationId: orgId,
-      stripeSubscriptionId: sub.id,
-      stripePriceId: priceId,
-      status: mapStripeStatus(sub.status),
-      planName,
-      currentPeriodStart: periodStart,
-      currentPeriodEnd: periodEnd,
-      cancelAtPeriodEnd: sub.cancel_at_period_end,
-      trialEndsAt: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
-    },
-    update: {
-      status: mapStripeStatus(sub.status),
-      stripePriceId: priceId,
-      planName,
-      currentPeriodStart: periodStart,
-      currentPeriodEnd: periodEnd,
-      cancelAtPeriodEnd: sub.cancel_at_period_end,
-      trialEndsAt: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
-    },
-  });
-
-  // Mirror subscription status on the organization
-  await prisma.organization.update({
-    where: { id: orgId },
-    data: {
-      subscriptionStatus: mapStripeStatus(sub.status),
-      stripeSubscriptionId: sub.id,
-    },
-  });
+  await persistSubscriptionSnapshot(orgId, sub);
 
   logger.info('Subscription created', { orgId, subscriptionId: sub.id, status: sub.status });
 }
@@ -752,7 +705,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<v
     return;
   }
 
-  const bundle = CREDIT_BUNDLES[bundleId];
+  const bundle = await findCreditBundle(bundleId);
   const description = bundle
     ? `Credit purchase: ${bundle.label}`
     : `Credit purchase: ${credits} credits`;
@@ -841,6 +794,112 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent): P
     paymentIntentId: paymentIntent.id,
     adminUsersNotified: adminUsers.length,
   });
+}
+
+function buildSubscriptionSnapshot(
+  orgId: string,
+  sub: Stripe.Subscription
+): Omit<Subscription, 'id' | 'createdAt' | 'updatedAt'> {
+  const priceId = sub.items.data[0]?.price.id ?? '';
+  const planName = resolvePlanName(priceId);
+
+  return {
+    organizationId: orgId,
+    stripeSubscriptionId: sub.id,
+    stripePriceId: priceId,
+    status: mapStripeStatus(sub.status),
+    planName,
+    currentPeriodStart: new Date((sub.current_period_start ?? 0) * 1000),
+    currentPeriodEnd: new Date((sub.current_period_end ?? 0) * 1000),
+    cancelAtPeriodEnd: sub.cancel_at_period_end,
+    cancelledAt: sub.canceled_at ? new Date(sub.canceled_at * 1000) : null,
+    trialEndsAt: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
+  };
+}
+
+async function persistSubscriptionSnapshot(
+  orgId: string,
+  sub: Stripe.Subscription
+): Promise<Subscription> {
+  const snapshot = buildSubscriptionSnapshot(orgId, sub);
+
+  const subscription = await prisma.subscription.upsert({
+    where: { organizationId: orgId },
+    create: snapshot,
+    update: snapshot,
+  });
+
+  await prisma.organization.update({
+    where: { id: orgId },
+    data: {
+      subscriptionStatus: snapshot.status,
+      stripeSubscriptionId: snapshot.stripeSubscriptionId,
+    },
+  });
+
+  return subscription;
+}
+
+async function reconcileSubscription(
+  orgId: string,
+  localSubscription: Subscription | null
+): Promise<Subscription | null> {
+  const org = await prisma.organization.findUnique({
+    where: { id: orgId },
+    select: {
+      id: true,
+      stripeCustomerId: true,
+      stripeSubscriptionId: true,
+    },
+  });
+
+  if (!org) {
+    throw Errors.notFound('Organization');
+  }
+
+  const stripeSubscriptionId = org.stripeSubscriptionId ?? localSubscription?.stripeSubscriptionId;
+  if (stripeSubscriptionId) {
+    try {
+      const stripeSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+      return persistSubscriptionSnapshot(orgId, stripeSubscription);
+    } catch (err) {
+      logger.warn('Failed to retrieve Stripe subscription directly, falling back to customer list', {
+        orgId,
+        stripeSubscriptionId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  if (!org.stripeCustomerId) {
+    return localSubscription;
+  }
+
+  try {
+    const subscriptionList = await stripe.subscriptions.list({
+      customer: org.stripeCustomerId,
+      status: 'all',
+      limit: 10,
+    });
+
+    const activeLikeSubscription = subscriptionList.data.find((sub) =>
+      ['active', 'trialing', 'past_due', 'unpaid', 'incomplete'].includes(sub.status)
+    );
+    const stripeSubscription = activeLikeSubscription ?? subscriptionList.data[0] ?? null;
+
+    if (!stripeSubscription) {
+      return localSubscription;
+    }
+
+    return persistSubscriptionSnapshot(orgId, stripeSubscription);
+  } catch (err) {
+    logger.warn('Failed to reconcile Stripe subscription from customer list', {
+      orgId,
+      stripeCustomerId: org.stripeCustomerId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return localSubscription;
+  }
 }
 
 // ---------------------------------------------------------------------------

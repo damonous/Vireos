@@ -78,7 +78,8 @@ const mockStripeCustomersCreate = jest.fn();
 const mockStripeInvoicesList = jest.fn();
 const mockStripeWebhooksConstructEvent = jest.fn();
 const mockStripePaymentIntentsRetrieve = jest.fn();
-const mockStripeSubscriptionsMaybeStub = jest.fn();
+const mockStripeSubscriptionsRetrieve = jest.fn();
+const mockStripeSubscriptionsList = jest.fn();
 
 jest.mock('stripe', () => {
   return jest.fn().mockImplementation(() => ({
@@ -105,7 +106,8 @@ jest.mock('stripe', () => {
       retrieve: mockStripePaymentIntentsRetrieve,
     },
     subscriptions: {
-      retrieve: mockStripeSubscriptionsMaybeStub,
+      retrieve: mockStripeSubscriptionsRetrieve,
+      list: mockStripeSubscriptionsList,
     },
   }));
 });
@@ -142,6 +144,10 @@ jest.mock('../../../src/db/client', () => ({
     },
     notification: {
       createMany: jest.fn(),
+    },
+    platformSetting: {
+      findUnique: jest.fn(),
+      upsert: jest.fn(),
     },
     auditTrail: {
       create: jest.fn().mockResolvedValue({}),
@@ -281,6 +287,7 @@ const client = supertest(app);
 beforeEach(() => {
   jest.clearAllMocks();
   (prisma.auditTrail.create as jest.Mock).mockResolvedValue({});
+  (prisma.platformSetting.findUnique as jest.Mock).mockResolvedValue(null);
 });
 
 // ---------------------------------------------------------------------------
@@ -305,6 +312,159 @@ describe('GET /api/v1/billing/plans', () => {
     expect(bundle1k.credits).toBe(1000);
     expect(bundle1k.amount).toBe(9900);
     expect(bundle1k.label).toBe('1,000 Credits');
+  });
+
+  it('returns persisted credit bundles when the platform catalog has been configured', async () => {
+    (prisma.platformSetting.findUnique as jest.Mock).mockResolvedValue({
+      key: 'billing.creditBundles',
+      value: {
+        bundles: [
+          {
+            id: 'bundle-growth',
+            label: 'Growth Credits',
+            credits: 2500,
+            amount: 18900,
+          },
+        ],
+      },
+      updatedAt: new Date('2026-03-16T10:15:00.000Z'),
+    });
+
+    const res = await client.get('/api/v1/billing/plans');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.bundles).toEqual([
+      expect.objectContaining({
+        id: 'bundle-growth',
+        label: 'Growth Credits',
+        credits: 2500,
+        amount: 18900,
+      }),
+    ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET/PUT /api/v1/admin/billing/credit-bundles
+// ---------------------------------------------------------------------------
+
+describe('GET /api/v1/admin/billing/credit-bundles', () => {
+  it('returns the default bundle catalog when no persisted config exists', async () => {
+    const token = makeSuperAdminToken();
+    const res = await client
+      .get('/api/v1/admin/billing/credit-bundles')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.source).toBe('default');
+    expect(res.body.data.bundles).toHaveLength(3);
+  });
+
+  it('returns 403 for org_admin role', async () => {
+    const token = makeAccessToken(TEST_USER_ID, 'org_admin');
+    const res = await client
+      .get('/api/v1/admin/billing/credit-bundles')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(403);
+  });
+});
+
+describe('PUT /api/v1/admin/billing/credit-bundles', () => {
+  it('persists a configured bundle catalog for super admins', async () => {
+    (prisma.platformSetting.upsert as jest.Mock).mockResolvedValue({
+      key: 'billing.creditBundles',
+      value: {
+        bundles: [
+          {
+            id: 'bundle-growth',
+            label: 'Growth Credits',
+            credits: 2500,
+            amount: 18900,
+          },
+          {
+            id: 'bundle-scale',
+            label: 'Scale Credits',
+            credits: 7500,
+            amount: 49900,
+          },
+        ],
+      },
+      updatedAt: new Date('2026-03-16T10:45:00.000Z'),
+    });
+
+    const token = makeSuperAdminToken();
+    const res = await client
+      .put('/api/v1/admin/billing/credit-bundles')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        bundles: [
+          {
+            id: 'bundle-scale',
+            label: 'Scale Credits',
+            credits: 7500,
+            amount: 49900,
+          },
+          {
+            id: 'bundle-growth',
+            label: 'Growth Credits',
+            credits: 2500,
+            amount: 18900,
+          },
+        ],
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(prisma.platformSetting.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { key: 'billing.creditBundles' },
+      })
+    );
+    expect(res.body.data).toMatchObject({
+      source: 'persisted',
+      bundles: [
+        expect.objectContaining({
+          id: 'bundle-growth',
+          label: 'Growth Credits',
+          credits: 2500,
+          amount: 18900,
+        }),
+        expect.objectContaining({
+          id: 'bundle-scale',
+          label: 'Scale Credits',
+          credits: 7500,
+          amount: 49900,
+        }),
+      ],
+    });
+  });
+
+  it('returns 422 when duplicate bundle IDs are submitted', async () => {
+    const token = makeSuperAdminToken();
+    const res = await client
+      .put('/api/v1/admin/billing/credit-bundles')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        bundles: [
+          {
+            id: 'bundle-dup',
+            label: 'Bundle A',
+            credits: 1000,
+            amount: 9900,
+          },
+          {
+            id: 'bundle-dup',
+            label: 'Bundle B',
+            credits: 5000,
+            amount: 39900,
+          },
+        ],
+      });
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
   });
 });
 
@@ -461,6 +621,26 @@ describe('POST /api/v1/billing/portal', () => {
 describe('GET /api/v1/billing/subscription', () => {
   it('returns the subscription object for the organization', async () => {
     (prisma.subscription.findUnique as jest.Mock).mockResolvedValue(mockSubscription);
+    (prisma.organization.findUnique as jest.Mock).mockResolvedValue({
+      id: TEST_ORG_ID,
+      stripeCustomerId: STRIPE_CUSTOMER_ID,
+      stripeSubscriptionId: STRIPE_SUBSCRIPTION_ID,
+    });
+    mockStripeSubscriptionsRetrieve.mockResolvedValue({
+      id: STRIPE_SUBSCRIPTION_ID,
+      customer: STRIPE_CUSTOMER_ID,
+      status: 'active',
+      items: {
+        data: [{ price: { id: 'price_individual' } }],
+      },
+      current_period_start: Math.floor(new Date('2024-01-01').getTime() / 1000),
+      current_period_end: Math.floor(new Date('2024-02-01').getTime() / 1000),
+      cancel_at_period_end: false,
+      trial_end: null,
+      canceled_at: null,
+    });
+    (prisma.subscription.upsert as jest.Mock).mockResolvedValue(mockSubscription);
+    (prisma.organization.update as jest.Mock).mockResolvedValue(mockOrg);
 
     const token = makeAccessToken(TEST_USER_ID, 'org_admin');
     const res = await client
@@ -479,6 +659,11 @@ describe('GET /api/v1/billing/subscription', () => {
 
   it('returns null data when no subscription exists', async () => {
     (prisma.subscription.findUnique as jest.Mock).mockResolvedValue(null);
+    (prisma.organization.findUnique as jest.Mock).mockResolvedValue({
+      id: TEST_ORG_ID,
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+    });
 
     const token = makeAccessToken(TEST_USER_ID, 'org_admin');
     const res = await client
@@ -497,6 +682,26 @@ describe('GET /api/v1/billing/subscription', () => {
 
   it('returns subscription data for advisor role (read-only access)', async () => {
     (prisma.subscription.findUnique as jest.Mock).mockResolvedValue(mockSubscription);
+    (prisma.organization.findUnique as jest.Mock).mockResolvedValue({
+      id: TEST_ORG_ID,
+      stripeCustomerId: STRIPE_CUSTOMER_ID,
+      stripeSubscriptionId: STRIPE_SUBSCRIPTION_ID,
+    });
+    mockStripeSubscriptionsRetrieve.mockResolvedValue({
+      id: STRIPE_SUBSCRIPTION_ID,
+      customer: STRIPE_CUSTOMER_ID,
+      status: 'active',
+      items: {
+        data: [{ price: { id: 'price_individual' } }],
+      },
+      current_period_start: Math.floor(new Date('2024-01-01').getTime() / 1000),
+      current_period_end: Math.floor(new Date('2024-02-01').getTime() / 1000),
+      cancel_at_period_end: false,
+      trial_end: null,
+      canceled_at: null,
+    });
+    (prisma.subscription.upsert as jest.Mock).mockResolvedValue(mockSubscription);
+    (prisma.organization.update as jest.Mock).mockResolvedValue(mockOrg);
     const token = makeAdvisorToken();
     const res = await client
       .get('/api/v1/billing/subscription')
@@ -507,6 +712,74 @@ describe('GET /api/v1/billing/subscription', () => {
       id: mockSubscription.id,
       organizationId: TEST_ORG_ID,
       status: 'ACTIVE',
+    });
+  });
+
+  it('reconciles a stale local subscription from Stripe when the org record points to an older demo plan', async () => {
+    (prisma.subscription.findUnique as jest.Mock).mockResolvedValue({
+      ...mockSubscription,
+      stripeSubscriptionId: 'sub_demo_old',
+      stripePriceId: 'price_demo_professional_monthly',
+      planName: 'Professional',
+    });
+    (prisma.organization.findUnique as jest.Mock).mockResolvedValue({
+      id: TEST_ORG_ID,
+      stripeCustomerId: STRIPE_CUSTOMER_ID,
+      stripeSubscriptionId: 'sub_demo_old',
+    });
+    mockStripeSubscriptionsRetrieve.mockRejectedValue(new Error('No such subscription'));
+    mockStripeSubscriptionsList.mockResolvedValue({
+      data: [
+        {
+          id: STRIPE_SUBSCRIPTION_ID,
+          customer: STRIPE_CUSTOMER_ID,
+          status: 'active',
+          items: {
+            data: [{ price: { id: 'price_live_individual' } }],
+          },
+          current_period_start: Math.floor(new Date('2026-03-16T00:00:00Z').getTime() / 1000),
+          current_period_end: Math.floor(new Date('2026-04-16T00:00:00Z').getTime() / 1000),
+          cancel_at_period_end: false,
+          trial_end: null,
+          canceled_at: null,
+        },
+      ],
+    });
+    (prisma.subscription.upsert as jest.Mock).mockResolvedValue({
+      ...mockSubscription,
+      stripeSubscriptionId: STRIPE_SUBSCRIPTION_ID,
+      stripePriceId: 'price_live_individual',
+      planName: 'price_live_individual',
+    });
+    (prisma.organization.update as jest.Mock).mockResolvedValue({
+      ...mockOrg,
+      stripeSubscriptionId: STRIPE_SUBSCRIPTION_ID,
+      subscriptionStatus: 'ACTIVE',
+    });
+
+    const token = makeAccessToken(TEST_USER_ID, 'org_admin');
+    const res = await client
+      .get('/api/v1/billing/subscription')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(mockStripeSubscriptionsList).toHaveBeenCalledWith({
+      customer: STRIPE_CUSTOMER_ID,
+      status: 'all',
+      limit: 10,
+    });
+    expect(prisma.subscription.upsert as jest.Mock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { organizationId: TEST_ORG_ID },
+        update: expect.objectContaining({
+          stripeSubscriptionId: STRIPE_SUBSCRIPTION_ID,
+          stripePriceId: 'price_live_individual',
+        }),
+      })
+    );
+    expect(res.body.data).toMatchObject({
+      stripeSubscriptionId: STRIPE_SUBSCRIPTION_ID,
+      stripePriceId: 'price_live_individual',
     });
   });
 });
@@ -551,7 +824,7 @@ describe('POST /api/v1/billing/credits/purchase', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ bundleId: 'bundle-invalid' });
 
-    expect(res.status).toBe(422);
+    expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);
   });
 
@@ -698,12 +971,12 @@ describe('POST /api/v1/billing/webhook — subscription events', () => {
     // Verify subscription was upserted
     expect(prisma.subscription.upsert as jest.Mock).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { stripeSubscriptionId: STRIPE_SUBSCRIPTION_ID },
+        where: { organizationId: TEST_ORG_ID },
         create: expect.objectContaining({
           organizationId: TEST_ORG_ID,
           stripeSubscriptionId: STRIPE_SUBSCRIPTION_ID,
           status: 'ACTIVE',
-          planName: 'Individual',
+          planName: 'price_individual',
         }),
       })
     );
@@ -815,6 +1088,75 @@ describe('POST /api/v1/billing/webhook — subscription events', () => {
         data: expect.objectContaining({ subscriptionStatus: 'CANCELLED' }),
       })
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/billing/webhook — invoice.payment_succeeded
+// ---------------------------------------------------------------------------
+
+describe('POST /api/v1/billing/webhook — invoice.payment_succeeded event', () => {
+  it('adds purchased credits when Stripe confirms a credit bundle payment', async () => {
+    const invoicePaidEvent: Record<string, unknown> = {
+      id: 'evt_invoice_paid',
+      type: 'invoice.payment_succeeded',
+      data: {
+        object: {
+          id: 'in_test_123',
+          payment_intent: 'pi_credit_123',
+          metadata: {},
+        },
+      },
+    };
+
+    mockStripeWebhooksConstructEvent.mockReturnValue(invoicePaidEvent);
+    mockStripePaymentIntentsRetrieve.mockResolvedValue({
+      id: 'pi_credit_123',
+      metadata: {
+        type: 'credit_purchase',
+        organizationId: TEST_ORG_ID,
+        bundleId: 'bundle-1k',
+        credits: '1000',
+        userId: TEST_USER_ID,
+      },
+    });
+
+    mockPrismaTransaction.mockImplementation(async (fn: Function) => {
+      const mockTx = {
+        organization: {
+          findUnique: jest.fn().mockResolvedValue({ creditBalance: 500 }),
+          update: jest.fn().mockResolvedValue({ creditBalance: 1500 }),
+        },
+        creditTransaction: {
+          create: jest.fn().mockResolvedValue({
+            id: 'tx-credit-1',
+            organizationId: TEST_ORG_ID,
+            userId: TEST_USER_ID,
+            type: 'PURCHASE',
+            amount: 1000,
+            balanceAfter: 1500,
+            description: 'Credit purchase: 1,000 Credits',
+            metadata: {
+              invoiceId: 'in_test_123',
+              paymentIntentId: 'pi_credit_123',
+              bundleId: 'bundle-1k',
+            },
+          }),
+        },
+      };
+
+      return fn(mockTx);
+    });
+
+    const res = await client
+      .post('/api/v1/billing/webhook')
+      .set('stripe-signature', 'valid-sig')
+      .set('Content-Type', 'application/octet-stream')
+      .send(Buffer.from('{}'));
+
+    expect(res.status).toBe(200);
+    expect(mockStripePaymentIntentsRetrieve).toHaveBeenCalledWith('pi_credit_123');
+    expect(mockPrismaTransaction).toHaveBeenCalled();
   });
 });
 

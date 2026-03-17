@@ -49,7 +49,7 @@ const configSchema = z.object({
 
   // OpenAI
   OPENAI_API_KEY: z.string().min(1, 'OPENAI_API_KEY is required'),
-  OPENAI_MODEL: z.string().default('gpt-5.2-mini'),
+  OPENAI_MODEL: z.string().default('gpt-5-mini'),
   OPENAI_AGENT_MODEL: z.string().default('gpt-5.2'),
   OPENAI_ORG_ID: z.string().optional(),
   AGENT_REASONING_EFFORT: z.enum(['none', 'low', 'medium', 'high', 'xhigh']).default('medium'),

@@ -8,6 +8,7 @@ import {
   purchaseCreditsSchema,
 } from '../validators/billing.validators';
 import * as billingService from '../services/billing.service';
+import * as platformSettingService from '../services/platform-setting.service';
 import { AuthenticatedRequest, UserRole } from '../types';
 
 const router = Router();
@@ -190,27 +191,24 @@ router.post(
 // GET /v1/billing/plans  (PUBLIC)
 // ---------------------------------------------------------------------------
 
-router.get('/plans', (_req: Request, res: Response): void => {
-  const plans = Object.entries(billingService.PLANS).map(([key, plan]) => ({
-    id: key,
-    name: plan.name,
-    priceId: plan.priceId,
-    amount: plan.amount,
-  }));
+router.get('/plans', async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const plans = Object.entries(billingService.PLANS).map(([key, plan]) => ({
+      id: key,
+      name: plan.name,
+      priceId: plan.priceId,
+      amount: plan.amount,
+    }));
 
-  const bundles = Object.entries(billingService.CREDIT_BUNDLES).map(
-    ([id, bundle]) => ({
-      id,
-      label: bundle.label,
-      credits: bundle.credits,
-      amount: bundle.amount,
-    })
-  );
+    const bundles = await platformSettingService.listCreditBundles();
 
-  res.status(200).json({
-    success: true,
-    data: { plans, bundles },
-  });
+    res.status(200).json({
+      success: true,
+      data: { plans, bundles },
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;
