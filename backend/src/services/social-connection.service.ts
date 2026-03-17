@@ -13,7 +13,7 @@ import type { AuthenticatedUser } from '../types';
 const LINKEDIN_AUTH_URL = 'https://www.linkedin.com/oauth/v2/authorization';
 const LINKEDIN_TOKEN_URL = 'https://www.linkedin.com/oauth/v2/accessToken';
 const LINKEDIN_PROFILE_URL = 'https://api.linkedin.com/v2/userinfo';
-const LINKEDIN_SCOPES = 'w_member_social r_liteprofile openid profile';
+const LINKEDIN_SCOPES = 'w_member_social openid profile email';
 
 const FACEBOOK_AUTH_URL = 'https://www.facebook.com/v18.0/dialog/oauth';
 const FACEBOOK_TOKEN_URL = 'https://graph.facebook.com/v18.0/oauth/access_token';
