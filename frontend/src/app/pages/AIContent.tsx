@@ -93,7 +93,7 @@ export default function AIContent() {
       });
 
       setPreviewDraft(created);
-      setActivePreviewTab('LINKEDIN');
+      setActivePreviewTab(selectedPlatforms[0] ?? 'LINKEDIN');
       setTopic('');
       setAudience('');
       setTalkingPoints('');

@@ -372,17 +372,20 @@ export async function generateContent(
   // 8. Determine draft title
   const title = dto.title ?? dto.prompt.slice(0, 100);
 
-  // 9. Store draft in DB
+  // 9. Filter content to only selected channels
+  const selectedChannels = dto.channels ?? ['LINKEDIN', 'FACEBOOK', 'EMAIL', 'AD_COPY'];
+
+  // 10. Store draft in DB
   const draft = await prisma.draft.create({
     data: {
       organizationId: orgId,
       creatorId: user.id,
       title,
       originalPrompt: dto.prompt,
-      linkedinContent: contentWithDisclosures.linkedin,
-      facebookContent: contentWithDisclosures.facebook,
-      emailContent: contentWithDisclosures.email,
-      adCopyContent: contentWithDisclosures.adCopy,
+      linkedinContent: selectedChannels.includes('LINKEDIN') ? contentWithDisclosures.linkedin : null,
+      facebookContent: selectedChannels.includes('FACEBOOK') ? contentWithDisclosures.facebook : null,
+      emailContent: selectedChannels.includes('EMAIL') ? contentWithDisclosures.email : null,
+      adCopyContent: selectedChannels.includes('AD_COPY') ? contentWithDisclosures.adCopy : null,
       variantsJson: contentWithDisclosures as unknown as object,
       flagsJson: flagsJson as object,
       status: ContentStatus.DRAFT,
@@ -391,7 +394,7 @@ export async function generateContent(
     },
   });
 
-  // 10. Write audit trail
+  // 11. Write audit trail
   await writeAuditTrail({
     organizationId: orgId,
     actorId: user.id,
