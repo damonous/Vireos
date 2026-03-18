@@ -13,6 +13,48 @@ import { useApiData } from '../hooks/useApiData';
 import { useAuth } from '../hooks/useAuth';
 import { apiClient } from '../lib/api-client';
 
+interface OrgResponse {
+  id: string;
+  prohibitedTerms: string[];
+}
+
+function renderHighlightedText(text: string, prohibitedTerms: string[]) {
+  if (!text) {
+    return <span className="text-gray-400">No content for this channel.</span>;
+  }
+
+  if (prohibitedTerms.length === 0) {
+    return <span>{text}</span>;
+  }
+
+  const escapedTerms = prohibitedTerms
+    .map((term) => term.trim())
+    .filter(Boolean)
+    .map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+  if (escapedTerms.length === 0) {
+    return <span>{text}</span>;
+  }
+
+  const regex = new RegExp(`(${escapedTerms.join('|')})`, 'gi');
+  const parts = text.split(regex);
+
+  return (
+    <>
+      {parts.map((part, index) => {
+        const flagged = prohibitedTerms.some((term) => term.toLowerCase() === part.toLowerCase());
+        return flagged ? (
+          <mark key={`${part}-${index}`} className="rounded bg-red-100 px-1 text-red-800">
+            {part}
+          </mark>
+        ) : (
+          <span key={`${part}-${index}`}>{part}</span>
+        );
+      })}
+    </>
+  );
+}
+
 type ChannelKey = 'linkedinContent' | 'facebookContent' | 'emailContent' | 'adCopyContent';
 
 interface Draft {
@@ -45,6 +87,12 @@ export default function ContentDraftDetail() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const draft = useApiData<Draft>(draftId ? `/content/drafts/${draftId}` : '', [draftId], Boolean(draftId));
+  const org = useApiData<OrgResponse>(
+    user?.orgId ? `/organizations/${user.orgId}` : '/organizations/unknown',
+    [user?.orgId],
+    Boolean(user?.orgId)
+  );
+  const prohibitedTerms = org.data?.prohibitedTerms ?? [];
   const [activeTab, setActiveTab] = useState<ChannelKey>('linkedinContent');
   const [busyAction, setBusyAction] = useState<'save' | 'submit' | 'archive' | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -249,6 +297,14 @@ export default function ContentDraftDetail() {
                     readOnly={!canEdit}
                     className="min-h-[280px] border-gray-300 leading-6"
                   />
+                  {prohibitedTerms.length > 0 && value.length > 0 ? (
+                    <div className="rounded-lg border border-red-100 bg-red-50 p-4">
+                      <p className="text-sm font-semibold text-red-800">Compliance scan — prohibited terms</p>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-700">
+                        {renderHighlightedText(value, prohibitedTerms)}
+                      </p>
+                    </div>
+                  ) : null}
                 </TabsContent>
               );
             })}

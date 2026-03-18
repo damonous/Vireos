@@ -84,11 +84,11 @@ export default function OrgSettings() {
         name: orgName,
         website: website || null,
         logoUrl: logoUrl || null,
+        prohibitedTerms,
         settings: {
           ...(org.data?.settings ?? {}),
           timezone,
           requireComplianceReview: requireCompliance,
-          prohibitedTerms,
         },
       });
       await org.reload();
