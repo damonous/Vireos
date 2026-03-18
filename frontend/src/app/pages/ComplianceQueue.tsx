@@ -1,4 +1,5 @@
-import { Bell, CheckCircle2, Clock, Facebook, Info, Linkedin, Mail } from 'lucide-react';
+import React from 'react';
+import { Bell, Facebook, Info, Linkedin, Mail } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { EmptyState } from '../components/ui/empty-state';
@@ -9,24 +10,39 @@ import { useAuth } from '../hooks/useAuth';
 
 interface ReviewItem {
   id: string;
+  title: string | null;
+  originalPrompt: string | null;
   status: string;
   createdAt: string;
-  submittedAt: string | null;
-  reviewedAt: string | null;
+  updatedAt: string;
   reviewNotes: string | null;
-  draft: {
-    title: string | null;
-    channel: string;
-  } | null;
-  reviewer?: {
-    firstName?: string | null;
-    lastName?: string | null;
-  } | null;
+  linkedinContent?: string | null;
+  facebookContent?: string | null;
+  emailContent?: string | null;
+  adCopyContent?: string | null;
+  reviewerId?: string | null;
 }
 
 interface ReviewResponse {
   data?: ReviewItem[];
   items?: ReviewItem[];
+}
+
+function extractTopic(prompt: string | null): string | null {
+  if (!prompt) return null;
+  const match = prompt.match(/^Topic:\s*(.+)/m);
+  return match?.[1]?.trim() || null;
+}
+
+function displayTitle(item: ReviewItem): React.ReactNode {
+  if (item.title) return item.title;
+  const topic = extractTopic(item.originalPrompt);
+  return (
+    <span>
+      <span className="text-gray-400 italic">Untitled</span>
+      {topic ? <span className="text-gray-500"> — {topic}</span> : null}
+    </span>
+  );
 }
 
 const platformIcons = {
@@ -112,14 +128,14 @@ export default function ComplianceQueue() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {items.map((item) => {
-                      const channel = (item.draft?.channel ?? 'EMAIL').toUpperCase();
+                      const channel = item.linkedinContent ? 'LINKEDIN' : item.facebookContent ? 'FACEBOOK' : 'EMAIL';
                       const Icon = platformIcons[channel as keyof typeof platformIcons] ?? Mail;
                       return (
                         <tr key={item.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1E3A5F]">{item.draft?.title ?? 'Untitled draft'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1E3A5F]">{displayTitle(item)}</td>
                           <td className="px-6 py-4 whitespace-nowrap"><Icon className="w-5 h-5 text-gray-600" /></td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                            {new Date(item.submittedAt ?? item.createdAt).toLocaleString()}
+                            {new Date(item.updatedAt ?? item.createdAt).toLocaleString()}
                           </td>
                           <td className="px-6 py-4">
                             <Badge className={item.status === 'APPROVED' ? 'bg-green-100 text-green-800 border-green-200 border' : item.status === 'REJECTED' ? 'bg-red-100 text-red-800 border-red-200 border' : 'bg-amber-100 text-amber-800 border-amber-200 border'}>
@@ -139,7 +155,7 @@ export default function ComplianceQueue() {
               {selectedItem ? (
                 <div className="space-y-4">
                   <div>
-                    <h4 className="font-medium text-[#1E3A5F]">{selectedItem.draft?.title ?? 'Untitled draft'}</h4>
+                    <h4 className="font-medium text-[#1E3A5F]">{displayTitle(selectedItem)}</h4>
                     <Badge className={selectedItem.status === 'APPROVED' ? 'bg-green-100 text-green-800 border-green-200 border mt-2' : selectedItem.status === 'REJECTED' ? 'bg-red-100 text-red-800 border-red-200 border mt-2' : 'bg-amber-100 text-amber-800 border-amber-200 border mt-2'}>
                       {selectedItem.status}
                     </Badge>
@@ -147,11 +163,11 @@ export default function ComplianceQueue() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Submitted:</span>
-                      <span className="text-[#1E3A5F] font-medium">{new Date(selectedItem.submittedAt ?? selectedItem.createdAt).toLocaleString()}</span>
+                      <span className="text-[#1E3A5F] font-medium">{new Date(selectedItem.updatedAt ?? selectedItem.createdAt).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Reviewed:</span>
-                      <span className="text-[#1E3A5F] font-medium">{selectedItem.reviewedAt ? new Date(selectedItem.reviewedAt).toLocaleString() : 'Pending'}</span>
+                      <span className="text-gray-600">Status:</span>
+                      <span className="text-[#1E3A5F] font-medium">{selectedItem.status}</span>
                     </div>
                   </div>
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-[#1E3A5F]">
