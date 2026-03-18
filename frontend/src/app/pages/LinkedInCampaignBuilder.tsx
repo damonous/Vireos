@@ -78,7 +78,7 @@ export default function LinkedInCampaignBuilder() {
             </button>
             <div>
               <h1 className="text-2xl font-semibold text-[#1E3A5F]">Create LinkedIn Campaign</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Define a real outreach sequence and save it to the backend.</p>
+              <p className="text-sm text-gray-500 mt-0.5">Define your outreach sequence and save it as a campaign draft.</p>
             </div>
           </div>
           <Button className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white" onClick={() => void handleSave()} disabled={submitting || !name.trim() || steps.some((step) => !step.messageTemplate.trim())}>

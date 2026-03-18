@@ -276,10 +276,10 @@ export default function PlatformBilling() {
             <div>
               <h3 className="text-lg font-semibold text-[#1E3A5F]">Credit Bundle Catalog</h3>
               <p className="mt-1 text-sm text-gray-500">
-                Configure the live bundle catalog exposed on the billing page and used for credit purchases.
+                Manage the credit bundles available for purchase on the billing page.
               </p>
               <p className="mt-2 text-xs font-medium uppercase tracking-wide text-gray-500">
-                Source: {creditBundles.data?.source === 'persisted' ? 'Persisted platform setting' : 'Default fallback'}
+                Source: {creditBundles.data?.source === 'persisted' ? 'Custom configuration' : 'Default pricing'}
                 {creditBundles.data?.updatedAt ? ` • Updated ${new Date(creditBundles.data.updatedAt).toLocaleString()}` : ''}
               </p>
             </div>

@@ -81,7 +81,7 @@ export default function PlatformSettings() {
   return (
     <PageShell
       title="Platform Settings"
-      subtitle="Live operational settings and controls visible from the current backend state"
+      subtitle="System configuration, feature flags, and platform health overview"
     >
       <div className="space-y-6">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -95,7 +95,7 @@ export default function PlatformSettings() {
                 <p className="text-lg font-semibold text-[#1E3A5F]">{window.location.origin}</p>
               </div>
             </div>
-            <p className="mt-4 text-sm text-gray-600">This page now shows the live browser origin instead of a static platform URL.</p>
+            <p className="mt-4 text-sm text-gray-600">The current platform URL where the application is running.</p>
           </Card>
 
           <Card className="border border-gray-200 p-6 shadow-sm">
@@ -132,7 +132,7 @@ export default function PlatformSettings() {
         <Card className="border border-gray-200 shadow-sm">
           <div className="border-b border-gray-200 px-6 py-4">
             <h2 className="text-lg font-semibold text-[#1E3A5F]">Runtime Readiness</h2>
-            <p className="mt-1 text-sm text-gray-500">These values are loaded directly from `/health/ready` and `/metrics`.</p>
+            <p className="mt-1 text-sm text-gray-500">Real-time system health checks and performance metrics.</p>
           </div>
           <div className="grid grid-cols-1 gap-4 px-6 py-6 md:grid-cols-2 xl:grid-cols-3">
             {readinessCards.map((item) => {
@@ -191,9 +191,9 @@ export default function PlatformSettings() {
                 </div>
               </div>
               <ul className="mt-4 space-y-2 text-sm text-gray-700">
-                <li>OAuth app credentials are configured server-side and verified through actual connect flows.</li>
+                <li>Integration credentials are securely stored and verified through the connection process.</li>
                 <li>Stripe, SendGrid, OpenAI, and AWS keys are not rendered here by design.</li>
-                <li>Use the provider setup runbook and live connection pages to validate external integrations.</li>
+                <li>Use the connection pages in Settings to verify and manage integrations.</li>
               </ul>
             </Card>
 
@@ -204,7 +204,7 @@ export default function PlatformSettings() {
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-[#1E3A5F]">Current Rollout Snapshot</h2>
-                  <p className="mt-1 text-sm text-gray-500">Derived from live platform state, not hardcoded plans or integration cards.</p>
+                  <p className="mt-1 text-sm text-gray-500">Current platform configuration and active feature summary.</p>
                 </div>
               </div>
               <div className="mt-5 space-y-3">
@@ -220,7 +220,7 @@ export default function PlatformSettings() {
                   <p className="text-xs uppercase tracking-wide text-gray-500">Runtime Controls</p>
                   <p className="mt-1 flex items-center gap-2 text-sm text-gray-700">
                     <Zap className="h-4 w-4 text-[#0EA5E9]" />
-                    Feature flags and backend environment state are the real control surface.
+                    Feature flags control which capabilities are available across the platform.
                   </p>
                 </div>
               </div>

@@ -93,7 +93,7 @@ export default function EmailSequenceBuilder() {
             <div className="h-6 w-px bg-gray-300"></div>
             <div>
               <h1 className="text-2xl font-semibold text-[#1E3A5F]">Create Email Sequence</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Create a real sequence, email templates, and sequence steps in the backend.</p>
+              <p className="text-sm text-gray-500 mt-0.5">Create a sequence with email templates and automated follow-up steps.</p>
             </div>
           </div>
           <Button className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white" onClick={() => void handleSave()} disabled={submitting || !name.trim() || steps.some((step) => !step.subject.trim() || !step.body.trim())}>

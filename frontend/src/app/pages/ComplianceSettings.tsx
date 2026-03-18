@@ -209,7 +209,7 @@ export default function ComplianceSettings() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <Label className="text-sm font-medium text-gray-700">Require compliance review before publishing</Label>
-                <p className="mt-1 text-xs text-gray-500">Stored in organization settings and enforced by workflow policy.</p>
+                <p className="mt-1 text-xs text-gray-500">All content must pass compliance review before it can be published.</p>
               </div>
               <Switch checked={requireComplianceReview} onCheckedChange={setRequireComplianceReview} className="data-[state=checked]:bg-[#0EA5E9]" />
             </div>
@@ -217,7 +217,7 @@ export default function ComplianceSettings() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <Label className="text-sm font-medium text-gray-700">Auto-approve drafts with no flagged terms</Label>
-                <p className="mt-1 text-xs text-gray-500">This is stored as a live rule but does not bypass review unless backend workflow implements it.</p>
+                <p className="mt-1 text-xs text-gray-500">Drafts without flagged terms can be automatically approved if this setting is enabled.</p>
               </div>
               <Switch checked={autoApprove} onCheckedChange={setAutoApprove} className="data-[state=checked]:bg-[#0EA5E9]" />
             </div>

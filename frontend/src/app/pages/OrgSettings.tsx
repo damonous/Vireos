@@ -106,7 +106,7 @@ export default function OrgSettings() {
       <div className="bg-white border-b border-gray-200 px-8 py-4">
         <div>
           <h1 className="text-2xl font-semibold text-[#1E3A5F]">Organization Settings</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage the live organization configuration stored in the backend</p>
+          <p className="text-sm text-gray-500 mt-1">Manage your organization profile, compliance rules, and team preferences</p>
         </div>
       </div>
 

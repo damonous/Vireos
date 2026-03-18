@@ -82,7 +82,7 @@ export default function Billing() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('onboarding') === 'required') return 'Choose a subscription plan to complete onboarding and unlock the workspace.';
     if (params.get('required') === 'subscription') return 'An active subscription is required before you can access the rest of the application.';
-    if (params.get('checkout') === 'success') return 'Checkout returned successfully. Stripe webhook confirmation updates subscription state afterward.';
+    if (params.get('checkout') === 'success') return 'Checkout completed successfully. Your subscription will be updated shortly.';
     if (params.get('checkout') === 'cancelled') return 'Checkout was cancelled before completion.';
     if (params.get('portal') === 'returned') return 'Returned from the billing portal.';
     return null;

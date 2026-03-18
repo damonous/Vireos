@@ -98,7 +98,7 @@ export default function ComplianceQueue() {
         <div className="bg-[#E0F2FE] border border-[#0EA5E9]/30 rounded-lg p-4 mb-6 flex items-start gap-3">
           <Info className="w-5 h-5 text-[#0EA5E9] flex-shrink-0 mt-0.5" />
           <p className="text-sm text-[#1E3A5F] flex-1">
-            Approved content is automatically published at the scheduled time once downstream provider integrations are configured.
+            Approved content is automatically published at the scheduled time once your social accounts are connected.
           </p>
         </div>
 

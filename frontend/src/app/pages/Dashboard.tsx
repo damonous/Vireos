@@ -132,7 +132,7 @@ export default function Dashboard() {
     {
       label: 'Active Campaigns',
       value: overview.data?.activeCampaigns ?? 0,
-      hint: 'Running from live backend data',
+      hint: 'Currently active campaigns',
       hintTone: 'text-gray-500',
       icon: Target,
       iconWrap: 'bg-purple-50',

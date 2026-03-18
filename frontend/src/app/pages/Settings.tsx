@@ -467,7 +467,7 @@ export default function Settings() {
                           <p className="text-xs text-gray-500 mt-1">
                             {integration.key === 'linkedin' || integration.key === 'facebook'
                               ? 'No active OAuth connection found for this user.'
-                              : 'Provider credentials exist at the environment level, not as a user connection.'}
+                              : 'This service is configured at the organization level and does not require a personal connection.'}
                           </p>
                         )}
                       </div>
@@ -537,7 +537,7 @@ export default function Settings() {
                 <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                   <p className="text-sm font-medium text-[#1E3A5F]">Security alerts</p>
                   <p className="text-sm text-gray-600 mt-1">
-                    Login activity and password changes are recorded in the audit trail.
+                    Login activity and password changes are recorded in your activity history.
                   </p>
                 </div>
                 <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -550,7 +550,7 @@ export default function Settings() {
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-medium text-[#1E3A5F]">Recent in-app notifications</p>
-                      <p className="text-sm text-gray-600 mt-1">Approval and fulfillment workflow events are rendered from the live backend.</p>
+                      <p className="text-sm text-gray-600 mt-1">Recent approval and content activity for your account.</p>
                     </div>
                     <Button variant="outline" size="sm" onClick={() => void notifications.reload()}>
                       Refresh

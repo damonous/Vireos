@@ -221,8 +221,8 @@ export default function AIContent() {
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 flex gap-3">
               <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-blue-900">
-                <p className="font-medium mb-1">Real backend generation</p>
-                <p>This form calls `/api/v1/content/generate`. If provider credentials are missing, the API error is shown here instead of fake copy.</p>
+                <p className="font-medium mb-1">How it works</p>
+                <p>Your draft will be generated using AI based on the topic, audience, and talking points you provide. If something goes wrong, an error message will appear above the button.</p>
               </div>
             </div>
 
@@ -274,7 +274,7 @@ export default function AIContent() {
             ) : (
               <EmptyState
                 title="No generated content yet"
-                description="Once a draft is created, each selected channel preview will render here from the saved backend draft."
+                description="Once a draft is created, each selected channel preview will appear here."
               />
             )}
           </Card>
@@ -288,7 +288,7 @@ export default function AIContent() {
             {recentDrafts.length === 0 ? (
               <EmptyState
                 title="No drafts in this workspace"
-                description="Generated drafts will appear here after the backend saves them."
+                description="Generated drafts will appear here once you create them."
               />
             ) : (
               <div className="space-y-3">

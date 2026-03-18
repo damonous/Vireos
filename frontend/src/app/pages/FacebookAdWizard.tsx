@@ -72,7 +72,7 @@ export default function FacebookAdWizard() {
     <div className="flex-1 overflow-auto bg-gray-50">
       <div className="bg-white border-b border-gray-200 px-8 py-4">
         <h1 className="text-2xl font-semibold text-[#1E3A5F]">Create Facebook Ad Campaign</h1>
-        <p className="text-sm text-gray-500 mt-1">Save a real campaign draft against the backend instead of stepping through sample data.</p>
+        <p className="text-sm text-gray-500 mt-1">Set up your Facebook ad campaign details and save as a draft.</p>
       </div>
 
       <div className="p-8 max-w-4xl mx-auto space-y-6">

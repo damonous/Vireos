@@ -299,7 +299,7 @@ export default function ContentReview() {
   return (
     <PageShell
       title="Content Review"
-      subtitle="Live compliance queue with real backend approval actions"
+      subtitle="Review, approve, or reject content submitted for compliance"
       actions={
         <div className="flex items-center gap-3">
           <div className="relative">

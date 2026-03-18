@@ -57,7 +57,7 @@ export default function FacebookSubmitted() {
           </div>
           <h1 className="text-4xl font-semibold text-[#1E3A5F]">Campaign Saved</h1>
           <p className="mt-3 text-lg text-gray-600">
-            <span className="font-semibold text-[#1E3A5F]">{selectedCampaign.name}</span> is now stored in Vireos with its current backend status.
+            <span className="font-semibold text-[#1E3A5F]">{selectedCampaign.name}</span> has been saved successfully.
           </p>
         </div>
 
@@ -83,9 +83,9 @@ export default function FacebookSubmitted() {
         <Card className="p-6 rounded-lg shadow-sm border border-gray-200 bg-blue-50">
           <h2 className="text-lg font-semibold text-[#1E3A5F] mb-2">What happens next?</h2>
           <ul className="text-sm text-[#1E3A5F] space-y-2">
-            <li>The campaign remains in backend status `{selectedCampaign.status}` until launched or updated.</li>
-            <li>Meta delivery requires configured provider credentials and, if applicable, an attached approved content draft.</li>
-            <li>You can inspect the live campaign record from the detail page.</li>
+            <li>The campaign is currently in "{selectedCampaign.status}" status and will remain so until launched or updated.</li>
+            <li>Delivery to Meta requires a connected Facebook account and, if applicable, an approved content draft.</li>
+            <li>You can view and manage this campaign from the detail page.</li>
           </ul>
         </Card>
 

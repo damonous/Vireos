@@ -72,7 +72,7 @@ export default function FeatureFlags() {
             <div className="flex items-start gap-2">
               <span className="text-yellow-600 text-lg">!</span>
               <p className="text-sm text-yellow-800">
-                You are editing live organization flags. Changes apply immediately after the backend update succeeds.
+                You are editing organization feature flags. Changes take effect immediately once saved.
               </p>
             </div>
             <button onClick={() => setShowBanner(false)} className="text-yellow-600 hover:text-yellow-800">

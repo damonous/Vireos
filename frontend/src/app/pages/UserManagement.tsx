@@ -161,7 +161,7 @@ export default function UserManagement() {
         <Card className="rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           {rows.length === 0 ? (
             <div className="p-10">
-              <EmptyState title="No organization members found" description="Invited members will appear here once the backend has organization users." />
+              <EmptyState title="No organization members found" description="Invited members will appear here once they have joined the organization." />
             </div>
           ) : (
             <div className="overflow-x-auto">

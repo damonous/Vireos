@@ -39,7 +39,7 @@ export default function PlatformUsers() {
         <Card className="rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           {rows.length === 0 ? (
             <div className="p-10">
-              <EmptyState title="No users found" description="Platform users will appear here when the backend returns results." />
+              <EmptyState title="No users found" description="Platform users will appear here once users have registered." />
             </div>
           ) : (
             <div className="overflow-x-auto">
