@@ -35,11 +35,27 @@ export const PLANS = {
     priceId: process.env['STRIPE_PRICE_INDIVIDUAL'] ?? 'price_individual',
     name: 'Individual',
     amount: 29900,
+    features: [
+      'AI content generation',
+      'LinkedIn & Facebook publishing',
+      'Compliance review workflow',
+      'Email campaigns',
+      'Basic analytics',
+      '1,000 credits/month',
+    ],
   },
   team: {
     priceId: process.env['STRIPE_PRICE_TEAM'] ?? 'price_team',
     name: 'Team',
     amount: 0, // custom pricing
+    features: [
+      'Everything in Individual',
+      'Unlimited team members',
+      'Advanced analytics & reports',
+      'Lead management & prospect finder',
+      'Priority support',
+      '10,000 credits/month',
+    ],
   },
 } as const;
 

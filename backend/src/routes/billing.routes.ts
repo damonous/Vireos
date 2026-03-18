@@ -198,6 +198,7 @@ router.get('/plans', async (_req: Request, res: Response, next: NextFunction): P
       name: plan.name,
       priceId: plan.priceId,
       amount: plan.amount,
+      features: plan.features,
     }));
 
     const bundles = await platformSettingService.listCreditBundles();
