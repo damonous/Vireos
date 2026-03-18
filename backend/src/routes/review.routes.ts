@@ -68,6 +68,25 @@ router.get(
 );
 
 // ---------------------------------------------------------------------------
+// GET /v1/reviews/stats — compliance dashboard stats
+// ---------------------------------------------------------------------------
+
+router.get(
+  '/stats',
+  auth,
+  requireComplianceOrAdmin,
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const authReq = req as unknown as AuthenticatedRequest;
+      const stats = await reviewService.getComplianceStats(authReq.user);
+      res.status(200).json({ success: true, data: stats });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
 // GET /v1/reviews/:draftId — single draft for review
 // ---------------------------------------------------------------------------
 

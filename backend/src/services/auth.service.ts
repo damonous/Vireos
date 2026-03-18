@@ -222,7 +222,7 @@ export async function register(
   ipAddress?: string
 ): Promise<AuthTokens> {
   const normalizedOrgName = dto.organizationName?.trim();
-  const organization = dto.organizationId
+  let organization = dto.organizationId
     ? await prisma.organization.findUnique({
         where: { id: dto.organizationId },
       })
@@ -236,6 +236,31 @@ export async function register(
           },
         })
       : null;
+
+  // If an explicit orgId was provided but not found, that's an error
+  if (dto.organizationId && !organization) {
+    throw Errors.notFound('Organization');
+  }
+
+  // Auto-create organization when registering with a new org name
+  let isNewOrg = false;
+  if (!organization && normalizedOrgName) {
+    const slug = normalizedOrgName.toLowerCase().replace(/\s+/g, '-');
+    organization = await prisma.organization.create({
+      data: {
+        name: normalizedOrgName,
+        slug,
+        prohibitedTerms: [],
+      },
+    });
+    isNewOrg = true;
+
+    logger.info('Organization auto-created during registration', {
+      orgId: organization.id,
+      orgName: organization.name,
+      slug,
+    });
+  }
 
   if (!organization) {
     throw Errors.notFound('Organization');
@@ -257,7 +282,7 @@ export async function register(
   // Hash password
   const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
-  // Create user
+  // Create user — assign ADMIN role if they created the org, ADVISOR otherwise
   const user = await prisma.user.create({
     data: {
       organizationId: organization.id,
@@ -265,7 +290,7 @@ export async function register(
       passwordHash,
       firstName: dto.firstName,
       lastName: dto.lastName,
-      role: PrismaUserRole.ADVISOR,
+      role: isNewOrg ? PrismaUserRole.ADMIN : PrismaUserRole.ADVISOR,
       status: UserStatus.INVITED,
     },
   });

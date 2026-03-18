@@ -12,6 +12,7 @@ interface ReviewItem {
   title?: string | null;
   status: string;
   submittedAt?: string | null;
+  createdAt?: string | null;
   creator?: {
     firstName?: string | null;
     lastName?: string | null;
@@ -27,6 +28,12 @@ interface AuditItem {
   createdAt?: string | null;
 }
 
+interface ComplianceStats {
+  pending: number;
+  approvedToday: number;
+  rejectedThisWeek: number;
+}
+
 const platformIcons = {
   linkedin: Linkedin,
   facebook: Facebook,
@@ -39,26 +46,31 @@ export default function ComplianceOfficerHome() {
   const [showToast, setShowToast] = useState(false);
   const [queue, setQueue] = useState<ReviewItem[]>([]);
   const [auditTrail, setAuditTrail] = useState<AuditItem[]>([]);
+  const [stats, setStats] = useState<ComplianceStats>({ pending: 0, approvedToday: 0, rejectedThisWeek: 0 });
 
-  useEffect(() => {
-    const load = async () => {
-      const [queueData, auditData] = await Promise.all([
+  const loadAll = useMemo(() => {
+    return async () => {
+      const [queueData, auditData, statsData] = await Promise.all([
         apiClient.get<ReviewItem[]>('/reviews?page=1&limit=20'),
         apiClient.get<AuditItem[]>('/audit-trail?page=1&limit=20'),
+        apiClient.get<ComplianceStats>('/reviews/stats'),
       ]);
       setQueue(queueData);
       setAuditTrail(auditData);
+      setStats(statsData);
     };
-
-    void load();
   }, []);
 
-  const counts = useMemo(() => {
-    const approved = queue.filter((item) => item.status === 'APPROVED').length;
-    const rejected = queue.filter((item) => item.status === 'REJECTED').length;
-    const pending = queue.filter((item) => item.status !== 'APPROVED' && item.status !== 'REJECTED').length;
-    return { approved, rejected, pending };
-  }, [queue]);
+  useEffect(() => {
+    void loadAll();
+  }, [loadAll]);
+
+  // Auto-refresh when the page regains focus (e.g. navigating back from review)
+  useEffect(() => {
+    const onFocus = () => void loadAll();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [loadAll]);
 
   const averageOpenAgeHours = useMemo(() => {
     const pendingItems = queue.filter((item) => item.status !== 'APPROVED' && item.status !== 'REJECTED');
@@ -75,9 +87,9 @@ export default function ComplianceOfficerHome() {
   }, [queue]);
 
   const kpiData = [
-    { label: 'Pending Review', value: String(counts.pending), icon: Clock, color: 'bg-orange-500', badge: counts.pending > 0 ? 'LIVE' : undefined },
-    { label: 'Approved Today', value: String(counts.approved), icon: CheckCircle, color: 'bg-green-500' },
-    { label: 'Rejected This Week', value: String(counts.rejected), icon: XCircle, color: 'bg-red-500' },
+    { label: 'Pending Review', value: String(stats.pending), icon: Clock, color: 'bg-orange-500', badge: stats.pending > 0 ? 'LIVE' : undefined },
+    { label: 'Approved Today', value: String(stats.approvedToday), icon: CheckCircle, color: 'bg-green-500' },
+    { label: 'Rejected This Week', value: String(stats.rejectedThisWeek), icon: XCircle, color: 'bg-red-500' },
     { label: 'Avg Open Queue Age', value: `${averageOpenAgeHours} hrs`, icon: TrendingDown, color: 'bg-blue-500' },
   ];
 

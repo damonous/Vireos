@@ -692,6 +692,64 @@ export async function editDraftContent(
 }
 
 // ---------------------------------------------------------------------------
+// Compliance dashboard stats
+// ---------------------------------------------------------------------------
+
+export interface ComplianceStats {
+  pending: number;
+  approvedToday: number;
+  rejectedThisWeek: number;
+}
+
+/**
+ * Returns compliance dashboard statistics:
+ *  - pending: count of PENDING_REVIEW drafts
+ *  - approvedToday: count of drafts approved today (based on updatedAt)
+ *  - rejectedThisWeek: count of drafts rejected this week (Mon–Sun, based on updatedAt)
+ */
+export async function getComplianceStats(
+  user: AuthenticatedUser
+): Promise<ComplianceStats> {
+  if (!isComplianceOrAdmin(user.role)) {
+    throw Errors.forbidden('Only compliance officers and admins can view compliance stats');
+  }
+
+  const orgId = user.role === UserRole.SUPER_ADMIN ? undefined : user.orgId;
+  const orgFilter = orgId ? { organizationId: orgId } : {};
+
+  // Start of today (midnight local server time)
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  // Start of this week (Monday)
+  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ...
+  const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - mondayOffset);
+
+  const [pending, approvedToday, rejectedThisWeek] = await Promise.all([
+    prisma.draft.count({
+      where: { ...orgFilter, status: ContentStatus.PENDING_REVIEW },
+    }),
+    prisma.draft.count({
+      where: {
+        ...orgFilter,
+        status: ContentStatus.APPROVED,
+        updatedAt: { gte: startOfToday },
+      },
+    }),
+    prisma.draft.count({
+      where: {
+        ...orgFilter,
+        status: ContentStatus.REJECTED,
+        updatedAt: { gte: startOfWeek },
+      },
+    }),
+  ]);
+
+  return { pending, approvedToday, rejectedThisWeek };
+}
+
+// ---------------------------------------------------------------------------
 // Audit trail query
 // ---------------------------------------------------------------------------
 
