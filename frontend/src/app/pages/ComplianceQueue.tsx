@@ -34,13 +34,19 @@ function extractTopic(prompt: string | null): string | null {
   return match?.[1]?.trim() || null;
 }
 
+function truncate(text: string, max: number): string {
+  return text.length > max ? text.slice(0, max).trimEnd() + '...' : text;
+}
+
 function displayTitle(item: ReviewItem): React.ReactNode {
-  if (item.title) return item.title;
-  const topic = extractTopic(item.originalPrompt);
+  const isPromptAsTitle = item.title?.startsWith('Topic:');
+  if (item.title && !isPromptAsTitle) return item.title;
+  const source = isPromptAsTitle ? item.title : item.originalPrompt;
+  const topic = extractTopic(source);
   return (
     <span>
       <span className="text-gray-400 italic">Untitled</span>
-      {topic ? <span className="text-gray-500"> — {topic}</span> : null}
+      {topic ? <span className="text-gray-500"> — {truncate(topic, 40)}</span> : null}
     </span>
   );
 }
