@@ -114,7 +114,9 @@ export default function Billing() {
   const bundleList = plans.data?.bundles ?? [];
   const currentSubscription = subscription.data;
   const currentPlan =
-    planList.find((plan) => plan.priceId === currentSubscription?.stripePriceId) ?? planList[0] ?? null;
+    currentSubscription
+      ? planList.find((plan) => plan.priceId === currentSubscription.stripePriceId) ?? null
+      : null;
   const balance = creditBalance.data?.balance ?? 0;
   const transactions = creditBalance.data?.transactions ?? [];
   const invoiceRows = invoices.data ?? [];

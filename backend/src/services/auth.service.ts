@@ -251,6 +251,7 @@ export async function register(
         name: normalizedOrgName,
         slug,
         prohibitedTerms: [],
+        subscriptionStatus: 'INCOMPLETE',
       },
     });
     isNewOrg = true;
