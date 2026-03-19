@@ -1,5 +1,5 @@
+import { useState } from 'react';
 import {
-  Calendar,
   TrendingUp,
   FileText,
   Target,
@@ -9,6 +9,7 @@ import {
   Mail,
   DollarSign,
   ArrowUpRight,
+  Download,
 } from 'lucide-react';
 import {
   Bar,
@@ -31,6 +32,8 @@ import { EmptyState } from '../components/ui/empty-state';
 import { ErrorState } from '../components/ui/error-state';
 import { LoadingState } from '../components/ui/loading-state';
 import { useApiData } from '../hooks/useApiData';
+import { DateRangeSelector } from '../components/DateRangeSelector';
+import type { DatePreset } from '../components/DateRangeSelector';
 
 interface OverviewMetrics {
   contentCreated: number;
@@ -125,11 +128,12 @@ function humanizeKey(value: string): string {
 }
 
 export default function Analytics() {
-  const overview = useApiData<OverviewMetrics>('/analytics/overview?preset=30d');
-  const linkedIn = useApiData<LinkedInMetrics>('/analytics/linkedin?preset=30d');
-  const facebook = useApiData<FacebookMetrics>('/analytics/facebook?preset=30d');
-  const email = useApiData<EmailMetrics>('/analytics/email?preset=30d');
-  const leads = useApiData<LeadMetrics>('/analytics/leads?preset=30d');
+  const [preset, setPreset] = useState<DatePreset>('30d');
+  const overview = useApiData<OverviewMetrics>(`/analytics/overview?preset=${preset}`, [preset]);
+  const linkedIn = useApiData<LinkedInMetrics>(`/analytics/linkedin?preset=${preset}`, [preset]);
+  const facebook = useApiData<FacebookMetrics>(`/analytics/facebook?preset=${preset}`, [preset]);
+  const email = useApiData<EmailMetrics>(`/analytics/email?preset=${preset}`, [preset]);
+  const leads = useApiData<LeadMetrics>(`/analytics/leads?preset=${preset}`, [preset]);
 
   const isLoading =
     overview.loading ||
@@ -326,10 +330,13 @@ export default function Analytics() {
             <h1 className="text-2xl font-semibold text-[#1E3A5F]">Analytics Dashboard</h1>
             <p className="text-sm text-gray-500 mt-1">Live performance data across content, campaigns, and lead flow</p>
           </div>
-          <Button variant="outline" className="flex items-center gap-2" onClick={exportAnalytics}>
-            <Calendar className="w-4 h-4" />
-            Last 30 Days
-          </Button>
+          <div className="flex items-center gap-2">
+            <DateRangeSelector value={preset} onChange={setPreset} />
+            <Button variant="outline" className="flex items-center gap-2" onClick={exportAnalytics}>
+              <Download className="w-4 h-4" />
+              Export
+            </Button>
+          </div>
         </div>
       </div>
 

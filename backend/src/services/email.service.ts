@@ -1,4 +1,6 @@
-import sgMail from '@sendgrid/mail';
+import crypto from 'node:crypto';
+import formData from 'form-data';
+import Mailgun from 'mailgun.js';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 import { prisma } from '../db/client';
@@ -7,18 +9,28 @@ import { prisma } from '../db/client';
 // Types
 // ---------------------------------------------------------------------------
 
-export interface SendGridWebhookEvent {
+export interface MailgunWebhookSignature {
+  timestamp: string;
+  token: string;
+  signature: string;
+}
+
+export interface MailgunWebhookEventData {
   event: string;
-  email: string;
   timestamp: number;
-  sg_message_id?: string;
-  'smtp-id'?: string;
-  ip?: string;
-  useragent?: string;
-  sg_event_id?: string;
-  reason?: string;
+  recipient?: string;
+  message?: {
+    headers?: {
+      'message-id'?: string;
+    };
+  };
   url?: string;
-  category?: string | string[];
+  reason?: string;
+}
+
+export interface MailgunWebhookPayload {
+  signature?: MailgunWebhookSignature;
+  'event-data'?: MailgunWebhookEventData;
 }
 
 // ---------------------------------------------------------------------------
@@ -26,13 +38,19 @@ export interface SendGridWebhookEvent {
 // ---------------------------------------------------------------------------
 
 class EmailService {
+  private readonly client: ReturnType<Mailgun['client']>;
+
   constructor() {
-    sgMail.setApiKey(config.SENDGRID_API_KEY);
+    const mailgun = new Mailgun(formData);
+    this.client = mailgun.client({
+      username: 'api',
+      key: config.MAILGUN_API_KEY,
+    });
   }
 
   /**
-   * Sends a plain HTML/text email via SendGrid.
-   * Returns the SendGrid message ID for tracking.
+   * Sends a plain HTML/text email via Mailgun.
+   * Returns the Mailgun message ID for tracking.
    */
   async sendEmail(
     to: string,
@@ -40,35 +58,29 @@ class EmailService {
     html: string,
     text?: string
   ): Promise<string> {
-    const msg: sgMail.MailDataRequired = {
+    const msg = {
       to,
-      from: {
-        email: config.SENDGRID_FROM_EMAIL,
-        name: config.SENDGRID_FROM_NAME,
-      },
+      from: `${config.MAILGUN_FROM_NAME} <${config.MAILGUN_FROM_EMAIL}>`,
       subject,
       html,
       ...(text ? { text } : {}),
     };
 
-    logger.info('Sending email via SendGrid', {
+    logger.info('Sending email via Mailgun', {
       to,
       subject,
-      fromEmail: config.SENDGRID_FROM_EMAIL,
+      fromEmail: config.MAILGUN_FROM_EMAIL,
+      domain: config.MAILGUN_DOMAIN,
     });
 
-    const [response] = await sgMail.send(msg);
-
-    const messageId =
-      (response.headers['x-message-id'] as string | undefined) ??
-      (response.headers['X-Message-Id'] as string | undefined) ??
-      '';
+    const response = await this.client.messages.create(config.MAILGUN_DOMAIN, msg);
+    const messageId = response.id ?? '';
 
     logger.info('Email sent successfully', {
       to,
       subject,
       messageId,
-      statusCode: response.statusCode,
+      statusCode: response.status,
     });
 
     return messageId;
@@ -76,7 +88,7 @@ class EmailService {
 
   /**
    * Sends an email using a stored EmailTemplate, interpolating variables.
-   * Returns the SendGrid message ID.
+   * Returns the Mailgun message ID.
    */
   async sendFromTemplate(
     templateId: string,
@@ -121,36 +133,53 @@ class EmailService {
   }
 
   /**
-   * Processes an array of SendGrid webhook events.
+   * Validates a Mailgun webhook signature when a signing key is configured.
+   */
+  verifyWebhookSignature(signature?: MailgunWebhookSignature): boolean {
+    if (!config.MAILGUN_WEBHOOK_SIGNING_KEY) {
+      return true;
+    }
+
+    if (!signature) {
+      return false;
+    }
+
+    const digest = crypto
+      .createHmac('sha256', config.MAILGUN_WEBHOOK_SIGNING_KEY)
+      .update(signature.timestamp.concat(signature.token))
+      .digest('hex');
+
+    return digest === signature.signature;
+  }
+
+  /**
+   * Processes an array of Mailgun webhook events.
    * Updates EmailSend records with delivery status, open/click/bounce timestamps.
    */
-  async handleWebhook(events: SendGridWebhookEvent[]): Promise<void> {
+  async handleWebhook(events: MailgunWebhookEventData[]): Promise<void> {
     for (const event of events) {
-      const sgMessageId = event.sg_message_id ?? event['smtp-id'];
+      const mailgunMessageId = event.message?.headers?.['message-id'];
 
-      if (!sgMessageId) {
-        logger.warn('SendGrid webhook event missing message ID', { event: event.event });
+      if (!mailgunMessageId) {
+        logger.warn('Mailgun webhook event missing message ID', { event: event.event });
         continue;
       }
 
-      // Normalise the message ID — SendGrid sometimes appends a filter suffix
-      // like "sg_message_id.filter0.7369.59B0839E11.0", strip after the first dot-separated
-      // UUID portion. A simpler approach: find the EmailSend by sg_message_id prefix.
-      const normalised = sgMessageId.split('.')[0] ?? sgMessageId;
+      const normalised = mailgunMessageId.replace(/^<|>$/g, '');
 
       try {
         const emailSend = await prisma.emailSend.findFirst({
           where: {
             OR: [
-              { sgMessageId: sgMessageId },
+              { sgMessageId: mailgunMessageId },
               { sgMessageId: normalised },
             ],
           },
         });
 
         if (!emailSend) {
-          logger.debug('No EmailSend record found for SendGrid message ID', {
-            sgMessageId,
+          logger.debug('No EmailSend record found for Mailgun message ID', {
+            mailgunMessageId,
             event: event.event,
           });
           continue;
@@ -166,7 +195,7 @@ class EmailService {
             });
             break;
 
-          case 'open':
+          case 'opened':
             await prisma.emailSend.update({
               where: { id: emailSend.id },
               data: {
@@ -176,7 +205,7 @@ class EmailService {
             });
             break;
 
-          case 'click':
+          case 'clicked':
             await prisma.emailSend.update({
               where: { id: emailSend.id },
               data: {
@@ -186,8 +215,7 @@ class EmailService {
             });
             break;
 
-          case 'bounce':
-          case 'blocked':
+          case 'failed':
             await prisma.emailSend.update({
               where: { id: emailSend.id },
               data: {
@@ -197,7 +225,7 @@ class EmailService {
             });
             break;
 
-          case 'spamreport':
+          case 'complained':
             await prisma.emailSend.update({
               where: { id: emailSend.id },
               data: { status: 'spam' },
@@ -212,18 +240,18 @@ class EmailService {
             break;
 
           default:
-            logger.debug('Unhandled SendGrid event type', { event: event.event });
+            logger.debug('Unhandled Mailgun event type', { event: event.event });
         }
 
-        logger.info('SendGrid webhook event processed', {
+        logger.info('Mailgun webhook event processed', {
           event: event.event,
-          sgMessageId,
+          mailgunMessageId,
           emailSendId: emailSend.id,
         });
       } catch (err) {
-        logger.error('Failed to process SendGrid webhook event', {
+        logger.error('Failed to process Mailgun webhook event', {
           event: event.event,
-          sgMessageId,
+          mailgunMessageId,
           error: err instanceof Error ? err.message : String(err),
         });
       }

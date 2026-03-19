@@ -209,6 +209,42 @@ class EmailTemplateService {
   }
 
   /**
+   * Duplicates an existing template, creating a new copy with "Copy of " prefixed
+   * to the name. The new template belongs to the same organisation and retains
+   * all content (subject, htmlContent, textContent, variables).
+   */
+  async duplicateTemplate(
+    templateId: string,
+    user: AuthenticatedUser
+  ): Promise<EmailTemplate> {
+    const source = await this.getTemplate(templateId, user);
+
+    this.assertCanWrite(user);
+
+    const duplicate = await prisma.emailTemplate.create({
+      data: {
+        organizationId: source.organizationId,
+        createdById: user.id,
+        name: `Copy of ${source.name}`,
+        subject: source.subject,
+        htmlContent: source.htmlContent,
+        textContent: source.textContent,
+        variables: source.variables,
+        isActive: true,
+      },
+    });
+
+    logger.info('Email template duplicated', {
+      sourceTemplateId: templateId,
+      newTemplateId: duplicate.id,
+      orgId: user.orgId,
+      userId: user.id,
+    });
+
+    return duplicate;
+  }
+
+  /**
    * Renders a template by substituting {{variableName}} placeholders.
    */
   async renderTemplate(

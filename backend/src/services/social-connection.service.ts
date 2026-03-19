@@ -276,6 +276,38 @@ async function fetchFacebookPage(userAccessToken: string): Promise<{
   };
 }
 
+/**
+ * Fetches all Facebook Pages managed by the authenticated user.
+ * Returns an array of page objects with id, name, and access_token.
+ */
+async function fetchFacebookPages(accessToken: string): Promise<Array<{
+  id: string;
+  name?: string;
+  access_token?: string;
+}>> {
+  const params = new URLSearchParams({
+    fields: 'id,name,access_token',
+    access_token: accessToken,
+  });
+
+  const response = await fetch(`https://graph.facebook.com/v18.0/me/accounts?${params.toString()}`);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    logger.error('Facebook pages fetch failed', {
+      status: response.status,
+      body: errorText,
+    });
+    throw Errors.badRequest(`Failed to fetch Facebook pages: ${response.status}`);
+  }
+
+  const payload = (await response.json()) as {
+    data?: Array<{ id: string; name?: string; access_token?: string }>;
+  };
+
+  return payload.data ?? [];
+}
+
 // ---------------------------------------------------------------------------
 // SocialConnectionService
 // ---------------------------------------------------------------------------

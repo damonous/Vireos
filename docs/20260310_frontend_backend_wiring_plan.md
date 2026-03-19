@@ -504,7 +504,7 @@ Completed workstreams:
 - Super-admin backend gaps implemented for organizations/users/billing-summary/feature-flags route support
 - Frontend pages converted from hardcoded/mock data to live backend reads/mutations across advisor/admin/compliance/super-admin routes
 - Easy Mode page converted to real agent conversation + command endpoints
-- Backend email stubs removed for register/invite/reset flows by using SendGrid-backed `emailService`
+- Backend email stubs removed for register/invite/reset flows by using Mailgun-backed `emailService`
 - Repository mock/stub sweep completed for production page/backend paths
 
 Verification evidence:

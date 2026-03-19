@@ -3,6 +3,8 @@ import {
   EmailSequenceStep,
   EmailEnrollment,
   EmailEnrollmentStatus,
+  EmailTemplate,
+  Lead,
 } from '@prisma/client';
 import { Job } from 'bullmq';
 import { prisma } from '../db/client';
@@ -33,11 +35,59 @@ interface EmailSequenceJobData extends EmailJobData {
   leadId: string;
 }
 
+export interface EmailSequenceStats {
+  active: number;
+  completed: number;
+  unsubscribed: number;
+  bounced: number;
+  paused: number;
+  total: number;
+  completionRate: number;
+}
+
 // ---------------------------------------------------------------------------
 // Email Sequence Service
 // ---------------------------------------------------------------------------
 
 class EmailSequenceService {
+  private buildEnrollmentStats(
+    enrollments?: Array<{ status: EmailEnrollmentStatus }>
+  ): EmailSequenceStats {
+    const records = enrollments ?? [];
+    const stats = {
+      active: 0,
+      completed: 0,
+      unsubscribed: 0,
+      bounced: 0,
+      paused: 0,
+      total: records.length,
+      completionRate: 0,
+    };
+
+    for (const enrollment of records) {
+      switch (enrollment.status) {
+        case EmailEnrollmentStatus.ACTIVE:
+          stats.active += 1;
+          break;
+        case EmailEnrollmentStatus.COMPLETED:
+          stats.completed += 1;
+          break;
+        case EmailEnrollmentStatus.UNSUBSCRIBED:
+          stats.unsubscribed += 1;
+          break;
+        case EmailEnrollmentStatus.BOUNCED:
+          stats.bounced += 1;
+          break;
+        case EmailEnrollmentStatus.PAUSED:
+          stats.paused += 1;
+          break;
+      }
+    }
+
+    stats.completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 1000) / 10 : 0;
+    return stats;
+  }
+
   // --------------------------------------------------------------------------
   // Sequence CRUD
   // --------------------------------------------------------------------------
@@ -79,7 +129,14 @@ class EmailSequenceService {
     orgId: string,
     user: AuthenticatedUser,
     pagination: PaginationParams
-  ): Promise<PaginatedResult<EmailSequence>> {
+  ): Promise<
+    PaginatedResult<
+      EmailSequence & {
+        _count: { steps: number; enrollments: number };
+        stats: EmailSequenceStats;
+      }
+    >
+  > {
     this.assertOrgAccess(orgId, user);
 
     const { page, limit } = pagination;
@@ -89,6 +146,10 @@ class EmailSequenceService {
       prisma.emailSequence.findMany({
         where: { organizationId: orgId },
         orderBy: { createdAt: 'desc' },
+        include: {
+          _count: { select: { steps: true, enrollments: true } },
+          enrollments: { select: { status: true } },
+        },
         skip,
         take: limit,
       }),
@@ -98,7 +159,10 @@ class EmailSequenceService {
     const totalPages = Math.ceil(total / limit);
 
     return {
-      items,
+      items: items.map((sequence) => ({
+        ...sequence,
+        stats: this.buildEnrollmentStats(sequence.enrollments),
+      })),
       total,
       page,
       limit,
@@ -114,10 +178,48 @@ class EmailSequenceService {
   async getSequence(
     sequenceId: string,
     user: AuthenticatedUser
-  ): Promise<EmailSequence & { steps: EmailSequenceStep[] }> {
+  ): Promise<
+    EmailSequence & {
+      steps: Array<EmailSequenceStep & { template: Pick<EmailTemplate, 'id' | 'name' | 'subject' | 'variables'> }>;
+      enrollments: Array<
+        EmailEnrollment & {
+          lead: Pick<Lead, 'id' | 'firstName' | 'lastName' | 'email' | 'company'>;
+        }
+      >;
+      stats: EmailSequenceStats;
+    }
+  > {
     const sequence = await prisma.emailSequence.findUnique({
       where: { id: sequenceId },
-      include: { steps: { orderBy: { stepNumber: 'asc' } } },
+      include: {
+        steps: {
+          orderBy: { stepNumber: 'asc' },
+          include: {
+            template: {
+              select: {
+                id: true,
+                name: true,
+                subject: true,
+                variables: true,
+              },
+            },
+          },
+        },
+        enrollments: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            lead: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                company: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!sequence) {
@@ -126,7 +228,10 @@ class EmailSequenceService {
 
     this.assertOrgAccess(sequence.organizationId, user);
 
-    return sequence;
+    return {
+      ...sequence,
+      stats: this.buildEnrollmentStats(sequence.enrollments),
+    };
   }
 
   /**
@@ -219,6 +324,75 @@ class EmailSequenceService {
     });
 
     return step;
+  }
+
+  /**
+   * Replaces every step in a sequence with a new ordered set.
+   */
+  async replaceSteps(
+    sequenceId: string,
+    steps: Array<{
+      templateId: string;
+      delayDays: number;
+      delayHours: number;
+      subject?: string;
+    }>,
+    user: AuthenticatedUser
+  ): Promise<Array<EmailSequenceStep>> {
+    await this.getSequence(sequenceId, user);
+    this.assertCanWrite(user);
+
+    const templateIds = Array.from(new Set(steps.map((step) => step.templateId)));
+    const templates = templateIds.length
+      ? await prisma.emailTemplate.findMany({
+          where: {
+            id: { in: templateIds },
+            organizationId: user.orgId,
+          },
+          select: { id: true },
+        })
+      : [];
+
+    if (templates.length !== templateIds.length) {
+      throw Errors.badRequest('One or more selected templates are unavailable for this organization.');
+    }
+
+    const createdSteps = await prisma.$transaction(async (tx) => {
+      await tx.emailSequenceStep.deleteMany({ where: { sequenceId } });
+
+      const nextSteps: EmailSequenceStep[] = [];
+      for (let index = 0; index < steps.length; index += 1) {
+        const step = steps[index]!;
+        const created = await tx.emailSequenceStep.create({
+          data: {
+            sequenceId,
+            organizationId: user.orgId,
+            stepNumber: index + 1,
+            templateId: step.templateId,
+            delayDays: step.delayDays,
+            delayHours: step.delayHours,
+            subject: step.subject ?? null,
+          },
+        });
+        nextSteps.push(created);
+      }
+
+      await tx.emailSequence.update({
+        where: { id: sequenceId },
+        data: { totalSteps: steps.length },
+      });
+
+      return nextSteps;
+    });
+
+    logger.info('Email sequence steps replaced', {
+      sequenceId,
+      stepCount: createdSteps.length,
+      orgId: user.orgId,
+      userId: user.id,
+    });
+
+    return createdSteps;
   }
 
   // --------------------------------------------------------------------------
@@ -469,9 +643,9 @@ class EmailSequenceService {
     const subject = currentStep.subject ?? rendered.subject;
 
     // Send the email
-    let sgMessageId = '';
+    let providerMessageId = '';
     try {
-      sgMessageId = await emailService.sendEmail(
+      providerMessageId = await emailService.sendEmail(
         lead.email,
         subject,
         rendered.html,
@@ -495,7 +669,7 @@ class EmailSequenceService {
         organizationId: orgId,
         leadId,
         stepId,
-        sgMessageId: sgMessageId || null,
+        sgMessageId: providerMessageId || null,
         status: 'sent',
       },
     });

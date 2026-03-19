@@ -37,12 +37,12 @@
 
 ## 3. Scope
 - In scope
-  - Multi-tenant, multi-ICP backend; RBAC; OpenAI integration with regulatory guardrails; compliance workflow; LinkedIn/Facebook posting; LinkedIn messaging; Facebook ads + lead forms; SendGrid; Prospect Finder request workflow; credits and Stripe billing; leads pipeline; analytics; marketing site.
+  - Multi-tenant, multi-ICP backend; RBAC; OpenAI integration with regulatory guardrails; compliance workflow; LinkedIn/Facebook posting; LinkedIn messaging; Facebook ads + lead forms; Mailgun; Prospect Finder request workflow; credits and Stripe billing; leads pipeline; analytics; marketing site.
 - Out of scope
   - SMS/VoIP; CRM sync; real-time Prospect Finder API; advanced analytics; white-label; additional ICPs beyond advisors; meeting ingestion.
 - Interfaces in scope
   - External systems, APIs, queues, files
-    - OpenAI API; LinkedIn Marketing API; Facebook Graph/Marketing APIs; SendGrid v3; Stripe API + webhooks; AWS S3; PostgreSQL; Redis; CSV import/export; Email (SMTP via SendGrid).
+    - OpenAI API; LinkedIn Marketing API; Facebook Graph/Marketing APIs; Mailgun API; Stripe API + webhooks; AWS S3; PostgreSQL; Redis; CSV import/export; Email (SMTP/API via Mailgun).
 - Interfaces out of scope
   - Twilio, Salesforce/Redtail/Wealthbox, external CRMs, Phase-2 data provider APIs.
 
@@ -69,7 +69,7 @@
 ## 5. System Context and Architecture Overview
 - Context description
   - External systems and contracts
-    - OpenAI for content; LinkedIn/Facebook for posting/messaging/ads/leads; SendGrid for email; Stripe for billing; S3 for assets; Data provider via CSV; OAuth for social accounts.
+    - OpenAI for content; LinkedIn/Facebook for posting/messaging/ads/leads; Mailgun for email; Stripe for billing; S3 for assets; Data provider via CSV; OAuth for social accounts.
   - Data flow from input to output
     - User input -> API -> business services -> validations/guardrails -> persistence (Postgres + S3) -> external calls -> events/logs -> UI updates/notifications.
 - High-level components
@@ -396,7 +396,7 @@
   - RTM.id: FR-008
   - Checklist.criteria: dedupe, consent, status audit.
 
-### FR-009 Email Delivery and Sequences (SendGrid)
+### FR-009 Email Delivery and Sequences (Mailgun)
 - Type: feature
 - Priority: SHOULD
 - Rationale
@@ -417,7 +417,7 @@
   - Case A: Bounce -> mark and suppress future sends.
   - Case B: API error -> retry with backoff; DLQ.
 - API surface changes (if applicable)
-  - POST /email/sequences; POST /webhooks/sendgrid.
+  - POST /email/sequences; POST /webhooks/mailgun.
 - Data model changes (if applicable)
   - email_sequence, email_send, email_event.
 - Events and queues (if applicable)
@@ -622,7 +622,7 @@
 | POST | /prospects/import | Staff import CSV | Bearer | Multipart CSV | ImportResult | 400, 409 |
 | POST | /credits/charge | Deduct credits | Bearer | CreditCharge | CreditLedger | 400, 402 |
 | POST | /webhooks/stripe | Billing sync | Signed | StripeEvent | 200 OK | 400, 401 |
-| POST | /webhooks/sendgrid | Email events | Signed | SendGridEvent | 200 OK | 400, 401 |
+| POST | /webhooks/mailgun | Email events | Signed | MailgunEvent | 200 OK | 400, 401 |
 | POST | /webhooks/fb/leads | Lead ingest | Signed | FBLeadEvent | 200 OK | 400, 401 |
 | GET | /audit/logs | Fetch audit logs | Bearer | Query params | AuditPage | 400, 403 |
 
@@ -663,7 +663,7 @@
 - External API contracts with version and SLAs
   - OpenAI: latest stable; no SLA; implement timeouts/retries.
   - LinkedIn/Facebook: Marketing APIs; rate limited; OAuth 2.0.
-  - Stripe/SendGrid: signed webhooks; expected 99.9% availability.
+  - Stripe/Mailgun: signed webhooks; expected 99.9% availability.
 
 ---
 
@@ -693,7 +693,7 @@
 ## 13. Environments and Deployment
 - Environments: dev, staging, prod
 - Config by environment
-  - Separate OpenAI/Stripe/FB/LI/SendGrid credentials; lower rate limits in dev; dummy webhooks; staging mirrors prod settings.
+  - Separate OpenAI/Stripe/FB/LI/Mailgun credentials; lower rate limits in dev; dummy webhooks; staging mirrors prod settings.
 - Dependencies: PostgreSQL (with RLS), Redis (jobs/cache), S3 (assets/exports), KMS, CI/CD GitHub Actions.
 - Deployment strategy: blue-green for API; feature flags; manual approval gates; database migrations with safe online strategy.
 
@@ -721,7 +721,7 @@
 - M0: scope and acceptance for milestone 0
   - Architecture baseline, RBAC/RLS, security baseline, CI/CD, audit log scaffolding.
 - M1: scope and acceptance for milestone 1
-  - AI content with guardrails, compliance workflow with exports, social publishing, SendGrid, Stripe subscriptions/credits.
+  - AI content with guardrails, compliance workflow with exports, social publishing, Mailgun, Stripe subscriptions/credits.
 - M2: scope and acceptance for milestone 2
   - LinkedIn messaging, Facebook ads + lead forms, Prospect Finder with credits, analytics dashboard, marketing site live.
 

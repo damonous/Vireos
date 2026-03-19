@@ -52,6 +52,13 @@ export const verifyEmailSchema = z.object({
   token: z.string().min(1, 'Verification token is required'),
 });
 
+export const updateProfileSchema = z.object({
+  firstName: z.string().min(1, 'First name is required').max(50, 'First name cannot exceed 50 characters').optional(),
+  lastName: z.string().min(1, 'Last name is required').max(50, 'Last name cannot exceed 50 characters').optional(),
+  phone: z.string().max(30, 'Phone number cannot exceed 30 characters').optional().nullable(),
+  settings: z.record(z.unknown()).optional(),
+});
+
 // ---------------------------------------------------------------------------
 // Org validators
 // ---------------------------------------------------------------------------

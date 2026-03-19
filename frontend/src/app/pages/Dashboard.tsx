@@ -6,6 +6,8 @@ import { useNavigate } from 'react-router';
 import { useMemo, useState, useEffect } from 'react';
 import { useApiData } from '../hooks/useApiData';
 import { useAuth } from '../hooks/useAuth';
+import { DateRangeSelector, getPresetLabel } from '../components/DateRangeSelector';
+import type { DatePreset } from '../components/DateRangeSelector';
 
 interface OverviewMetrics {
   contentCreated: number;
@@ -42,7 +44,8 @@ function formatLeadName(lead: LeadRow): string {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const overview = useApiData<OverviewMetrics>('/analytics/overview?preset=7d');
+  const [preset, setPreset] = useState<DatePreset>('7d');
+  const overview = useApiData<OverviewMetrics>(`/analytics/overview?preset=${preset}`, [preset]);
   const drafts = useApiData<DraftRow[]>('/content/drafts?limit=5');
   const leads = useApiData<{ items: LeadRow[] }>('/leads?limit=5&sortBy=createdAt&sortOrder=desc');
   const [showSubscriptionSuccess, setShowSubscriptionSuccess] = useState(false);
@@ -175,6 +178,7 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">{user?.organization?.name ?? 'Organization'}</span>
+            <DateRangeSelector value={preset} onChange={setPreset} />
             <button className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
               <Bell className="w-5 h-5 text-gray-600" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
@@ -255,7 +259,7 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-[#1E3A5F] mb-4">Content Performance (7 Days)</h3>
+            <h3 className="text-lg font-semibold text-[#1E3A5F] mb-4">Content Performance ({getPresetLabel(preset)})</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />

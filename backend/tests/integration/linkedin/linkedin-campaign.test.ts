@@ -32,9 +32,10 @@ process.env['LINKEDIN_REDIRECT_URI'] = 'http://localhost:3001/api/v1/oauth/linke
 process.env['FACEBOOK_APP_ID'] = 'test_facebook_app_id';
 process.env['FACEBOOK_APP_SECRET'] = 'test_facebook_app_secret';
 process.env['FACEBOOK_REDIRECT_URI'] = 'http://localhost:3001/api/v1/oauth/facebook/callback';
-process.env['SENDGRID_API_KEY'] = 'SG.test_fake_key_for_testing';
-process.env['SENDGRID_FROM_EMAIL'] = 'test@vireos.com';
-process.env['SENDGRID_FROM_NAME'] = 'Vireos Platform';
+process.env['MAILGUN_API_KEY'] = 'key-test_fake_key_for_testing';
+process.env['MAILGUN_DOMAIN'] = 'mg.vireos.com';
+process.env['MAILGUN_FROM_EMAIL'] = 'test@vireos.com';
+process.env['MAILGUN_FROM_NAME'] = 'Vireos Platform';
 process.env['STRIPE_SECRET_KEY'] = 'sk_test_fake_stripe_key';
 process.env['STRIPE_WEBHOOK_SECRET'] = 'whsec_test_fake_webhook_secret';
 process.env['AWS_ACCESS_KEY_ID'] = 'AKIAIOSFODNN7EXAMPLE';
@@ -90,11 +91,20 @@ jest.mock('bullmq', () => {
   };
 });
 
-// ---- Mock @sendgrid/mail ----
-jest.mock('@sendgrid/mail', () => ({
-  setApiKey: jest.fn(),
-  send: jest.fn().mockResolvedValue([{ statusCode: 202, headers: {} }, {}]),
-}));
+jest.mock('form-data', () => jest.fn());
+jest.mock('mailgun.js', () =>
+  jest.fn().mockImplementation(() => ({
+    client: jest.fn().mockReturnValue({
+      messages: {
+        create: jest.fn().mockResolvedValue({
+          status: 200,
+          id: 'mock-mailgun-message-id-12345',
+          message: 'Queued. Thank you.',
+        }),
+      },
+    }),
+  }))
+);
 
 // ---- Mock OpenAI ----
 jest.mock('openai', () => {

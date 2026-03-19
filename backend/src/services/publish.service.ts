@@ -31,6 +31,54 @@ interface LinkedInUgcPostResponse {
   id: string;
 }
 
+interface FacebookManagedPage {
+  id: string;
+  name?: string;
+  access_token?: string;
+}
+
+async function getFacebookPagePublishingContext(
+  userAccessToken: string,
+  preferredPageId?: string
+): Promise<{ pageId: string; pageName: string | null; pageAccessToken: string }> {
+  const response = await fetch(
+    'https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token',
+    {
+      headers: { Authorization: `Bearer ${userAccessToken}` },
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    logger.error('Facebook managed pages lookup failed', {
+      status: response.status,
+      body: errorText,
+    });
+    throw new Error(`Facebook managed pages lookup failed: ${response.status} ${errorText}`);
+  }
+
+  const payload = (await response.json()) as { data?: FacebookManagedPage[] };
+  const page =
+    payload.data?.find((candidate) => candidate.id === preferredPageId && Boolean(candidate.access_token)) ??
+    (!preferredPageId
+      ? payload.data?.find((candidate) => Boolean(candidate.id && candidate.access_token))
+      : null);
+
+  if (!page?.id || !page.access_token) {
+    throw new Error(
+      preferredPageId
+        ? 'The connected Facebook Page is no longer available for publishing. Reconnect the Facebook integration.'
+        : 'No Facebook Page with publishing access was returned for this account. Connect a Page admin account and grant page permissions.'
+    );
+  }
+
+  return {
+    pageId: page.id,
+    pageName: page.name ?? null,
+    pageAccessToken: page.access_token,
+  };
+}
+
 async function publishToLinkedIn(
   accessToken: string,
   platformUserId: string,
@@ -618,9 +666,13 @@ export async function processPublishJob(job: Job<PublishJobData>): Promise<void>
       platformPostId = result.postId;
       platformUrl = result.postUrl;
     } else if (publishJob.platform === SocialPlatform.FACEBOOK) {
-      const result = await publishToFacebook(
+      const pageContext = await getFacebookPagePublishingContext(
         accessToken,
-        connection.platformUserId,
+        connection.platformUserId
+      );
+      const result = await publishToFacebook(
+        pageContext.pageAccessToken,
+        pageContext.pageId,
         content
       );
       platformPostId = result.postId;

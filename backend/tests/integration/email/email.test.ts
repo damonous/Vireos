@@ -1,5 +1,5 @@
 /**
- * Integration tests for FR-009: Email Marketing & Sequences (SendGrid)
+ * Integration tests for FR-009: Email Marketing & Sequences (Mailgun)
  *
  * Tests cover:
  *  - POST /api/v1/email/templates         — creates template, extracts variables
@@ -7,11 +7,11 @@
  *  - POST /api/v1/email/sequences         — creates sequence
  *  - POST /api/v1/email/sequences/:id/steps — adds step with delay
  *  - POST /api/v1/email/sequences/:id/enroll — enrolls leads, enqueues first send
- *  - POST /api/v1/email/webhook/sendgrid  — processes delivered event → updates EmailSend
+ *  - POST /api/v1/email/webhook/mailgun   — processes delivered event → updates EmailSend
  *  - POST /api/v1/email/unsubscribe       — marks lead unsubscribed, stops enrollments
  *  - Unsubscribed lead: next email send skipped
  *
- * All external dependencies (Prisma, SendGrid, BullMQ) are mocked.
+ * All external dependencies (Prisma, Mailgun, BullMQ) are mocked.
  */
 
 // ---- Set required env variables BEFORE any module imports ----
@@ -30,9 +30,10 @@ process.env['LINKEDIN_REDIRECT_URI'] = 'http://localhost:3001/api/v1/oauth/linke
 process.env['FACEBOOK_APP_ID'] = 'test_facebook_app_id';
 process.env['FACEBOOK_APP_SECRET'] = 'test_facebook_app_secret';
 process.env['FACEBOOK_REDIRECT_URI'] = 'http://localhost:3001/api/v1/oauth/facebook/callback';
-process.env['SENDGRID_API_KEY'] = 'SG.test_fake_key_for_testing';
-process.env['SENDGRID_FROM_EMAIL'] = 'test@vireos.com';
-process.env['SENDGRID_FROM_NAME'] = 'Vireos Platform';
+process.env['MAILGUN_API_KEY'] = 'key-test_fake_key_for_testing';
+process.env['MAILGUN_DOMAIN'] = 'mg.vireos.com';
+process.env['MAILGUN_FROM_EMAIL'] = 'test@vireos.com';
+process.env['MAILGUN_FROM_NAME'] = 'Vireos Platform';
 process.env['STRIPE_SECRET_KEY'] = 'sk_test_fake_stripe_key';
 process.env['STRIPE_WEBHOOK_SECRET'] = 'whsec_test_fake_webhook_secret';
 process.env['AWS_ACCESS_KEY_ID'] = 'AKIAIOSFODNN7EXAMPLE';
@@ -87,17 +88,22 @@ jest.mock('bullmq', () => {
   };
 });
 
-// ---- Mock @sendgrid/mail ----
-jest.mock('@sendgrid/mail', () => ({
-  setApiKey: jest.fn(),
-  send: jest.fn().mockResolvedValue([
-    {
-      statusCode: 202,
-      headers: { 'x-message-id': 'mock-sg-message-id-12345' },
-    },
-    {},
-  ]),
-}));
+const mockMailgunMessagesCreate = jest.fn().mockResolvedValue({
+  status: 200,
+  id: 'mock-mailgun-message-id-12345',
+  message: 'Queued. Thank you.',
+});
+
+jest.mock('form-data', () => jest.fn());
+jest.mock('mailgun.js', () =>
+  jest.fn().mockImplementation(() => ({
+    client: jest.fn().mockReturnValue({
+      messages: {
+        create: mockMailgunMessagesCreate,
+      },
+    }),
+  }))
+);
 
 // ---- Mock Prisma client ----
 jest.mock('../../../src/db/client', () => ({
@@ -289,7 +295,7 @@ const mockEmailSend = {
   organizationId: TEST_ORG_ID,
   leadId: TEST_LEAD_ID,
   stepId: TEST_STEP_ID,
-  sgMessageId: 'mock-sg-message-id-12345',
+  sgMessageId: 'mock-mailgun-message-id-12345',
   status: 'sent',
   openedAt: null,
   clickedAt: null,
@@ -637,10 +643,10 @@ describe('POST /api/v1/email/sequences/:id/enroll', () => {
 });
 
 // =============================================================================
-// POST /api/v1/email/webhook/sendgrid
+// POST /api/v1/email/webhook/mailgun
 // =============================================================================
 
-describe('POST /api/v1/email/webhook/sendgrid', () => {
+describe('POST /api/v1/email/webhook/mailgun', () => {
   it('processes a delivered event and updates EmailSend status to delivered', async () => {
     (prisma.emailSend.findFirst as jest.Mock).mockResolvedValue(mockEmailSend);
     (prisma.emailSend.update as jest.Mock).mockResolvedValue({
@@ -648,17 +654,21 @@ describe('POST /api/v1/email/webhook/sendgrid', () => {
       status: 'delivered',
     });
 
-    const webhookPayload = [
-      {
+    const webhookPayload = {
+      'event-data': {
         event: 'delivered',
-        email: 'jane.doe@example.com',
+        recipient: 'jane.doe@example.com',
         timestamp: Math.floor(Date.now() / 1000),
-        sg_message_id: 'mock-sg-message-id-12345',
+        message: {
+          headers: {
+            'message-id': 'mock-mailgun-message-id-12345',
+          },
+        },
       },
-    ];
+    };
 
     const res = await client
-      .post('/api/v1/email/webhook/sendgrid')
+      .post('/api/v1/email/webhook/mailgun')
       .send(webhookPayload);
 
     expect(res.status).toBe(200);
@@ -680,17 +690,21 @@ describe('POST /api/v1/email/webhook/sendgrid', () => {
       openedAt: new Date(),
     });
 
-    const webhookPayload = [
-      {
-        event: 'open',
-        email: 'jane.doe@example.com',
+    const webhookPayload = {
+      'event-data': {
+        event: 'opened',
+        recipient: 'jane.doe@example.com',
         timestamp: Math.floor(Date.now() / 1000),
-        sg_message_id: 'mock-sg-message-id-12345',
+        message: {
+          headers: {
+            'message-id': 'mock-mailgun-message-id-12345',
+          },
+        },
       },
-    ];
+    };
 
     const res = await client
-      .post('/api/v1/email/webhook/sendgrid')
+      .post('/api/v1/email/webhook/mailgun')
       .send(webhookPayload);
 
     expect(res.status).toBe(200);
@@ -715,17 +729,21 @@ describe('POST /api/v1/email/webhook/sendgrid', () => {
       bouncedAt: new Date(),
     });
 
-    const webhookPayload = [
-      {
-        event: 'bounce',
-        email: 'jane.doe@example.com',
+    const webhookPayload = {
+      'event-data': {
+        event: 'failed',
+        recipient: 'jane.doe@example.com',
         timestamp: Math.floor(Date.now() / 1000),
-        sg_message_id: 'mock-sg-message-id-12345',
+        message: {
+          headers: {
+            'message-id': 'mock-mailgun-message-id-12345',
+          },
+        },
       },
-    ];
+    };
 
     const res = await client
-      .post('/api/v1/email/webhook/sendgrid')
+      .post('/api/v1/email/webhook/mailgun')
       .send(webhookPayload);
 
     expect(res.status).toBe(200);
@@ -744,20 +762,24 @@ describe('POST /api/v1/email/webhook/sendgrid', () => {
   it('handles webhook with no matching EmailSend record gracefully (no crash)', async () => {
     (prisma.emailSend.findFirst as jest.Mock).mockResolvedValue(null);
 
-    const webhookPayload = [
-      {
+    const webhookPayload = {
+      'event-data': {
         event: 'delivered',
-        email: 'unknown@example.com',
+        recipient: 'unknown@example.com',
         timestamp: Math.floor(Date.now() / 1000),
-        sg_message_id: 'non-existent-message-id',
+        message: {
+          headers: {
+            'message-id': 'non-existent-message-id',
+          },
+        },
       },
-    ];
+    };
 
     const res = await client
-      .post('/api/v1/email/webhook/sendgrid')
+      .post('/api/v1/email/webhook/mailgun')
       .send(webhookPayload);
 
-    // Must still return 200 (SendGrid expects 200 even when we don't know the message)
+    // Must still return 200 even when we don't know the message.
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(prisma.emailSend.update as jest.Mock).not.toHaveBeenCalled();
@@ -768,8 +790,19 @@ describe('POST /api/v1/email/webhook/sendgrid', () => {
 
     // No Authorization header
     const res = await client
-      .post('/api/v1/email/webhook/sendgrid')
-      .send([{ event: 'delivered', email: 'test@example.com', timestamp: 1000 }]);
+      .post('/api/v1/email/webhook/mailgun')
+      .send({
+        'event-data': {
+          event: 'delivered',
+          recipient: 'test@example.com',
+          timestamp: 1000,
+          message: {
+            headers: {
+              'message-id': 'public-mailgun-message-id',
+            },
+          },
+        },
+      });
 
     expect(res.status).toBe(200);
   });
@@ -924,8 +957,7 @@ describe('processEmailJob — unsubscribed lead causes enrollment to stop', () =
     );
 
     // Verify no email was sent
-    const sgMail = require('@sendgrid/mail');
-    expect(sgMail.send).not.toHaveBeenCalled();
+    expect(mockMailgunMessagesCreate).not.toHaveBeenCalled();
   });
 
   it('sends email and enqueues next step when lead is subscribed and more steps exist', async () => {
@@ -965,14 +997,11 @@ describe('processEmailJob — unsubscribed lead causes enrollment to stop', () =
       currentStep: 2,
     });
 
-    const sgMail = require('@sendgrid/mail');
-    sgMail.send.mockResolvedValue([
-      {
-        statusCode: 202,
-        headers: { 'x-message-id': 'new-message-id-xyz' },
-      },
-      {},
-    ]);
+    mockMailgunMessagesCreate.mockResolvedValueOnce({
+      status: 200,
+      id: 'new-message-id-xyz',
+      message: 'Queued. Thank you.',
+    });
 
     const mockJob = {
       id: 'test-job-id',
@@ -992,7 +1021,8 @@ describe('processEmailJob — unsubscribed lead causes enrollment to stop', () =
     await emailSequenceService.processEmailJob(mockJob as any);
 
     // Email was sent to lead's address
-    expect(sgMail.send).toHaveBeenCalledWith(
+    expect(mockMailgunMessagesCreate).toHaveBeenCalledWith(
+      'mg.vireos.com',
       expect.objectContaining({
         to: 'jane.doe@example.com',
       })

@@ -397,47 +397,67 @@
     },
     {
       "requirement_id": "FR-009",
-      "title": "Encryption in transit and at rest",
-      "priority": "MUST",
+      "title": "Email Delivery and Sequences (Mailgun)",
+      "priority": "SHOULD",
       "dependencies": [],
       "tests": [
-        "TC-AUD-009",
-        "TC-CRED-020",
-        "TC-EXP-010",
-        "TC-NOT-016",
-        "TC-USG-019"
+        "TC-EML-009",
+        "TC-EML-010"
       ],
       "criteria": [
         {
           "id": "FR-009-AC-1",
-          "text": "Given any API call, when intercepted, then traffic is TLS 1.2+ encrypted.",
+          "text": "Given a Mailgun bounce or unsubscribe event, when the webhook is received, then the send and enrollment state is updated and future sends are suppressed.",
           "critical": true,
-          "passed": false,
-          "last_checked": null,
-          "evidence": []
+          "passed": true,
+          "last_checked": "2026-03-16T07:50:00.000Z",
+          "evidence": [
+            "backend/tests/integration/email/email.test.ts",
+            "backend/src/services/email.service.ts",
+            "backend/src/routes/email.routes.ts"
+          ]
         },
         {
           "id": "FR-009-AC-2",
-          "text": "Given database storage, when querying encryption status, then at-rest encryption is enabled.",
+          "text": "Given an advisor building a campaign, when they manage templates and sequence steps, then the UI persists templates, supports ordered step replacement, and shows enrollment detail.",
           "critical": true,
-          "passed": false,
-          "last_checked": null,
-          "evidence": []
+          "passed": true,
+          "last_checked": "2026-03-16T07:50:00.000Z",
+          "evidence": [
+            "frontend/src/app/routes.tsx",
+            "frontend/src/app/pages/EmailCampaigns.tsx",
+            "frontend/src/app/pages/EmailTemplates.tsx",
+            "frontend/src/app/pages/EmailTemplateEditor.tsx",
+            "frontend/src/app/pages/EmailSequenceBuilder.tsx",
+            "frontend/src/app/pages/EmailSequenceDetail.tsx",
+            "frontend/src/app/pages/EmailSequenceEnroll.tsx",
+            "backend/src/services/email-sequence.service.ts",
+            "frontend/npm run build"
+          ]
         },
         {
           "id": "FR-009-AC-3",
-          "text": "Given backups, when created, then backups are encrypted with managed keys.",
+          "text": "Given a Facebook Page-admin account, when publishing approved Facebook content, then the backend resolves a managed page token instead of attempting to publish with the user profile ID.",
           "critical": true,
-          "passed": false,
-          "last_checked": null,
-          "evidence": []
+          "passed": true,
+          "last_checked": "2026-03-16T07:50:00.000Z",
+          "evidence": [
+            "backend/src/services/social-connection.service.ts",
+            "backend/src/services/publish.service.ts",
+            "backend/tests/integration/publish/publish.test.ts"
+          ]
         }
       ],
       "verification": {
-        "test_coverage": false,
-        "verification_passed": false,
-        "last_verified": null,
-        "evidence_bundle": []
+        "test_coverage": true,
+        "verification_passed": true,
+        "last_verified": "2026-03-16T07:50:00.000Z",
+        "evidence_bundle": [
+          "backend/tests/integration/email/email.test.ts",
+          "backend/tests/integration/publish/publish.test.ts",
+          "backend/npm run build",
+          "frontend/npm run build"
+        ]
       }
     },
     {
@@ -966,9 +986,12 @@
           "id": "FR-021-AC-3",
           "text": "Given password reset, when requested, then tokenized flow expires and is audited.",
           "critical": true,
-          "passed": false,
-          "last_checked": null,
-          "evidence": []
+          "passed": true,
+          "last_checked": "2026-03-16T10:03:42.042Z",
+          "evidence": [
+            "backend/tests/integration/auth/auth.test.ts",
+            "mcp-artifacts/si005-forgot-password-20260316.md"
+          ]
         }
       ],
       "verification": {

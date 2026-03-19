@@ -72,13 +72,15 @@ const configSchema = z.object({
     .string()
     .url('FACEBOOK_REDIRECT_URI must be a valid URL'),
 
-  // SendGrid
-  SENDGRID_API_KEY: z.string().min(1, 'SENDGRID_API_KEY is required'),
-  SENDGRID_FROM_EMAIL: z
+  // Mailgun
+  MAILGUN_API_KEY: z.string().min(1, 'MAILGUN_API_KEY is required'),
+  MAILGUN_DOMAIN: z.string().min(1, 'MAILGUN_DOMAIN is required'),
+  MAILGUN_FROM_EMAIL: z
     .string()
     .email()
     .default('noreply@vireos.com'),
-  SENDGRID_FROM_NAME: z.string().default('Vireos Platform'),
+  MAILGUN_FROM_NAME: z.string().default('Vireos Platform'),
+  MAILGUN_WEBHOOK_SIGNING_KEY: z.string().optional(),
 
   // Stripe
   STRIPE_SECRET_KEY: z.string().min(1, 'STRIPE_SECRET_KEY is required'),
@@ -121,7 +123,20 @@ const configSchema = z.object({
 // Parse and export
 // ---------------------------------------------------------------------------
 
-const parseResult = configSchema.safeParse(process.env);
+const normalizedEnv = {
+  ...process.env,
+  MAILGUN_API_KEY: process.env['MAILGUN_API_KEY'] ?? process.env['SENDGRID_API_KEY'],
+  MAILGUN_DOMAIN:
+    process.env['MAILGUN_DOMAIN'] ??
+    process.env['SENDGRID_FROM_EMAIL']?.split('@')[1] ??
+    process.env['MAILGUN_FROM_EMAIL']?.split('@')[1],
+  MAILGUN_FROM_EMAIL:
+    process.env['MAILGUN_FROM_EMAIL'] ?? process.env['SENDGRID_FROM_EMAIL'],
+  MAILGUN_FROM_NAME:
+    process.env['MAILGUN_FROM_NAME'] ?? process.env['SENDGRID_FROM_NAME'],
+};
+
+const parseResult = configSchema.safeParse(normalizedEnv);
 
 if (!parseResult.success) {
   const formatted = parseResult.error.errors

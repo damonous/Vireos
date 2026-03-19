@@ -303,9 +303,9 @@ Every content item must track:
 
 ## 8. Email Marketing
 
-### 8.1 SendGrid Integration
+### 8.1 Mailgun Integration
 
-**API:** SendGrid v3 API
+**API:** Mailgun API
 
 **Features:**
 - Transactional emails (notifications)
@@ -482,7 +482,7 @@ New -> Contacted -> Engaged -> Meeting Scheduled -> Client -> Lost
 **For Organization Admins:**
 - User management (invite, remove, roles)
 - Compliance rules configuration
-- Connected accounts (LinkedIn, Facebook, SendGrid)
+- Connected accounts (LinkedIn, Facebook, Mailgun)
 - Billing management
 - Firm profile and branding
 
@@ -532,7 +532,7 @@ New -> Contacted -> Engaged -> Meeting Scheduled -> Client -> Lost
 | OpenAI | AI content generation | OpenAI API (GPT-4) |
 | LinkedIn | Posting, messaging | LinkedIn Marketing API |
 | Facebook | Posting, ads, leads | Facebook Graph API, Marketing API |
-| SendGrid | Email delivery | SendGrid v3 API |
+| Mailgun | Email delivery | Mailgun API |
 | Stripe | Billing | Stripe API |
 
 ### 14.1 API Approval Considerations
@@ -584,7 +584,7 @@ New -> Contacted -> Engaged -> Meeting Scheduled -> Client -> Lost
 - [ ] LinkedIn messaging campaigns
 - [ ] Facebook ads creation and management
 - [ ] Facebook lead form integration
-- [ ] Email templates and sequences (SendGrid)
+- [ ] Email templates and sequences (Mailgun)
 - [ ] Basic analytics dashboard
 - [ ] Stripe subscription billing
 - [ ] Admin panel (basic)
@@ -608,7 +608,7 @@ The MVP is complete when:
 4. Approved content can be published to LinkedIn and Facebook
 5. LinkedIn messaging campaigns can be created and executed
 6. Facebook ads can be created with lead form capture
-7. Email sequences can be created and sent via SendGrid
+7. Email sequences can be created and sent via Mailgun
 8. Basic analytics are visible for all channels
 9. The platform is stable enough for pilot customers
 

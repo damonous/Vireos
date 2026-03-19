@@ -82,7 +82,7 @@ async function processPublishJob(job: Job<PublishJobData>): Promise<void> {
  * - Loading enrollment, step, lead, and template from DB
  * - Checking lead is not unsubscribed
  * - Rendering template with lead variables
- * - Sending via SendGrid
+ * - Sending via Mailgun
  * - Creating EmailSend record
  * - Enqueueing next step or marking enrollment COMPLETED
  */
@@ -130,7 +130,7 @@ async function processLinkedInCampaignJob(
 
 /**
  * Processes a user/system notification.
- * Routes to email (SendGrid) or in-app notification storage.
+ * Routes to email (Mailgun) or in-app notification storage.
  */
 async function processNotificationJob(
   job: Job<NotificationJobData>
@@ -178,7 +178,7 @@ function startWorkers(): void {
     processEmailJob,
     {
       connection,
-      // Sequential processing to respect SendGrid rate limits
+      // Sequential processing to respect Mailgun provider rate limits
       concurrency: 2,
       drainDelay: 5,
     }

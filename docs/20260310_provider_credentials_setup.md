@@ -108,25 +108,27 @@ This runbook covers the provider credentials required by the Vireos backend and 
 2. Confirm webhook request is accepted by backend (2xx).
 3. Confirm billing status changes in app/database.
 
-## 6) SendGrid
+## 6) Mailgun
 
 ### Env vars
-- `SENDGRID_API_KEY`
-- `SENDGRID_FROM_EMAIL`
-- `SENDGRID_FROM_NAME`
+- `MAILGUN_API_KEY`
+- `MAILGUN_DOMAIN`
+- `MAILGUN_FROM_EMAIL`
+- `MAILGUN_FROM_NAME`
 
 ### Steps
-1. Sign in to SendGrid.
+1. Sign in to Mailgun.
 2. Verify a sender identity (single sender or authenticated domain).
 3. Create API key with mail send permission.
 4. Set in `backend/.env`:
-   - `SENDGRID_API_KEY=...`
-   - `SENDGRID_FROM_EMAIL=<verified address>`
-   - `SENDGRID_FROM_NAME=<display name>`
+   - `MAILGUN_API_KEY=...`
+   - `MAILGUN_DOMAIN=<verified sending domain>`
+   - `MAILGUN_FROM_EMAIL=<verified address>`
+   - `MAILGUN_FROM_NAME=<display name>`
 
 ### Verify
 1. Trigger a transactional email flow in Vireos.
-2. Confirm email accepted by SendGrid and delivered.
+2. Confirm email accepted by Mailgun and delivered.
 3. Confirm no sender identity errors in logs.
 
 ## 7) AWS S3
@@ -162,7 +164,7 @@ This runbook covers the provider credentials required by the Vireos backend and 
    - LinkedIn connect
    - Facebook connect
    - Stripe webhook event
-   - SendGrid outbound email
+   - Mailgun outbound email
    - S3 upload
 
 ## 9) Security Handling Rules

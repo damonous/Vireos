@@ -191,8 +191,8 @@ export default function PlatformSettings() {
                 </div>
               </div>
               <ul className="mt-4 space-y-2 text-sm text-gray-700">
-                <li>Integration credentials are securely stored and verified through the connection process.</li>
-                <li>Stripe, SendGrid, OpenAI, and AWS keys are not rendered here by design.</li>
+                <li>OAuth app credentials are configured server-side and verified through the connection process.</li>
+                <li>Stripe, SendGrid, Mailgun, OpenAI, and AWS keys are not rendered here by design.</li>
                 <li>Use the connection pages in Settings to verify and manage integrations.</li>
               </ul>
             </Card>
