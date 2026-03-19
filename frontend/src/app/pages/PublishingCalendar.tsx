@@ -49,7 +49,7 @@ export default function PublishingCalendar() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
 
-  const jobs = useApiData<PublishJob[]>('/publish?page=1&limit=50');
+  const jobs = useApiData<PublishJob[]>('/publish?page=1&limit=50', [], true, 15_000);
   const approvedDrafts = useApiData<Draft[]>('/content/drafts?status=APPROVED&page=1&limit=20');
 
   const jobRows = jobs.data ?? [];

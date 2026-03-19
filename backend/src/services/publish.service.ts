@@ -93,21 +93,20 @@ async function publishToFacebook(
   content: string,
   link?: string
 ): Promise<{ postId: string; postUrl: string }> {
-  const params: Record<string, string> = {
-    message: content,
-    access_token: accessToken,
-  };
+  const params = new URLSearchParams();
+  params.set('message', content);
+  params.set('access_token', accessToken);
 
   if (link) {
-    params['link'] = link;
+    params.set('link', link);
   }
 
   const response = await fetch(
-    `https://graph.facebook.com/${pageId}/feed`,
+    `https://graph.facebook.com/v21.0/${pageId}/feed`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(params),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
     }
   );
 
@@ -243,6 +242,7 @@ export async function schedulePost(
       status: PublishJobStatus.QUEUED,
       scheduledAt,
     },
+    include: { draft: { select: { id: true, title: true, status: true } } },
   });
 
   // Enqueue the BullMQ job

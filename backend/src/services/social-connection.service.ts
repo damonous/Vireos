@@ -228,6 +228,54 @@ async function fetchFacebookProfile(accessToken: string): Promise<{
   return response.json() as Promise<{ id: string; name?: string }>;
 }
 
+/**
+ * Fetches the Facebook Pages managed by the authenticated user.
+ * Returns the first page's ID, name, and page-scoped access token.
+ * The page access token is required to publish posts on behalf of the page.
+ */
+async function fetchFacebookPage(userAccessToken: string): Promise<{
+  pageId: string;
+  pageName: string;
+  pageAccessToken: string;
+}> {
+  const params = new URLSearchParams({
+    fields: 'id,name,access_token',
+    access_token: userAccessToken,
+  });
+
+  const response = await fetch(
+    `${FACEBOOK_ME_URL}/accounts?${params.toString()}`
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    logger.error('Facebook pages fetch failed', {
+      status: response.status,
+      body: errorText,
+    });
+    throw Errors.badRequest(
+      `Failed to fetch Facebook pages: ${response.status}`
+    );
+  }
+
+  const result = (await response.json()) as {
+    data: Array<{ id: string; name: string; access_token: string }>;
+  };
+
+  if (!result.data || result.data.length === 0) {
+    throw Errors.badRequest(
+      'No Facebook Pages found. Please create a Facebook Page before connecting.'
+    );
+  }
+
+  const page = result.data[0];
+  return {
+    pageId: page.id,
+    pageName: page.name,
+    pageAccessToken: page.access_token,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // SocialConnectionService
 // ---------------------------------------------------------------------------
@@ -315,14 +363,18 @@ export async function handleCallback(
     scopes = LINKEDIN_SCOPES.split(' ');
   } else {
     const tokens = await exchangeFacebookCode(code);
-    const profile = await fetchFacebookProfile(tokens.access_token);
 
-    encryptedAccessToken = encrypt(tokens.access_token);
-    tokenExpiresAt = tokens.expires_in
-      ? new Date(Date.now() + tokens.expires_in * 1000)
-      : null;
-    platformUserId = profile.id;
-    platformUsername = profile.name ?? null;
+    // Fetch the user's Facebook Page — we need the page ID and page access
+    // token to publish on behalf of the page (not the user's personal ID).
+    const page = await fetchFacebookPage(tokens.access_token);
+
+    // Store the page access token (not the user token) so publish jobs work.
+    encryptedAccessToken = encrypt(page.pageAccessToken);
+    // Page tokens obtained via /me/accounts with a long-lived user token
+    // are long-lived and do not expire, so we leave tokenExpiresAt null.
+    tokenExpiresAt = null;
+    platformUserId = page.pageId;
+    platformUsername = page.pageName;
     scopes = FACEBOOK_SCOPES.split(',');
   }
 
