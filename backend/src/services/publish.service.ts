@@ -412,21 +412,33 @@ export async function updateJob(
       platform,
       scheduledAt,
     },
+    include: { draft: { select: { id: true, title: true, status: true } } },
   });
 
+  // Remove the old BullMQ job and re-add with the correct delay so the
+  // rescheduled time is honoured reliably (changeDelay can silently fail).
   try {
-    const bullJob = await publishQueue.getJob(jobId);
-    if (bullJob && scheduledAt) {
+    const existingJob = await publishQueue.getJob(jobId);
+    if (existingJob) {
+      await existingJob.remove();
+    }
+
+    if (scheduledAt) {
       const delay = Math.max(0, scheduledAt.getTime() - Date.now());
-      await bullJob.updateData({
-        ...bullJob.data,
-        scheduledAt: scheduledAt.toISOString(),
+      const jobData: PublishJobData = {
+        postId: jobId,
+        orgId: publishJob.organizationId,
+        advisorId: publishJob.advisorId,
         platforms: [platform],
+        scheduledAt: scheduledAt.toISOString(),
+      };
+      await publishQueue.add(`publish:${jobId}`, jobData, {
+        delay,
+        jobId,
       });
-      await bullJob.changeDelay(delay);
     }
   } catch (err) {
-    logger.warn('Failed to update BullMQ schedule', {
+    logger.warn('Failed to reschedule BullMQ job', {
       jobId,
       error: err instanceof Error ? err.message : String(err),
     });
