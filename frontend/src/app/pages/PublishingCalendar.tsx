@@ -88,8 +88,7 @@ export default function PublishingCalendar() {
 
   const upcomingJobs = [...jobRows]
     .filter((job) => Boolean(job.scheduledAt))
-    .sort((left, right) => new Date(left.scheduledAt ?? left.createdAt).getTime() - new Date(right.scheduledAt ?? right.createdAt).getTime())
-    .slice(0, 5);
+    .sort((left, right) => new Date(right.scheduledAt ?? right.createdAt).getTime() - new Date(left.scheduledAt ?? left.createdAt).getTime());
 
   const handleSchedule = async () => {
     if (!selectedDraftId) return;
@@ -104,7 +103,7 @@ export default function PublishingCalendar() {
 
       jobs.setData((current) => [created, ...(current ?? [])]);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Failed to schedule publish job.');
+      setSubmitError(error instanceof Error ? error.message : 'Failed to schedule post.');
     } finally {
       setSubmitting(false);
     }
@@ -124,7 +123,7 @@ export default function PublishingCalendar() {
       setEditingJobId(null);
       setSelectedDraftId('');
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Failed to update publish job.');
+      setSubmitError(error instanceof Error ? error.message : 'Failed to update scheduled post.');
     } finally {
       setSubmitting(false);
     }
@@ -176,7 +175,19 @@ export default function PublishingCalendar() {
                       <div className="space-y-1">
                         {cell.jobs.length === 0 ? <div className="text-xs text-gray-400">No scheduled posts</div> : null}
                         {cell.jobs.map((job) => (
-                          <div key={job.id} className={`rounded border px-2 py-1 text-xs ${statusClasses(job.status)}`}>
+                          <div
+                            key={job.id}
+                            className={`rounded border px-2 py-1 text-xs ${statusClasses(job.status)} ${job.status !== 'PUBLISHED' && job.status !== 'CANCELLED' ? 'cursor-pointer hover:opacity-80' : ''}`}
+                            onClick={() => {
+                              if (job.status !== 'PUBLISHED' && job.status !== 'CANCELLED') {
+                                setEditingJobId(job.id);
+                                setSelectedDraftId(job.draftId);
+                                setSelectedChannel(job.channel);
+                                setScheduledDate(new Date(job.scheduledAt ?? job.createdAt).toISOString().slice(0, 16));
+                                document.getElementById('schedule-form')?.scrollIntoView({ behavior: 'smooth' });
+                              }
+                            }}
+                          >
                             <div className="font-medium">{job.channel.replace('_', ' ')}</div>
                             <div className="truncate">{job.draft?.title ?? 'Untitled draft'}</div>
                           </div>
@@ -189,13 +200,13 @@ export default function PublishingCalendar() {
             </div>
           </Card>
 
-          <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
+          <Card id="schedule-form" className="p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center gap-2 mb-4">
               <Plus className="w-4 h-4 text-[#0EA5E9]" />
               <h3 className="text-lg font-semibold text-[#1E3A5F]">Schedule Approved Content</h3>
             </div>
             {editingJobId ? (
-              <p className="mb-4 text-sm text-sky-700">Editing queued publish job. Saving will reschedule the existing job.</p>
+              <p className="mb-4 text-sm text-sky-700">Editing scheduled post. Saving will reschedule the existing post.</p>
             ) : null}
 
             {draftRows.length === 0 ? (
@@ -248,7 +259,7 @@ export default function PublishingCalendar() {
                 onClick={() => void (editingJobId ? handleSaveJob() : handleSchedule())}
                 disabled={submitting || !selectedDraftId}
               >
-                {submitting ? (editingJobId ? 'Saving...' : 'Scheduling...') : (editingJobId ? 'Save Publish Job' : 'Create Publish Job')}
+                {submitting ? (editingJobId ? 'Saving...' : 'Scheduling...') : (editingJobId ? 'Save Changes' : 'Schedule Post')}
               </Button>
             </div>
           </Card>
@@ -258,16 +269,16 @@ export default function PublishingCalendar() {
           <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center gap-2 mb-4">
               <Clock3 className="w-4 h-4 text-gray-500" />
-              <h3 className="text-lg font-semibold text-[#1E3A5F]">Upcoming Jobs</h3>
+              <h3 className="text-lg font-semibold text-[#1E3A5F]">Upcoming Posts</h3>
             </div>
 
             {upcomingJobs.length === 0 ? (
               <EmptyState
                 title="Nothing scheduled"
-                description="Scheduled publish jobs will appear here as soon as approved content is queued."
+                description="Scheduled posts will appear here as soon as approved content is queued."
               />
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
                 {upcomingJobs.map((job) => (
                   <div key={job.id} className="rounded-lg border border-gray-200 p-4">
                     <p className="text-sm font-semibold text-[#1E3A5F]">{job.draft?.title ?? 'Untitled draft'}</p>
@@ -313,7 +324,7 @@ export default function PublishingCalendar() {
                 <p className="text-2xl font-semibold text-[#1E3A5F] mt-1">{draftRows.length}</p>
               </div>
               <div className="rounded-lg bg-gray-50 p-4">
-                <p className="text-xs text-gray-500">Publish Jobs</p>
+                <p className="text-xs text-gray-500">Scheduled Posts</p>
                 <p className="text-2xl font-semibold text-[#1E3A5F] mt-1">{jobRows.length}</p>
               </div>
             </div>
