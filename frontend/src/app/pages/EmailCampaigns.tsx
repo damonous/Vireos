@@ -1,30 +1,33 @@
 import { Eye, Mail, Plus, TrendingUp, Users, XCircle } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { EmptyState } from '../components/ui/empty-state';
 import { ErrorState } from '../components/ui/error-state';
 import { LoadingState } from '../components/ui/loading-state';
 import { useApiData } from '../hooks/useApiData';
+import { EmailNav } from './email/EmailNav';
 
-interface EmailSequence {
+interface EmailSequenceItem {
   id: string;
   name: string;
   status: string;
-  _count?: {
-    steps?: number;
-    enrollments?: number;
+  triggerType: string;
+  _count: {
+    steps: number;
+    enrollments: number;
+  };
+  stats: {
+    active: number;
+    completed: number;
+    unsubscribed: number;
+    completionRate: number;
   };
 }
 
 interface EmailSequenceList {
-  items: EmailSequence[];
+  items: EmailSequenceItem[];
   total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-  hasNextPage: boolean;
-  hasPreviousPage: boolean;
 }
 
 interface EmailMetrics {
@@ -39,19 +42,41 @@ interface EmailMetrics {
   unsubscribeCount: number;
 }
 
+function statusBadge(status: string) {
+  const normalized = status.toLowerCase();
+  const classes =
+    normalized === 'active'
+      ? 'bg-green-100 text-green-700 border-green-200'
+      : normalized === 'draft'
+        ? 'bg-slate-100 text-slate-700 border-slate-200'
+        : normalized === 'paused'
+          ? 'bg-amber-100 text-amber-700 border-amber-200'
+          : 'bg-slate-100 text-slate-700 border-slate-200';
+
+  return <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-medium ${classes}`}>{status}</span>;
+}
+
+function humanizeTrigger(trigger: string) {
+  return trigger
+    .toLowerCase()
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 export default function EmailCampaigns() {
   const navigate = useNavigate();
-  const sequences = useApiData<EmailSequenceList>('/email/sequences');
+  const sequences = useApiData<EmailSequenceList>('/email/sequences?page=1&limit=100');
   const metrics = useApiData<EmailMetrics>('/analytics/email?preset=30d');
 
   if (sequences.loading || metrics.loading) {
-    return <LoadingState label="Loading email campaigns..." />;
+    return <LoadingState label="Loading email sequences..." />;
   }
 
   if (sequences.error || metrics.error) {
     return (
       <ErrorState
-        message={sequences.error || metrics.error || 'Failed to load email campaigns.'}
+        message={sequences.error || metrics.error || 'Failed to load email sequences.'}
         onRetry={() => {
           void sequences.reload();
           void metrics.reload();
@@ -60,7 +85,7 @@ export default function EmailCampaigns() {
     );
   }
 
-  const sequenceRows = sequences.data?.items ?? [];
+  const rows = sequences.data?.items ?? [];
   const emailMetrics = metrics.data ?? {
     totalSent: 0,
     totalDelivered: 0,
@@ -73,38 +98,27 @@ export default function EmailCampaigns() {
     unsubscribeCount: 0,
   };
 
-  const activeSequences = sequenceRows.filter((item) => item.status.toLowerCase() === 'active').length;
-  const totalEnrolled = sequenceRows.reduce((sum, item) => sum + (item._count?.enrollments ?? 0), 0);
-
-  const getStatusBadge = (status: string) => {
-    const normalized = status.toLowerCase();
-    if (normalized === 'active') {
-      return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">Active</span>;
-    }
-    if (normalized === 'draft') {
-      return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">Draft</span>;
-    }
-    if (normalized === 'paused') {
-      return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 border border-yellow-200">Paused</span>;
-    }
-    return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">{status}</span>;
-  };
+  const activeSequences = rows.filter((item) => item.status === 'ACTIVE').length;
+  const totalEnrolled = rows.reduce((sum, item) => sum + item._count.enrollments, 0);
 
   return (
     <div className="flex-1 overflow-auto bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-8 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-[#1E3A5F]">Email Campaigns</h1>
-            <p className="text-sm text-gray-500 mt-1">Live sequence and delivery analytics</p>
+      <div className="border-b border-gray-200 bg-white px-8 py-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-3">
+            <div>
+              <h1 className="text-2xl font-semibold text-[#1E3A5F]">Email Marketing</h1>
+              <p className="mt-1 text-sm text-gray-500">Sequence list, Mailgun delivery analytics, and enrollment performance.</p>
+            </div>
+            <EmailNav />
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
-              <div className="w-2 h-2 bg-green-500 rounded-full" />
-              <span className="text-sm font-medium text-green-700">Provider Ready</span>
+            <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+              <div className="h-2 w-2 rounded-full bg-green-500" />
+              <span className="text-sm font-medium text-green-700">Mailgun Ready</span>
             </div>
-            <Button className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white" onClick={() => navigate('/email/create')}>
-              <Plus className="w-4 h-4 mr-2" />
+            <Button className="bg-[#0EA5E9] text-white hover:bg-[#0284C7]" onClick={() => navigate('/email/sequences/new')}>
+              <Plus className="mr-2 h-4 w-4" />
               New Sequence
             </Button>
           </div>
@@ -112,24 +126,24 @@ export default function EmailCampaigns() {
       </div>
 
       <div className="p-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
           {[
-            { label: 'Active Sequences', value: activeSequences, hint: 'Currently running', icon: Mail, color: 'bg-blue-50 text-[#0EA5E9]' },
-            { label: 'Emails Sent This Month', value: emailMetrics.totalSent.toLocaleString(), hint: `${emailMetrics.deliveryRate}% delivery rate`, icon: TrendingUp, color: 'bg-purple-50 text-purple-600' },
+            { label: 'Active Sequences', value: activeSequences, hint: `${rows.length} total sequences`, icon: Mail, color: 'bg-blue-50 text-[#0EA5E9]' },
+            { label: 'Emails Sent', value: emailMetrics.totalSent.toLocaleString(), hint: `${emailMetrics.deliveryRate.toFixed(1)}% delivered`, icon: TrendingUp, color: 'bg-purple-50 text-purple-600' },
             { label: 'Open Rate', value: `${emailMetrics.openRate.toFixed(1)}%`, hint: `${emailMetrics.totalOpened} opens`, icon: Eye, color: 'bg-green-50 text-green-600' },
             { label: 'Unsubscribes', value: emailMetrics.unsubscribeCount, hint: `${emailMetrics.bounceRate.toFixed(1)}% bounce rate`, icon: XCircle, color: 'bg-red-50 text-red-500' },
           ].map((item) => {
             const Icon = item.icon;
             return (
-              <Card key={item.label} className="p-6 rounded-lg shadow-sm border border-gray-200">
+              <Card key={item.label} className="rounded-lg border border-gray-200 p-6 shadow-sm">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">{item.label}</p>
+                    <p className="mb-1 text-sm text-gray-600">{item.label}</p>
                     <h3 className="text-3xl font-semibold text-[#1E3A5F]">{item.value}</h3>
-                    <p className="text-sm text-gray-500 mt-2">{item.hint}</p>
+                    <p className="mt-2 text-sm text-gray-500">{item.hint}</p>
                   </div>
-                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${item.color}`}>
-                    <Icon className="w-6 h-6" />
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${item.color}`}>
+                    <Icon className="h-6 w-6" />
                   </div>
                 </div>
               </Card>
@@ -137,62 +151,90 @@ export default function EmailCampaigns() {
           })}
         </div>
 
-        <Card className="rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-[#1E3A5F] mb-4">Email Sequences</h3>
-            {sequenceRows.length === 0 ? (
-              <EmptyState title="No email sequences yet" description="Create a sequence to populate this view with live enrollment counts and status." />
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Sequence Name</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Enrolled Leads</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Steps</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sequenceRows.map((sequence) => (
-                      <tr key={sequence.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-4 px-4 text-sm font-medium text-[#1E3A5F]">{sequence.name}</td>
-                        <td className="py-4 px-4">{getStatusBadge(sequence.status)}</td>
-                        <td className="py-4 px-4 text-sm text-gray-700">
-                          <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4 text-gray-400" />
-                            <span>{sequence._count?.enrollments ?? 0}</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 text-sm text-gray-700">{sequence._count?.steps ?? 0} steps</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+        <Card className="overflow-hidden rounded-lg border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between p-6">
+            <div>
+              <h3 className="text-lg font-semibold text-[#1E3A5F]">Sequences</h3>
+              <p className="mt-1 text-sm text-gray-500">View detail, edit steps, and enroll leads into any live sequence.</p>
+            </div>
+            <Button variant="outline" onClick={() => navigate('/email/templates')}>
+              Manage Templates
+            </Button>
           </div>
+          {rows.length === 0 ? (
+            <div className="px-6 pb-6">
+              <EmptyState title="No email sequences yet" description="Create a sequence and enroll leads to start Mailgun-backed campaigns." />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Sequence</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Trigger</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Steps</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Enrolled</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Completion Rate</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((sequence) => (
+                    <tr key={sequence.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="px-4 py-4">
+                        <Link to={`/email/sequences/${sequence.id}`} className="text-sm font-medium text-[#1E3A5F] hover:text-[#0EA5E9]">
+                          {sequence.name}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-700">{humanizeTrigger(sequence.triggerType)}</td>
+                      <td className="px-4 py-4">{statusBadge(sequence.status)}</td>
+                      <td className="px-4 py-4 text-sm text-gray-700">{sequence._count.steps}</td>
+                      <td className="px-4 py-4 text-sm text-gray-700">
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-gray-400" />
+                          <span>{sequence._count.enrollments}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-700">{sequence.stats.completionRate.toFixed(1)}%</td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-wrap gap-2">
+                          <Link to={`/email/sequences/${sequence.id}`} className="text-sm font-medium text-[#0EA5E9] hover:underline">
+                            View
+                          </Link>
+                          <Link to={`/email/sequences/${sequence.id}/edit`} className="text-sm font-medium text-[#0EA5E9] hover:underline">
+                            Edit
+                          </Link>
+                          <Link to={`/email/sequences/${sequence.id}/enroll`} className="text-sm font-medium text-[#0EA5E9] hover:underline">
+                            Enroll
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
 
-        <Card className="mt-6 p-6 rounded-lg shadow-sm border border-gray-200 bg-gradient-to-r from-blue-50 to-white">
+        <Card className="mt-6 rounded-lg border border-gray-200 bg-gradient-to-r from-blue-50 to-white p-6 shadow-sm">
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-[#0EA5E9] rounded-lg flex items-center justify-center flex-shrink-0">
-              <Mail className="w-6 h-6 text-white" />
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-[#0EA5E9]">
+              <Mail className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-[#1E3A5F]">Email Automation Active</h3>
-              <p className="text-sm text-gray-600 mt-1">
+              <h3 className="text-lg font-semibold text-[#1E3A5F]">Automation Snapshot</h3>
+              <p className="mt-1 text-sm text-gray-600">
                 {totalEnrolled} leads are currently enrolled across {activeSequences} active sequences.
               </p>
-              <div className="flex items-center gap-4 mt-3">
-                <div className="text-sm">
-                  <span className="text-gray-600">Total sent: </span>
-                  <span className="font-semibold text-[#1E3A5F]">{emailMetrics.totalSent.toLocaleString()}</span>
-                </div>
-                <div className="text-sm">
-                  <span className="text-gray-600">Avg. click rate: </span>
-                  <span className="font-semibold text-[#1E3A5F]">{emailMetrics.clickRate.toFixed(1)}%</span>
-                </div>
+              <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
+                <span className="text-gray-600">
+                  Total sent: <span className="font-semibold text-[#1E3A5F]">{emailMetrics.totalSent.toLocaleString()}</span>
+                </span>
+                <span className="text-gray-600">
+                  Avg. click rate: <span className="font-semibold text-[#1E3A5F]">{emailMetrics.clickRate.toFixed(1)}%</span>
+                </span>
               </div>
             </div>
           </div>

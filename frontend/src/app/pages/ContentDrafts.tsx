@@ -43,6 +43,32 @@ function getFlags(draft: Draft): string[] {
   return Array.isArray(values) ? values.map((value) => String(value)) : [];
 }
 
+function formatStatus(status: string): string {
+  return status
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function statusBadgeClass(status: string): string {
+  switch (status) {
+    case 'APPROVED':
+      return 'bg-green-100 text-green-800 border-0';
+    case 'PENDING_REVIEW':
+      return 'bg-yellow-100 text-yellow-800 border-0';
+    case 'REJECTED':
+      return 'bg-red-100 text-red-800 border-0';
+    case 'NEEDS_CHANGES':
+      return 'bg-orange-100 text-orange-800 border-0';
+    case 'ARCHIVED':
+      return 'bg-gray-200 text-gray-600 border-0';
+    case 'DRAFT':
+      return 'bg-blue-100 text-blue-800 border-0';
+    default:
+      return 'bg-gray-100 text-gray-700 border-0';
+  }
+}
+
 export default function ContentDrafts() {
   const [status, setStatus] = useState<(typeof statusOptions)[number]>('ALL');
   const [search, setSearch] = useState('');
@@ -90,7 +116,7 @@ export default function ContentDrafts() {
                     status === option ? 'border-[#0EA5E9] bg-[#0EA5E9] text-white' : 'border-gray-300 bg-white text-gray-700'
                   }`}
                 >
-                  {option.replaceAll('_', ' ')}
+                  {formatStatus(option)}
                 </button>
               ))}
             </div>
@@ -111,7 +137,7 @@ export default function ContentDrafts() {
                     <div className="space-y-3">
                       <div className="flex flex-wrap items-center gap-3">
                         <h2 className="text-lg font-semibold text-[#1E3A5F]">{draft.title || 'Untitled draft'}</h2>
-                        <Badge className="bg-gray-100 text-gray-700 border-0">{draft.status}</Badge>
+                        <Badge className={statusBadgeClass(draft.status)}>{formatStatus(draft.status)}</Badge>
                         <span className="inline-flex items-center gap-1 text-xs text-gray-500">
                           <Clock3 className="h-3.5 w-3.5" />
                           {new Date(draft.createdAt).toLocaleString()}

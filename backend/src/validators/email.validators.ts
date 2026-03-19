@@ -46,6 +46,10 @@ export const addStepSchema = z.object({
   subject: z.string().max(200).optional(),
 });
 
+export const replaceStepsSchema = z.object({
+  steps: z.array(addStepSchema).max(100, 'Cannot store more than 100 sequence steps'),
+});
+
 export const enrollLeadsSchema = z.object({
   leadIds: z
     .array(z.string().uuid())
@@ -76,5 +80,6 @@ export type UpdateTemplateDto = z.infer<typeof updateTemplateSchema>;
 export type CreateSequenceDto = z.infer<typeof createSequenceSchema>;
 export type UpdateSequenceDto = z.infer<typeof updateSequenceSchema>;
 export type AddStepDto = z.infer<typeof addStepSchema>;
+export type ReplaceStepsDto = z.infer<typeof replaceStepsSchema>;
 export type EnrollLeadsDto = z.infer<typeof enrollLeadsSchema>;
 export type PaginationParams = z.infer<typeof paginationQuerySchema>;

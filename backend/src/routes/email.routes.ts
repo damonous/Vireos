@@ -8,6 +8,7 @@ import {
   createSequenceSchema,
   updateSequenceSchema,
   addStepSchema,
+  replaceStepsSchema,
   enrollLeadsSchema,
   paginationQuerySchema,
   unsubscribeSchema,
@@ -16,7 +17,7 @@ import { emailTemplateService } from '../services/email-template.service';
 import { emailSequenceService } from '../services/email-sequence.service';
 import { emailService } from '../services/email.service';
 import { AuthenticatedRequest, UserRole } from '../types';
-import type { SendGridWebhookEvent } from '../services/email.service';
+import type { MailgunWebhookEventData, MailgunWebhookPayload } from '../services/email.service';
 
 const router = Router();
 
@@ -130,6 +131,28 @@ router.delete(
       const authReq = req as unknown as AuthenticatedRequest;
       await emailTemplateService.deleteTemplate(req.params['id'] as string, authReq.user);
       res.status(200).json({ success: true, data: { message: 'Template deleted successfully.' } });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * POST /v1/email/templates/:id/duplicate
+ * Duplicate an existing email template.
+ */
+router.post(
+  '/templates/:id/duplicate',
+  auth,
+  adminOrAdvisor,
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const authReq = req as unknown as AuthenticatedRequest;
+      const template = await emailTemplateService.duplicateTemplate(
+        req.params['id'] as string,
+        authReq.user
+      );
+      res.status(201).json({ success: true, data: template });
     } catch (err) {
       next(err);
     }
@@ -253,6 +276,35 @@ router.post(
 );
 
 /**
+ * PUT /v1/email/sequences/:id/steps
+ * Replace the ordered steps for a sequence.
+ */
+router.put(
+  '/sequences/:id/steps',
+  auth,
+  adminOrAdvisor,
+  validateBody(replaceStepsSchema),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const authReq = req as unknown as AuthenticatedRequest;
+      const result = await emailSequenceService.replaceSteps(
+        req.params['id'] as string,
+        req.body.steps as Array<{
+          templateId: string;
+          delayDays: number;
+          delayHours: number;
+          subject?: string;
+        }>,
+        authReq.user
+      );
+      res.status(200).json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
  * POST /v1/email/sequences/:id/enroll
  * Enroll one or more leads into a sequence.
  */
@@ -294,18 +346,32 @@ router.post(
 // =============================================================================
 
 /**
- * POST /v1/email/webhook/sendgrid
- * SendGrid event webhook. Processes delivery, open, click, bounce, spam events.
- * This endpoint must be public — SendGrid does not send auth headers.
+ * POST /v1/email/webhook/mailgun
+ * Mailgun event webhook. Processes delivery, open, click, bounce, spam events.
+ * This endpoint must be public — Mailgun does not send auth headers.
  */
 router.post(
-  '/webhook/sendgrid',
+  '/webhook/mailgun',
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const events = req.body as SendGridWebhookEvent[];
-      const eventArray = Array.isArray(events) ? events : [events as SendGridWebhookEvent];
+      const payload = req.body as MailgunWebhookPayload | MailgunWebhookPayload[] | MailgunWebhookEventData;
+      const envelopeArray = Array.isArray(payload) ? payload : [payload];
+      const signature = !Array.isArray(payload) && 'signature' in payload ? payload.signature : undefined;
+
+      if (!emailService.verifyWebhookSignature(signature)) {
+        res.status(401).json({
+          success: false,
+          error: { code: 'UNAUTHORIZED', message: 'Invalid Mailgun webhook signature.' },
+        });
+        return;
+      }
+
+      const eventArray = envelopeArray
+        .map((item) => ('event-data' in item ? item['event-data'] : item))
+        .filter((item): item is MailgunWebhookEventData => Boolean(item));
+
       await emailService.handleWebhook(eventArray);
-      // Always respond 200 quickly to prevent SendGrid retries
+      // Always respond 200 quickly to prevent Mailgun retries
       res.status(200).json({ success: true, data: { processed: eventArray.length } });
     } catch (err) {
       next(err);

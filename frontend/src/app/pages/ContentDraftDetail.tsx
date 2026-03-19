@@ -82,6 +82,32 @@ function getFlags(draft: Draft | null): string[] {
   return Array.isArray(values) ? values.map((value) => String(value)) : [];
 }
 
+function formatStatus(status: string): string {
+  return status
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function statusBadgeClass(status: string): string {
+  switch (status) {
+    case 'APPROVED':
+      return 'bg-green-100 text-green-800 border-0';
+    case 'PENDING_REVIEW':
+      return 'bg-yellow-100 text-yellow-800 border-0';
+    case 'REJECTED':
+      return 'bg-red-100 text-red-800 border-0';
+    case 'NEEDS_CHANGES':
+      return 'bg-orange-100 text-orange-800 border-0';
+    case 'ARCHIVED':
+      return 'bg-gray-200 text-gray-600 border-0';
+    case 'DRAFT':
+      return 'bg-blue-100 text-blue-800 border-0';
+    default:
+      return 'bg-gray-100 text-gray-700 border-0';
+  }
+}
+
 export default function ContentDraftDetail() {
   const { draftId = '' } = useParams();
   const navigate = useNavigate();
@@ -218,7 +244,7 @@ export default function ContentDraftDetail() {
           <h1 className="text-2xl font-semibold text-[#1E3A5F]">{loadedDraft.title || 'Untitled draft'}</h1>
           <p className="text-sm text-gray-500 mt-1">Created {new Date(loadedDraft.createdAt).toLocaleString()}</p>
         </div>
-        <Badge className="bg-gray-100 text-gray-700 border-0">{loadedDraft.status}</Badge>
+        <Badge className={statusBadgeClass(loadedDraft.status)}>{formatStatus(loadedDraft.status)}</Badge>
       </div>
 
       <div className="p-8 space-y-6">
@@ -318,7 +344,7 @@ export default function ContentDraftDetail() {
               <Save className="h-4 w-4 mr-2" />
               {busyAction === 'save' ? 'Saving...' : 'Save draft'}
             </Button>
-            {canSubmit ? (
+            {canSubmit && !['PENDING_REVIEW', 'APPROVED', 'REJECTED'].includes(loadedDraft.status) ? (
               <Button onClick={() => void handleSubmitForReview()} disabled={busyAction !== null} variant="outline">
                 <Send className="h-4 w-4 mr-2" />
                 {busyAction === 'submit' ? 'Submitting...' : 'Submit for review'}

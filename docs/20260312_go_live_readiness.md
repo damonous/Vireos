@@ -38,7 +38,7 @@ These are the remaining items that still block a real public launch tomorrow.
 - Stripe live secret key, publishable key, webhook secret, and live price IDs
 - LinkedIn OAuth app credentials and approved redirect URIs
 - Facebook/Meta app credentials, approved redirect URIs, and publish-capable ad/page access
-- SendGrid production API key plus verified sender/domain
+- Mailgun production API key plus verified sending domain
 - AWS S3 production credentials, bucket, CORS, and policy
 
 ### Public Internet Configuration
@@ -56,7 +56,7 @@ These are the remaining items that still block a real public launch tomorrow.
 - Successful LinkedIn publish/campaign actions
 - Successful Facebook publish/campaign actions
 - Successful scheduled social publish execution through the worker queue
-- Successful SendGrid email delivery against a real verified sender
+- Successful Mailgun email delivery against a real verified sending domain
 - Successful S3 upload/read flow against the production bucket
 
 ## Evidence

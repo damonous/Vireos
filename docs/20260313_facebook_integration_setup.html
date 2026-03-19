@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Facebook / Meta Integration Setup for Vireos</title>
+  <style>
+    @page { size: A4; margin: 18mm 16mm; }
+    body { font-family: Arial, sans-serif; color: #1f2937; font-size: 11pt; line-height: 1.45; }
+    h1, h2, h3 { color: #0f172a; page-break-after: avoid; }
+    h1 { font-size: 22pt; margin: 0 0 12pt; }
+    h2 { font-size: 15pt; margin: 18pt 0 8pt; border-bottom: 1px solid #cbd5e1; padding-bottom: 4pt; }
+    h3 { font-size: 12.5pt; margin: 14pt 0 6pt; }
+    p, li { orphans: 3; widows: 3; }
+    code { font-family: "Courier New", monospace; font-size: 9.5pt; background: #f3f4f6; padding: 1px 3px; border-radius: 3px; }
+    pre { background: #0f172a; color: #e5e7eb; padding: 10pt; border-radius: 6px; overflow: hidden; white-space: pre-wrap; word-break: break-word; }
+    pre code { background: transparent; color: inherit; padding: 0; }
+    a { color: #0369a1; text-decoration: none; }
+    ul, ol { margin: 6pt 0 10pt 18pt; }
+    li { margin: 3pt 0; }
+    table { border-collapse: collapse; width: 100%; margin: 8pt 0 12pt; }
+    th, td { border: 1px solid #cbd5e1; padding: 6pt; text-align: left; vertical-align: top; }
+    blockquote { margin: 8pt 0; padding-left: 10pt; border-left: 3px solid #cbd5e1; color: #475569; }
+  </style>
+</head>
+<body>
+<h1>Facebook / Meta Integration Setup for Vireos</h1>
+<p>This runbook is specific to the current Vireos codebase.</p>
+<h2>What the app currently expects</h2>
+<p>The backend currently uses:</p>
+<ul>
+<li><code>FACEBOOK_APP_ID</code></li>
+<li><code>FACEBOOK_APP_SECRET</code></li>
+<li><code>FACEBOOK_REDIRECT_URI</code></li>
+<li><code>FACEBOOK_WEBHOOK_VERIFY_TOKEN</code> or <code>FB_WEBHOOK_VERIFY_TOKEN</code></li>
+</ul>
+<p>Relevant backend endpoints:</p>
+<ul>
+<li>OAuth start: <code>/api/v1/oauth/facebook</code></li>
+<li>OAuth callback: <code>/api/v1/oauth/facebook/callback</code></li>
+<li>Webhook verification: <code>GET /api/v1/facebook/webhook</code></li>
+<li>Webhook receiver: <code>POST /api/v1/facebook/webhook</code></li>
+</ul>
+<p>Current Facebook OAuth scopes requested by the app:</p>
+<ul>
+<li><code>pages_manage_posts</code></li>
+<li><code>pages_read_engagement</code></li>
+</ul>
+<p>Code references:</p>
+<ul>
+<li><code>backend/src/services/social-connection.service.ts</code></li>
+<li><code>backend/src/routes/oauth.routes.ts</code></li>
+<li><code>backend/src/routes/facebook-ad.routes.ts</code></li>
+<li><code>backend/src/services/facebook-ad.service.ts</code></li>
+</ul>
+<h2>Important limitation in the current implementation</h2>
+<p>The current code stores the connected Facebook user ID from <code>me</code> and then reuses that value where the app really needs a Facebook Page ID or Ad Account ID.</p>
+<p>That means:</p>
+<ul>
+<li>basic OAuth connection can be set up now</li>
+<li>webhook setup can be set up now</li>
+<li>true production-grade Facebook Page publishing and Ads launch still need additional implementation for:</li>
+<li>selecting a Page</li>
+<li>retrieving Page access tokens</li>
+<li>storing the selected Page ID</li>
+<li>selecting or storing an Ad Account ID</li>
+</ul>
+<p>So if your immediate goal is to finish Meta dashboard setup and have Vireos ready for final code completion, the steps below are correct. If your goal is fully live Facebook publishing/ads today, the code still needs that extra Page/Ad Account layer.</p>
+<h2>Prerequisites</h2>
+<p>Before starting in Meta:</p>
+<ol>
+<li>Use a public HTTPS URL for Vireos.</li>
+<li>Do not use <code>https://172.31.129.204:13443</code> for Meta configuration.</li>
+<li>Use a public domain or a tunnel URL instead, for example:
+   - <code>https://app.vireos.com</code>
+   - <code>https://vireos-staging.example.com</code>
+   - a temporary <code>ngrok</code> or <code>cloudflared</code> HTTPS URL</li>
+</ol>
+<p>The callback and webhook URLs Meta sees must be publicly reachable.</p>
+<h2>Step 1: Create the Meta app</h2>
+<ol>
+<li>Go to <a href="https://developers.facebook.com/apps/">Meta for Developers</a>.</li>
+<li>Click <code>Create App</code>.</li>
+<li>Choose the closest app type for this use case.
+   - For Facebook Login and Graph API access, Meta may present a flow such as <code>Business</code>, <code>Other</code>, or <code>Consumer</code>.
+   - Choose the type that allows Facebook Login and Graph API products for Pages/business assets.</li>
+<li>Enter:
+   - App name: <code>Vireos</code>
+   - App contact email
+   - Business account if you already have one</li>
+<li>Create the app.</li>
+</ol>
+<h2>Step 2: Add the required Meta products</h2>
+<p>Inside the app dashboard, add:</p>
+<ol>
+<li><code>Facebook Login</code></li>
+<li>Any product Meta now requires for the Graph API / business asset flow you are using</li>
+<li>If you will use Facebook lead webhooks, ensure the webhook capability is available from the app configuration</li>
+</ol>
+<h2>Step 3: Configure Facebook Login</h2>
+<p>In the Meta app dashboard:</p>
+<ol>
+<li>Open <code>Facebook Login</code> settings.</li>
+<li>Turn on the client/web login flow if Meta presents that option.</li>
+<li>Add the exact Valid OAuth Redirect URI:</li>
+</ol>
+<pre><code class="language-text">https://YOUR-PUBLIC-DOMAIN/api/v1/oauth/facebook/callback
+</code></pre>
+<p>Example:</p>
+<pre><code class="language-text">https://app.vireos.com/api/v1/oauth/facebook/callback
+</code></pre>
+<ol start="4">
+<li>If Meta asks for App Domains, add your public domain only, for example:</li>
+</ol>
+<pre><code class="language-text">app.vireos.com
+</code></pre>
+<ol start="5">
+<li>Save changes.</li>
+</ol>
+<h2>Step 4: Put the app credentials into Vireos</h2>
+<p>In <code>backend/.env</code>, set:</p>
+<pre><code class="language-env">FACEBOOK_APP_ID=your_meta_app_id
+FACEBOOK_APP_SECRET=your_meta_app_secret
+FACEBOOK_REDIRECT_URI=https://YOUR-PUBLIC-DOMAIN/api/v1/oauth/facebook/callback
+FACEBOOK_WEBHOOK_VERIFY_TOKEN=use-a-long-random-secret-string
+</code></pre>
+<p>Notes:</p>
+<ul>
+<li><code>FACEBOOK_REDIRECT_URI</code> must exactly match the URI registered in Meta.</li>
+<li><code>FACEBOOK_WEBHOOK_VERIFY_TOKEN</code> is checked by <code>GET /api/v1/facebook/webhook</code>.</li>
+<li>This verify token is your own shared secret string, not something Meta gives you.</li>
+</ul>
+<h2>Step 5: Configure webhook callback in Meta</h2>
+<p>If you need Facebook lead ingestion or page-related webhook events:</p>
+<ol>
+<li>In the Meta app dashboard, open the webhook configuration area.</li>
+<li>Add the callback URL:</li>
+</ol>
+<pre><code class="language-text">https://YOUR-PUBLIC-DOMAIN/api/v1/facebook/webhook
+</code></pre>
+<ol start="3">
+<li>Set the verify token to the exact value you put in:</li>
+</ol>
+<pre><code class="language-text">FACEBOOK_WEBHOOK_VERIFY_TOKEN
+</code></pre>
+<ol start="4">
+<li>Complete Meta’s verification step.</li>
+</ol>
+<p>If the verification fails, check:</p>
+<ul>
+<li>the URL is publicly reachable</li>
+<li>the app is returning <code>200</code></li>
+<li>the verify token matches exactly</li>
+<li>TLS is valid and trusted</li>
+</ul>
+<h2>Step 6: Set up business assets in Meta</h2>
+<p>For real Facebook Page publishing and Ads usage, you also need:</p>
+<ol>
+<li>A Meta Business portfolio / business account</li>
+<li>A Facebook Page you control</li>
+<li>A user who is an admin or has sufficient access on that Page</li>
+<li>If using ads:
+   - an Ad Account
+   - payment setup in Meta Ads Manager
+   - the correct permissions for the connected user on that Ad Account</li>
+</ol>
+<p>Without those business assets, the app may connect a user account but still fail to publish or launch ads.</p>
+<h2>Step 7: Add test users while the app is still in development mode</h2>
+<p>Before the Meta app is live:</p>
+<ol>
+<li>Add yourself as an app admin/developer/tester in the Meta app roles area.</li>
+<li>Add any internal test accounts that need to connect Facebook during development.</li>
+</ol>
+<p>In development mode, only app-role users can typically complete OAuth flows.</p>
+<h2>Step 8: Request the permissions needed for production</h2>
+<p>The current app requests:</p>
+<ul>
+<li><code>pages_manage_posts</code></li>
+<li><code>pages_read_engagement</code></li>
+</ul>
+<p>For production use, these usually need App Review approval when required by Meta’s current policy.</p>
+<p>If you later implement Page enumeration or other business flows, you may also need additional permissions or features depending on the final implementation.</p>
+<p>Prepare for App Review with:</p>
+<ol>
+<li>A working screencast showing exactly how Vireos uses Facebook access</li>
+<li>Test credentials for the reviewer if Meta requests them</li>
+<li>A clear explanation of why each permission is needed</li>
+<li>A privacy policy URL</li>
+<li>A terms URL if Meta requires it</li>
+<li>Business verification if Meta requires it for the requested permissions/features</li>
+</ol>
+<h2>Step 9: Switch the app to live mode</h2>
+<p>After review/verification is complete:</p>
+<ol>
+<li>Switch the Meta app from development mode to live mode.</li>
+<li>Re-test the OAuth flow with a non-role user account.</li>
+<li>Re-test the webhook verification.</li>
+<li>Re-test page/business actions.</li>
+</ol>
+<h2>Step 10: Test the Vireos connection flow</h2>
+<p>In Vireos:</p>
+<ol>
+<li>Log in as an advisor or admin.</li>
+<li>Go to <code>Settings</code>.</li>
+<li>Open the <code>Integrations</code> tab.</li>
+<li>Click <code>Connect</code> for Facebook.</li>
+<li>Complete the Meta consent flow.</li>
+<li>Confirm the OAuth callback returns successfully and the Facebook connection appears in the UI.</li>
+</ol>
+<p>Current backend start endpoint:</p>
+<pre><code class="language-text">GET /api/v1/oauth/facebook
+</code></pre>
+<p>Current callback endpoint:</p>
+<pre><code class="language-text">GET /api/v1/oauth/facebook/callback
+</code></pre>
+<h2>Step 11: Test webhook verification and delivery</h2>
+<p>After configuring the webhook in Meta:</p>
+<ol>
+<li>Confirm Meta marks the subscription as verified.</li>
+<li>Send a test event if Meta offers one.</li>
+<li>Confirm Vireos receives a <code>POST /api/v1/facebook/webhook</code>.</li>
+<li>Confirm the relevant records appear in the database/app.</li>
+</ol>
+<h2>Step 12: Production checklist</h2>
+<p>Before calling Facebook integration ready:</p>
+<ul>
+<li>Meta app created</li>
+<li>Facebook Login configured</li>
+<li>exact redirect URI configured</li>
+<li>public HTTPS callback URL working</li>
+<li>webhook URL configured</li>
+<li>webhook verify token configured</li>
+<li>app roles added for dev testing</li>
+<li>required permissions submitted/approved</li>
+<li>app switched to live mode</li>
+<li>business verification completed if required</li>
+<li>Page admin access confirmed</li>
+<li>Ad Account access confirmed</li>
+<li>Vireos <code>.env</code> updated with real values</li>
+</ul>
+<h2>What still needs code work in Vireos</h2>
+<p>These are not Meta dashboard steps. They are implementation gaps in the current app:</p>
+<ol>
+<li>Fetch available Facebook Pages after OAuth</li>
+<li>Let the user choose which Page to use</li>
+<li>Store the selected Page ID</li>
+<li>Exchange/use the correct Page access token for Page posting</li>
+<li>Let the user choose or store an Ad Account ID for ads launch</li>
+<li>Stop reusing the Facebook user profile ID as the Page ID / Ad Account ID</li>
+</ol>
+<p>Until those are implemented, Meta-side setup alone will not make Facebook publishing and ad launching fully production-ready.</p>
+<h2>Official references</h2>
+<ul>
+<li>Meta app dashboard: https://developers.facebook.com/apps/</li>
+<li>Facebook Login manual flow: https://developers.facebook.com/docs/facebook-login/guides/advanced/manual-flow/</li>
+<li>Facebook Login security/settings: https://developers.facebook.com/docs/facebook-login/security/</li>
+<li>App review: https://developers.facebook.com/docs/apps/review/</li>
+<li>Graph API get started: https://developers.facebook.com/docs/graph-api/get-started/</li>
+</ul>
+</body>
+</html>

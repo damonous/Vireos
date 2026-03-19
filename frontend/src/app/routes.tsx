@@ -19,7 +19,11 @@ import FacebookSubmitted from './pages/FacebookSubmitted';
 import FacebookCampaignDetail from './pages/FacebookCampaignDetail';
 import ProspectFinder from './pages/ProspectFinder';
 import EmailCampaigns from './pages/EmailCampaigns';
+import EmailTemplates from './pages/EmailTemplates';
+import EmailTemplateEditor from './pages/EmailTemplateEditor';
 import EmailSequenceBuilder from './pages/EmailSequenceBuilder';
+import EmailSequenceDetail from './pages/EmailSequenceDetail';
+import EmailSequenceEnroll from './pages/EmailSequenceEnroll';
 import Analytics from './pages/Analytics';
 import Billing from './pages/Billing';
 import Settings from './pages/Settings';
@@ -134,11 +138,43 @@ export const router = createBrowserRouter([
       },
       {
         path: 'email',
-        Component: EmailCampaigns,
+        element: <Navigate to="/email/sequences" replace />,
       },
       {
         path: 'email/create',
+        element: <Navigate to="/email/sequences/new" replace />,
+      },
+      {
+        path: 'email/templates',
+        Component: EmailTemplates,
+      },
+      {
+        path: 'email/templates/new',
+        Component: EmailTemplateEditor,
+      },
+      {
+        path: 'email/templates/:templateId/edit',
+        Component: EmailTemplateEditor,
+      },
+      {
+        path: 'email/sequences',
+        Component: EmailCampaigns,
+      },
+      {
+        path: 'email/sequences/new',
         Component: EmailSequenceBuilder,
+      },
+      {
+        path: 'email/sequences/:sequenceId/edit',
+        Component: EmailSequenceBuilder,
+      },
+      {
+        path: 'email/sequences/:sequenceId',
+        Component: EmailSequenceDetail,
+      },
+      {
+        path: 'email/sequences/:sequenceId/enroll',
+        Component: EmailSequenceEnroll,
       },
       {
         path: 'analytics',

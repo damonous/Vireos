@@ -280,7 +280,7 @@
             "AUDIT_TRAIL"
           ],
           "preconditions": [
-            "User exists with verified email; email delivery enabled (SendGrid sandbox)"
+            "User exists with verified email; email delivery enabled (Mailgun sandbox)"
           ],
           "steps": [
             "Initiate password reset",
@@ -713,215 +713,100 @@
     },
     {
       "id": "FR-009",
-      "title": "Encryption in transit and at rest",
-      "description": "Enable TLS for all endpoints and database connections; encrypt sensitive data at rest.",
-      "type": "chore",
-      "priority": "MUST",
+      "title": "Email Delivery and Sequences (Mailgun)",
+      "description": "Create email templates and sequences, send Mailgun-backed campaigns, process delivery events, and surface enrollment analytics in the UI.",
+      "type": "feature",
+      "priority": "SHOULD",
       "components": [
-        "Data Protection",
-        "Security"
+        "Notifications",
+        "Content Service",
+        "API Gateway"
       ],
       "dependencies": [],
       "acceptance_criteria": [
-        "Given any API call, when intercepted, then traffic is TLS 1.2+ encrypted.",
-        "Given database storage, when querying encryption status, then at-rest encryption is enabled.",
-        "Given backups, when created, then backups are encrypted with managed keys."
+        "Given a Mailgun bounce or unsubscribe event, when the webhook is received, then the send and enrollment state is updated and future sends are suppressed.",
+        "Given an advisor building a campaign, when they manage templates and sequence steps, then the UI persists templates, supports ordered step replacement, and shows enrollment detail.",
+        "Given a Facebook Page-admin account, when publishing approved Facebook content, then the backend resolves a managed page token instead of attempting to publish with the user profile ID."
       ],
       "test_cases": [
         {
-          "id": "TC-AUD-009",
-          "title": "Comprehensive audit trail for content lifecycle",
-          "description": "All edits, reviews, approvals, and publications are logged immutably.",
+          "id": "TC-EML-009",
+          "title": "Mailgun event processing and unsubscribe suppression",
+          "description": "Delivery, open, bounce, and unsubscribe paths update EmailSend and enrollment state correctly.",
           "requirement_ids": [
             "FR-009"
           ],
-          "priority": "MUST",
+          "priority": "SHOULD",
           "type": "functional",
           "components": [
-            "AUDIT_TRAIL",
-            "COMPLIANCE_WF"
+            "EMAIL",
+            "MAILGUN"
           ],
           "preconditions": [
-            "Content item exists; multiple user roles available"
+            "Mailgun environment variables configured; email template, sequence, and lead exist."
           ],
           "steps": [
-            "Make edit, change status, approve, publish",
-            "Open audit view for the content and export JSON/CSV if available"
+            "Create a template and sequence, add a step, and enroll a lead.",
+            "POST Mailgun delivered/open/bounce webhook payloads.",
+            "POST /api/v1/email/unsubscribe for the enrolled lead."
           ],
           "expected_results": [
-            "Each action present with timestamp, actor, before/after",
-            "No edits to audit entries allowed; read-only view"
+            "EmailSend records update status and timestamps per webhook event.",
+            "Bounce and unsubscribe paths suppress future sends by updating enrollment and lead state."
           ],
           "frameworks": [
-            "PYTEST_PLAYWRIGHT"
+            "JEST"
           ],
           "tags": [
-            "audit",
-            "compliance"
+            "email",
+            "mailgun",
+            "webhook"
           ],
           "artifacts": [],
-          "status": "Planned"
+          "status": "Completed"
         },
         {
-          "id": "TC-EXP-010",
-          "title": "Export to PDF/Word for recordkeeping",
-          "description": "Records export contains content, approvals, and disclosures.",
+          "id": "TC-EML-010",
+          "title": "Template, sequence, and enrollment UI flow",
+          "description": "Advisors can manage templates, ordered sequence steps, and lead enrollments across the email routes.",
           "requirement_ids": [
-            "FR-010",
             "FR-009"
           ],
-          "priority": "MUST",
+          "priority": "SHOULD",
           "type": "functional",
           "components": [
-            "EXPORTS",
-            "COMPLIANCE_WF",
-            "AUDIT_TRAIL"
+            "EMAIL_UI"
           ],
           "preconditions": [
-            "Approved content exists"
+            "Frontend app builds successfully against the live email API contracts."
           ],
           "steps": [
-            "From compliance view, export PDF and Word",
-            "Open files and inspect contents"
+            "Open /email/templates and create or edit a template.",
+            "Open /email/sequences/new, select templates, reorder steps, and save the sequence.",
+            "Open /email/sequences/:id and enroll one or more leads from /email/sequences/:id/enroll."
           ],
           "expected_results": [
-            "Exports include final content, disclosures, approval metadata, and audit summary",
-            "Files stored/available for download; access controlled"
+            "Template and sequence routes load without mock data and persist through the backend APIs.",
+            "Sequence detail shows step order, enrollment stats, and enrolled lead rows."
           ],
           "frameworks": [
-            "PYTEST_PLAYWRIGHT"
+            "VITE_BUILD"
           ],
           "tags": [
-            "export",
-            "compliance"
-          ],
-          "artifacts": [
-            "exported_pdf",
-            "exported_docx"
-          ],
-          "status": "Planned"
-        },
-        {
-          "id": "TC-NOT-016",
-          "title": "Compliance notifications emitted and logged",
-          "description": "Notifications sent on submit/approve/reject/changes.",
-          "requirement_ids": [
-            "FR-016",
-            "FR-009"
-          ],
-          "priority": "MUST",
-          "type": "functional",
-          "components": [
-            "NOTIFICATIONS",
-            "COMPLIANCE_WF",
-            "AUDIT_TRAIL"
-          ],
-          "preconditions": [
-            "Email delivery enabled; in-app notifications visible"
-          ],
-          "steps": [
-            "Advisor submits content",
-            "Compliance approves; then rejects another item",
-            "Open notification center and check emails"
-          ],
-          "expected_results": [
-            "Correct recipients get email + in-app alerts",
-            "Notification events present in audit with correlation IDs"
-          ],
-          "frameworks": [
-            "PYTEST_PLAYWRIGHT"
-          ],
-          "tags": [
-            "notifications",
-            "compliance"
+            "email",
+            "ui"
           ],
           "artifacts": [],
-          "status": "Planned"
-        },
-        {
-          "id": "TC-USG-019",
-          "title": "OpenAI usage and cost tracking per user/org",
-          "description": "Usage recorded with content ID correlation and totals.",
-          "requirement_ids": [
-            "FR-019",
-            "FR-009"
-          ],
-          "priority": "MUST",
-          "type": "functional",
-          "components": [
-            "OPENAI_USAGE",
-            "AUDIT_TRAIL"
-          ],
-          "preconditions": [
-            "Advisor generates multiple contents in same org"
-          ],
-          "steps": [
-            "Generate content across channels",
-            "Open usage dashboard/logs"
-          ],
-          "expected_results": [
-            "Tokens and cost attributed to user and org with content correlation IDs",
-            "Audit entries include usage metadata"
-          ],
-          "frameworks": [
-            "PYTEST_PLAYWRIGHT"
-          ],
-          "tags": [
-            "usage",
-            "ai",
-            "audit"
-          ],
-          "artifacts": [],
-          "status": "Planned"
-        },
-        {
-          "id": "TC-CRED-020",
-          "title": "Data credit purchase, deduction, and audit",
-          "description": "Credits purchased via Stripe; deductions on list import; no negative balances.",
-          "requirement_ids": [
-            "FR-020",
-            "FR-017",
-            "FR-009"
-          ],
-          "priority": "MUST",
-          "type": "functional",
-          "components": [
-            "DATA_CREDITS",
-            "BILLING_STRIPE",
-            "AUDIT_TRAIL"
-          ],
-          "preconditions": [
-            "Org has zero credits; Stripe test mode enabled; Prospect Finder request ready for import"
-          ],
-          "steps": [
-            "Purchase credit bundle",
-            "Submit Prospect Finder request; import list preview and confirm",
-            "Verify credits deducted per pricing tier; try import exceeding balance"
-          ],
-          "expected_results": [
-            "Balance increases post-webhook",
-            "Deduction matches record types; audit entries for purchase and deduction",
-            "Exceeding balance blocked with clear error; no negative balance"
-          ],
-          "frameworks": [
-            "PYTEST_PLAYWRIGHT"
-          ],
-          "tags": [
-            "credits",
-            "billing",
-            "audit"
-          ],
-          "artifacts": [],
-          "status": "Planned"
+          "status": "Completed"
         }
       ],
-      "status": "In Progress",
+      "status": "Completed",
       "priority_score": 4.8,
       "risk": 8,
       "time_criticality": 8,
       "value": 8,
       "weight": 5,
-      "implementation_notes": "Enforce HTTPS, HSTS; enable PG encryption at rest via cloud provider; encrypt S3 objects."
+      "implementation_notes": "Mailgun webhook processing is live in backend/src/services/email.service.ts and backend/src/routes/email.routes.ts. The advisor UI now exposes template list/edit, sequence list/detail, ordered step replacement, and lead enrollment across the /email/templates and /email/sequences routes. Facebook publishing now resolves a managed page token before posting so approved Facebook content no longer assumes the user profile ID is publishable."
     },
     {
       "id": "FR-010",
@@ -1163,7 +1048,7 @@
             "PII_PROTECTION"
           ],
           "preconditions": [
-            "System configured with OpenAI/SendGrid/Stripe keys"
+            "System configured with OpenAI/Mailgun/Stripe keys"
           ],
           "steps": [
             "Open settings/admin diagnostics",
@@ -1327,7 +1212,7 @@
       "time_criticality": 5,
       "value": 5,
       "weight": 3,
-      "implementation_notes": "Use SendGrid for email; in-app toast and inbox; configurable notification prefs."
+      "implementation_notes": "Use Mailgun for email; in-app toast and inbox; configurable notification prefs."
     },
     {
       "id": "FR-015",
@@ -1926,7 +1811,7 @@
       "time_criticality": 8,
       "value": 8,
       "weight": 5,
-      "implementation_notes": "Strong password validation, account lockout, registration redirect, deactivated-user denial, subscription gating, access-token refresh, and inactivity logout are verified with registration-security.json, account-lock.json, deactivated-user-login.json, subscription-gate.json, session-refresh.json, and idle-logout.json. The requirement remains in progress because the current auth implementation is bearer-token/localStorage based rather than secure session cookies, and the reset-token expiry/audit path still needs explicit end-to-end evidence."
+      "implementation_notes": "Strong password validation, account lockout, registration redirect, deactivated-user denial, subscription gating, access-token refresh, inactivity logout, and password-reset delivery are verified with registration-security.json, account-lock.json, deactivated-user-login.json, subscription-gate.json, session-refresh.json, idle-logout.json, and mcp-artifacts/si005-forgot-password-20260316.md. The requirement remains in progress because the current auth implementation is bearer-token/localStorage based rather than secure session cookies."
     }
   ]
 }

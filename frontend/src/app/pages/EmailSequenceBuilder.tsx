@@ -1,79 +1,163 @@
-import { useState } from 'react';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { ArrowLeft, ArrowUpDown, GripVertical, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
+import { ErrorState } from '../components/ui/error-state';
+import { LoadingState } from '../components/ui/loading-state';
 import { apiClient } from '../lib/api-client';
+import { useApiData } from '../hooks/useApiData';
+import { EmailNav } from './email/EmailNav';
+
+type TriggerType = 'MANUAL' | 'LEAD_CREATED' | 'PROSPECT_IMPORTED' | 'FACEBOOK_LEAD';
+type SequenceStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
+
+interface TemplateOption {
+  id: string;
+  name: string;
+  subject: string;
+  variables: string[];
+}
+
+interface TemplateListResponse {
+  items: TemplateOption[];
+}
+
+interface SequenceDetail {
+  id: string;
+  name: string;
+  description?: string | null;
+  triggerType: TriggerType;
+  status: SequenceStatus;
+  steps: Array<{
+    id: string;
+    stepNumber: number;
+    templateId: string;
+    delayDays: number;
+    delayHours: number;
+    subject?: string | null;
+    template: TemplateOption;
+  }>;
+}
 
 interface StepDraft {
-  id: number;
-  subject: string;
-  body: string;
+  key: string;
+  templateId: string;
   delayDays: number;
   delayHours: number;
+  subject: string;
 }
 
-interface EmailSequence {
-  id: string;
+function newStep(index: number): StepDraft {
+  return {
+    key: `new-${Date.now()}-${index}`,
+    templateId: '',
+    delayDays: index === 0 ? 0 : 1,
+    delayHours: 0,
+    subject: '',
+  };
 }
 
-interface EmailTemplate {
-  id: string;
+function humanizeTrigger(trigger: TriggerType) {
+  return trigger
+    .toLowerCase()
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 }
 
 export default function EmailSequenceBuilder() {
   const navigate = useNavigate();
+  const { sequenceId } = useParams();
+  const isEditing = Boolean(sequenceId);
+  const templates = useApiData<TemplateListResponse>('/email/templates?page=1&limit=100');
+  const sequence = useApiData<SequenceDetail>(sequenceId ? `/email/sequences/${sequenceId}` : '', [sequenceId], Boolean(sequenceId));
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [triggerType, setTriggerType] = useState<'MANUAL' | 'LEAD_CREATED' | 'PROSPECT_IMPORTED' | 'FACEBOOK_LEAD'>('LEAD_CREATED');
+  const [triggerType, setTriggerType] = useState<TriggerType>('LEAD_CREATED');
+  const [status, setStatus] = useState<SequenceStatus>('DRAFT');
+  const [steps, setSteps] = useState<StepDraft[]>([newStep(0)]);
+  const [draggingKey, setDraggingKey] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [steps, setSteps] = useState<StepDraft[]>([
-    { id: 1, subject: '', body: '', delayDays: 0, delayHours: 0 },
-  ]);
 
-  const updateStep = (id: number, patch: Partial<StepDraft>) => {
-    setSteps((current) => current.map((step) => (step.id === id ? { ...step, ...patch } : step)));
+  useEffect(() => {
+    if (!sequence.data) {
+      return;
+    }
+
+    setName(sequence.data.name);
+    setDescription(sequence.data.description ?? '');
+    setTriggerType(sequence.data.triggerType);
+    setStatus(sequence.data.status);
+    setSteps(
+      sequence.data.steps.length > 0
+        ? sequence.data.steps.map((step) => ({
+            key: step.id,
+            templateId: step.templateId,
+            delayDays: step.delayDays,
+            delayHours: step.delayHours,
+            subject: step.subject ?? '',
+          }))
+        : [newStep(0)]
+    );
+  }, [sequence.data]);
+
+  const templateOptions = templates.data?.items ?? [];
+  const templateMap = useMemo(
+    () => new Map(templateOptions.map((template) => [template.id, template])),
+    [templateOptions]
+  );
+
+  const updateStep = (key: string, patch: Partial<StepDraft>) => {
+    setSteps((current) => current.map((step) => (step.key === key ? { ...step, ...patch } : step)));
   };
 
-  const addStep = () => {
-    setSteps((current) => [...current, { id: current.length + 1, subject: '', body: '', delayDays: 1, delayHours: 0 }]);
-  };
-
-  const removeStep = (id: number) => {
-    setSteps((current) => current.filter((step) => step.id !== id).map((step, index) => ({ ...step, id: index + 1 })));
+  const moveStep = (fromKey: string, toKey: string) => {
+    if (fromKey === toKey) {
+      return;
+    }
+    setSteps((current) => {
+      const next = [...current];
+      const fromIndex = next.findIndex((step) => step.key === fromKey);
+      const toIndex = next.findIndex((step) => step.key === toKey);
+      if (fromIndex < 0 || toIndex < 0) {
+        return current;
+      }
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved!);
+      return next;
+    });
   };
 
   const handleSave = async () => {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const sequence = await apiClient.post<EmailSequence>('/email/sequences', {
+      const payload = {
         name,
         description: description.trim() || undefined,
         triggerType,
-      });
+        ...(isEditing ? { status } : {}),
+      };
 
-      for (let index = 0; index < steps.length; index += 1) {
-        const step = steps[index]!;
-        const template = await apiClient.post<EmailTemplate>('/email/templates', {
-          name: `${name} Step ${index + 1}`,
-          subject: step.subject,
-          htmlContent: step.body.replace(/\n/g, '<br />'),
-          textContent: step.body,
-        });
+      const savedSequence = isEditing && sequenceId
+        ? await apiClient.put<SequenceDetail>(`/email/sequences/${sequenceId}`, payload)
+        : await apiClient.post<SequenceDetail>('/email/sequences', payload);
 
-        await apiClient.post(`/email/sequences/${sequence.id}/steps`, {
-          templateId: template.id,
+      await apiClient.put(`/email/sequences/${savedSequence.id}/steps`, {
+        steps: steps.map((step) => ({
+          templateId: step.templateId,
           delayDays: step.delayDays,
           delayHours: step.delayHours,
-          subject: step.subject,
-        });
-      }
+          subject: step.subject.trim() || undefined,
+        })),
+      });
 
-      navigate('/email');
+      navigate(`/email/sequences/${savedSequence.id}`);
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Failed to save email sequence.');
     } finally {
@@ -81,97 +165,210 @@ export default function EmailSequenceBuilder() {
     }
   };
 
+  if (templates.loading || (isEditing && sequence.loading)) {
+    return <LoadingState label="Loading sequence builder..." />;
+  }
+
+  if (templates.error || sequence.error) {
+    return (
+      <ErrorState
+        message={templates.error || sequence.error || 'Failed to load sequence builder.'}
+        onRetry={() => {
+          void templates.reload();
+          void sequence.reload();
+        }}
+      />
+    );
+  }
+
   return (
     <div className="flex-1 overflow-auto bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-8 py-4 sticky top-0 z-10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button onClick={() => navigate('/email')} className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#0EA5E9] transition-colors">
-              <ArrowLeft className="w-4 h-4" />
+      <div className="border-b border-gray-200 bg-white px-8 py-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-3">
+            <button onClick={() => navigate('/email/sequences')} className="inline-flex items-center gap-2 text-sm text-gray-600 transition-colors hover:text-[#0EA5E9]">
+              <ArrowLeft className="h-4 w-4" />
               Back to Sequences
             </button>
-            <div className="h-6 w-px bg-gray-300"></div>
             <div>
-              <h1 className="text-2xl font-semibold text-[#1E3A5F]">Create Email Sequence</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Create a sequence with email templates and automated follow-up steps.</p>
+              <h1 className="text-2xl font-semibold text-[#1E3A5F]">{isEditing ? 'Edit Email Sequence' : 'Create Email Sequence'}</h1>
+              <p className="mt-1 text-sm text-gray-500">Create a sequence with email templates and automated follow-up steps.</p>
             </div>
+            <EmailNav />
           </div>
-          <Button className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white" onClick={() => void handleSave()} disabled={submitting || !name.trim() || steps.some((step) => !step.subject.trim() || !step.body.trim())}>
-            {submitting ? 'Saving...' : 'Save Sequence'}
+          <Button
+            className="bg-[#0EA5E9] text-white hover:bg-[#0284C7]"
+            onClick={() => void handleSave()}
+            disabled={submitting || !name.trim() || steps.some((step) => !step.templateId)}
+          >
+            {submitting ? 'Saving...' : isEditing ? 'Save Sequence' : 'Create Sequence'}
           </Button>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto p-8 space-y-6">
-        <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
-          <h2 className="text-lg font-semibold text-[#1E3A5F] mb-6">Sequence Setup</h2>
-          <div className="space-y-5">
-            <label className="block text-sm">
-              <span className="block text-sm font-medium text-gray-700 mb-2">Sequence Name</span>
-              <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="New lead nurture" />
-            </label>
-            <label className="block text-sm">
-              <span className="block text-sm font-medium text-gray-700 mb-2">Description</span>
-              <Textarea value={description} onChange={(event) => setDescription(event.target.value)} className="min-h-[100px]" placeholder="Optional description for this sequence." />
-            </label>
-            <label className="block text-sm">
-              <span className="block text-sm font-medium text-gray-700 mb-2">Trigger Type</span>
-              <select className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm" value={triggerType} onChange={(event) => setTriggerType(event.target.value as typeof triggerType)}>
-                <option value="LEAD_CREATED">Lead Created</option>
-                <option value="PROSPECT_IMPORTED">Prospect Imported</option>
-                <option value="FACEBOOK_LEAD">Facebook Lead</option>
-                <option value="MANUAL">Manual</option>
-              </select>
-            </label>
-          </div>
-        </Card>
-
-        <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h2 className="text-lg font-semibold text-[#1E3A5F]">Sequence Steps</h2>
-              <p className="text-sm text-gray-500 mt-1">Each step creates a template and attaches it to the sequence.</p>
+      <div className="mx-auto grid max-w-7xl gap-6 p-8 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="space-y-6">
+          <Card className="rounded-lg border border-gray-200 p-6 shadow-sm">
+            <h2 className="mb-6 text-lg font-semibold text-[#1E3A5F]">Sequence Setup</h2>
+            <div className="grid gap-5 md:grid-cols-2">
+              <label className="block text-sm md:col-span-2">
+                <span className="mb-2 block font-medium text-gray-700">Sequence Name</span>
+                <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="New prospect nurture" />
+              </label>
+              <label className="block text-sm md:col-span-2">
+                <span className="mb-2 block font-medium text-gray-700">Description</span>
+                <Textarea value={description} onChange={(event) => setDescription(event.target.value)} className="min-h-[100px]" placeholder="What this sequence is for and when it should run." />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-2 block font-medium text-gray-700">Trigger Type</span>
+                <select className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm" value={triggerType} onChange={(event) => setTriggerType(event.target.value as TriggerType)}>
+                  <option value="LEAD_CREATED">Lead Created</option>
+                  <option value="PROSPECT_IMPORTED">Prospect Imported</option>
+                  <option value="FACEBOOK_LEAD">Facebook Lead</option>
+                  <option value="MANUAL">Manual</option>
+                </select>
+              </label>
+              <label className="block text-sm">
+                <span className="mb-2 block font-medium text-gray-700">Status</span>
+                <select className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm" value={status} onChange={(event) => setStatus(event.target.value as SequenceStatus)} disabled={!isEditing}>
+                  <option value="DRAFT">Draft</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="PAUSED">Paused</option>
+                  <option value="ARCHIVED">Archived</option>
+                </select>
+              </label>
             </div>
-            <Button variant="outline" onClick={addStep}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Step
-            </Button>
-          </div>
+          </Card>
 
-          <div className="space-y-4">
-            {steps.map((step, index) => (
-              <div key={step.id} className="rounded-lg border border-gray-200 p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-[#1E3A5F]">Step {index + 1}</h3>
-                  {steps.length > 1 ? (
-                    <button type="button" onClick={() => removeStep(step.id)} className="text-gray-400 hover:text-red-500">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  ) : null}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-[1fr_140px_140px] gap-4 mb-4">
-                  <label className="block text-sm md:col-span-1">
-                    <span className="block text-sm font-medium text-gray-700 mb-2">Subject</span>
-                    <Input value={step.subject} onChange={(event) => updateStep(step.id, { subject: event.target.value })} placeholder="Your first touchpoint" />
-                  </label>
-                  <label className="block text-sm">
-                    <span className="block text-sm font-medium text-gray-700 mb-2">Delay Days</span>
-                    <Input type="number" min="0" value={String(step.delayDays)} onChange={(event) => updateStep(step.id, { delayDays: Number(event.target.value) })} />
-                  </label>
-                  <label className="block text-sm">
-                    <span className="block text-sm font-medium text-gray-700 mb-2">Delay Hours</span>
-                    <Input type="number" min="0" max="23" value={String(step.delayHours)} onChange={(event) => updateStep(step.id, { delayHours: Number(event.target.value) })} />
-                  </label>
-                </div>
-                <label className="block text-sm">
-                  <span className="block text-sm font-medium text-gray-700 mb-2">Body</span>
-                  <Textarea value={step.body} onChange={(event) => updateStep(step.id, { body: event.target.value })} className="min-h-[160px]" placeholder="Write the actual email body that should be stored in the template." />
-                </label>
+          <Card className="rounded-lg border border-gray-200 p-6 shadow-sm">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-[#1E3A5F]">Sequence Steps</h2>
+                <p className="mt-1 text-sm text-gray-500">Drag steps to reorder them before saving.</p>
               </div>
-            ))}
-          </div>
-          {submitError ? <p className="mt-4 text-sm text-red-600">{submitError}</p> : null}
-        </Card>
+              <Button variant="outline" onClick={() => setSteps((current) => [...current, newStep(current.length)])}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Step
+              </Button>
+            </div>
+
+            <div className="space-y-4">
+              {steps.map((step, index) => {
+                const selectedTemplate = templateMap.get(step.templateId);
+                return (
+                  <div
+                    key={step.key}
+                    draggable
+                    onDragStart={() => setDraggingKey(step.key)}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                    }}
+                    onDrop={() => {
+                      if (draggingKey) {
+                        moveStep(draggingKey, step.key);
+                      }
+                      setDraggingKey(null);
+                    }}
+                    onDragEnd={() => setDraggingKey(null)}
+                    className="rounded-lg border border-gray-200 bg-white p-4"
+                  >
+                    <div className="mb-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <GripVertical className="h-4 w-4 text-gray-400" />
+                        <h3 className="text-sm font-semibold text-[#1E3A5F]">Step {index + 1}</h3>
+                        <ArrowUpDown className="h-4 w-4 text-gray-300" />
+                      </div>
+                      {steps.length > 1 ? (
+                        <button type="button" onClick={() => setSteps((current) => current.filter((candidate) => candidate.key !== step.key))} className="text-gray-400 hover:text-red-500">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      ) : null}
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_140px_140px]">
+                      <label className="block text-sm">
+                        <span className="mb-2 block font-medium text-gray-700">Template</span>
+                        <select className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm" value={step.templateId} onChange={(event) => updateStep(step.key, { templateId: event.target.value })}>
+                          <option value="">Select template</option>
+                          {templateOptions.map((template) => (
+                            <option key={template.id} value={template.id}>
+                              {template.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block text-sm">
+                        <span className="mb-2 block font-medium text-gray-700">Delay Days</span>
+                        <Input type="number" min="0" value={String(step.delayDays)} onChange={(event) => updateStep(step.key, { delayDays: Number(event.target.value) })} />
+                      </label>
+                      <label className="block text-sm">
+                        <span className="mb-2 block font-medium text-gray-700">Delay Hours</span>
+                        <Input type="number" min="0" max="23" value={String(step.delayHours)} onChange={(event) => updateStep(step.key, { delayHours: Number(event.target.value) })} />
+                      </label>
+                    </div>
+
+                    <label className="mt-4 block text-sm">
+                      <span className="mb-2 block font-medium text-gray-700">Subject Override</span>
+                      <Input value={step.subject} onChange={(event) => updateStep(step.key, { subject: event.target.value })} placeholder={selectedTemplate?.subject ?? 'Use the template subject by default'} />
+                    </label>
+
+                    {selectedTemplate ? (
+                      <div className="mt-4 rounded-lg border border-sky-100 bg-sky-50 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Template Preview</p>
+                        <p className="mt-2 text-sm font-medium text-[#1E3A5F]">{selectedTemplate.subject}</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {selectedTemplate.variables.length === 0 ? (
+                            <span className="text-sm text-sky-700">No extracted variables.</span>
+                          ) : (
+                            selectedTemplate.variables.map((variable) => (
+                              <span key={variable} className="rounded-full bg-white px-2 py-1 text-xs font-medium text-sky-700">
+                                {`{{${variable}}}`}
+                              </span>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+            {submitError ? <p className="mt-4 text-sm text-red-600">{submitError}</p> : null}
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card className="rounded-lg border border-gray-200 p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-[#1E3A5F]">Summary</h3>
+            <div className="mt-4 space-y-3 text-sm text-gray-600">
+              <p>
+                Trigger: <span className="font-semibold text-[#1E3A5F]">{humanizeTrigger(triggerType)}</span>
+              </p>
+              <p>
+                Status: <span className="font-semibold text-[#1E3A5F]">{status}</span>
+              </p>
+              <p>
+                Steps configured: <span className="font-semibold text-[#1E3A5F]">{steps.length}</span>
+              </p>
+            </div>
+          </Card>
+
+          <Card className="rounded-lg border border-gray-200 p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-[#1E3A5F]">Available Templates</h3>
+            {templateOptions.length === 0 ? (
+              <p className="mt-4 text-sm text-gray-500">Create templates first so this sequence can reference them.</p>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {templateOptions.map((template) => (
+                  <div key={template.id} className="rounded-lg border border-gray-200 p-3">
+                    <p className="text-sm font-semibold text-[#1E3A5F]">{template.name}</p>
+                    <p className="mt-1 text-sm text-gray-600">{template.subject}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
       </div>
     </div>
   );

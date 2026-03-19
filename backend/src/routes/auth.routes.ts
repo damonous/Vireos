@@ -10,6 +10,7 @@ import {
   resetPasswordSchema,
   refreshTokenSchema,
   changePasswordSchema,
+  updateProfileSchema,
 } from '../validators/auth.validators';
 import * as authService from '../services/auth.service';
 import { AuthenticatedRequest } from '../types';
@@ -165,6 +166,99 @@ router.patch('/change-password', auth, validateBody(changePasswordSchema), async
 });
 
 // ---------------------------------------------------------------------------
+// PATCH /me  (requires authenticate) — update own profile
+// ---------------------------------------------------------------------------
+
+router.patch('/me', auth, validateBody(updateProfileSchema), async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const authReq = req as unknown as AuthenticatedRequest;
+    const { prisma } = await import('../db/client');
+
+    const { firstName, lastName, phone, settings } = req.body as {
+      firstName?: string;
+      lastName?: string;
+      phone?: string | null;
+      settings?: Record<string, unknown>;
+    };
+
+    // Build the update payload — only include fields that were provided
+    const updateData: Record<string, unknown> = {};
+    if (firstName !== undefined) updateData.firstName = firstName;
+    if (lastName !== undefined) updateData.lastName = lastName;
+    if (phone !== undefined) updateData.phone = phone;
+
+    // Merge settings: read existing user settings, spread new values on top
+    if (settings !== undefined) {
+      const existingUser = await prisma.user.findUnique({
+        where: { id: authReq.user.id },
+        select: { settings: true },
+      });
+      const existingSettings =
+        existingUser?.settings && typeof existingUser.settings === 'object'
+          ? (existingUser.settings as Record<string, unknown>)
+          : {};
+      updateData.settings = { ...existingSettings, ...settings };
+    }
+
+    const user = await prisma.user.update({
+      where: { id: authReq.user.id },
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        status: true,
+        avatarUrl: true,
+        phone: true,
+        organizationId: true,
+        settings: true,
+        lastLoginAt: true,
+        emailVerifiedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            subscriptionStatus: true,
+          },
+        },
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        status: user.status,
+        avatarUrl: user.avatarUrl,
+        phone: user.phone,
+        orgId: user.organizationId,
+        settings: user.settings,
+        lastLoginAt: user.lastLoginAt,
+        emailVerifiedAt: user.emailVerifiedAt,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        organization: user.organization,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // GET /me  (requires authenticate)
 // ---------------------------------------------------------------------------
 
@@ -190,6 +284,7 @@ router.get('/me', auth, async (
         avatarUrl: true,
         phone: true,
         organizationId: true,
+        settings: true,
         lastLoginAt: true,
         emailVerifiedAt: true,
         createdAt: true,
@@ -221,6 +316,7 @@ router.get('/me', auth, async (
         avatarUrl: user.avatarUrl,
         phone: user.phone,
         orgId: user.organizationId,
+        settings: user.settings,
         lastLoginAt: user.lastLoginAt,
         emailVerifiedAt: user.emailVerifiedAt,
         createdAt: user.createdAt,

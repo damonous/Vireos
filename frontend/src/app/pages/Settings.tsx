@@ -24,6 +24,11 @@ interface MeResponse {
   status: string;
   orgId: string;
   createdAt: string;
+  settings?: {
+    timezone?: string;
+    defaultContentLanguage?: string;
+    [key: string]: unknown;
+  };
   organization?: {
     id: string;
     name: string;
@@ -69,6 +74,10 @@ export default function Settings() {
   const { user, refresh } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('profile');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [profileFirstName, setProfileFirstName] = useState('');
+  const [profileLastName, setProfileLastName] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -77,6 +86,9 @@ export default function Settings() {
   const [orgTimezone, setOrgTimezone] = useState('America/New_York');
   const [orgLanguage, setOrgLanguage] = useState('en-US');
   const [orgEmailNotifications, setOrgEmailNotifications] = useState(true);
+  const [userTimezone, setUserTimezone] = useState('America/New_York');
+  const [userLanguage, setUserLanguage] = useState('en-US');
+  const [savingUserPrefs, setSavingUserPrefs] = useState(false);
   const [savingOrganization, setSavingOrganization] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
   const [integrationAction, setIntegrationAction] = useState<string | null>(null);
@@ -88,6 +100,25 @@ export default function Settings() {
   );
   const connections = useApiData<SocialConnection[]>('/oauth/connections');
   const notifications = useApiData<NotificationRow[]>('/notifications');
+
+  useEffect(() => {
+    if (me.data) {
+      setProfileFirstName(me.data.firstName ?? '');
+      setProfileLastName(me.data.lastName ?? '');
+      setProfilePhone(me.data.phone ?? '');
+      // User-level timezone/language preferences (fall back to org settings, then defaults)
+      setUserTimezone(
+        me.data.settings?.timezone as string ??
+        org.data?.settings?.timezone ??
+        'America/New_York'
+      );
+      setUserLanguage(
+        me.data.settings?.defaultContentLanguage as string ??
+        org.data?.settings?.defaultContentLanguage ??
+        'en-US'
+      );
+    }
+  }, [me.data, org.data]);
 
   useEffect(() => {
     if (org.data) {
@@ -151,8 +182,8 @@ export default function Settings() {
       connection: connections.data?.find((item) => item.platform === 'FACEBOOK') ?? null,
     },
     {
-      key: 'sendgrid',
-      name: 'SendGrid',
+      key: 'mailgun',
+      name: 'Mailgun',
       color: 'bg-sky-500',
       icon: '@',
       connection: null,
@@ -165,6 +196,42 @@ export default function Settings() {
       connection: null,
     },
   ];
+
+  const handleProfileSave = async () => {
+    setSavingProfile(true);
+    try {
+      await apiClient.patch('/auth/me', {
+        firstName: profileFirstName,
+        lastName: profileLastName,
+        phone: profilePhone || null,
+      });
+      await me.reload();
+      await refresh();
+      setToastMessage('Profile updated successfully.');
+    } catch (err) {
+      setToastMessage(err instanceof Error ? err.message : 'Failed to update profile.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleUserPrefsSave = async () => {
+    setSavingUserPrefs(true);
+    try {
+      await apiClient.patch('/auth/me', {
+        settings: {
+          timezone: userTimezone,
+          defaultContentLanguage: userLanguage,
+        },
+      });
+      await me.reload();
+      setToastMessage('Timezone and language preferences saved.');
+    } catch (err) {
+      setToastMessage(err instanceof Error ? err.message : 'Failed to save preferences.');
+    } finally {
+      setSavingUserPrefs(false);
+    }
+  };
 
   const handlePasswordUpdate = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
@@ -283,11 +350,11 @@ export default function Settings() {
 
               <div className="flex items-center gap-6 mb-8 pb-8 border-b border-gray-200">
                 <div className="w-20 h-20 bg-[#0EA5E9] rounded-full flex items-center justify-center text-white text-2xl font-semibold">
-                  {`${profile?.firstName?.[0] ?? ''}${profile?.lastName?.[0] ?? ''}`.toUpperCase() || 'U'}
+                  {`${profileFirstName?.[0] ?? ''}${profileLastName?.[0] ?? ''}`.toUpperCase() || 'U'}
                 </div>
                 <div>
                   <p className="text-sm font-medium text-[#1E3A5F]">
-                    {profile?.firstName} {profile?.lastName}
+                    {profileFirstName} {profileLastName}
                   </p>
                   <p className="text-sm text-gray-500">{profile?.role.replace('_', ' ')}</p>
                   <p className="text-xs text-gray-500 mt-2">
@@ -298,29 +365,35 @@ export default function Settings() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <Label className="text-sm font-medium text-gray-700 mb-2 block">First Name</Label>
-                  <Input value={profile?.firstName ?? ''} readOnly />
+                  <Label htmlFor="profileFirstName" className="text-sm font-medium text-gray-700 mb-2 block">First Name</Label>
+                  <Input id="profileFirstName" value={profileFirstName} onChange={(e) => setProfileFirstName(e.target.value)} />
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-700 mb-2 block">Last Name</Label>
-                  <Input value={profile?.lastName ?? ''} readOnly />
+                  <Label htmlFor="profileLastName" className="text-sm font-medium text-gray-700 mb-2 block">Last Name</Label>
+                  <Input id="profileLastName" value={profileLastName} onChange={(e) => setProfileLastName(e.target.value)} />
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-700 mb-2 block">Email</Label>
-                  <Input value={profile?.email ?? ''} readOnly />
+                  <Input value={profile?.email ?? ''} readOnly className="bg-gray-50" />
+                  <p className="text-xs text-gray-500 mt-1">Email cannot be changed.</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-700 mb-2 block">Phone</Label>
-                  <Input value={profile?.phone ?? 'Not set'} readOnly />
+                  <Label htmlFor="profilePhone" className="text-sm font-medium text-gray-700 mb-2 block">Phone</Label>
+                  <Input id="profilePhone" value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} placeholder="Not set" />
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-700 mb-2 block">Role</Label>
-                  <Input value={profile?.role ?? ''} readOnly />
+                  <Input value={profile?.role ?? ''} readOnly className="bg-gray-50" />
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-700 mb-2 block">Status</Label>
-                  <Input value={profile?.status ?? ''} readOnly />
+                  <Input value={profile?.status ?? ''} readOnly className="bg-gray-50" />
                 </div>
+              </div>
+              <div className="mt-6">
+                <Button className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white" onClick={() => void handleProfileSave()} disabled={savingProfile}>
+                  {savingProfile ? 'Saving...' : 'Save Profile'}
+                </Button>
               </div>
             </Card>
 
@@ -375,39 +448,7 @@ export default function Settings() {
                   <Label htmlFor="subscriptionStatus" className="text-sm font-medium text-gray-700 mb-2 block">
                     Subscription Status
                   </Label>
-                  <Input id="subscriptionStatus" value={org.data?.subscriptionStatus ?? ''} readOnly />
-                </div>
-                <div>
-                  <Label htmlFor="timezone" className="text-sm font-medium text-gray-700 mb-2 block">
-                    Timezone
-                  </Label>
-                  <select
-                    id="timezone"
-                    value={orgTimezone}
-                    onChange={(e) => setOrgTimezone(e.target.value)}
-                    disabled={!canManageOrganization}
-                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-transparent disabled:bg-gray-100"
-                  >
-                    <option value="America/New_York">America/New_York</option>
-                    <option value="America/Chicago">America/Chicago</option>
-                    <option value="America/Denver">America/Denver</option>
-                    <option value="America/Los_Angeles">America/Los_Angeles</option>
-                  </select>
-                </div>
-                <div>
-                  <Label htmlFor="language" className="text-sm font-medium text-gray-700 mb-2 block">
-                    Default Content Language
-                  </Label>
-                  <select
-                    id="language"
-                    value={orgLanguage}
-                    onChange={(e) => setOrgLanguage(e.target.value)}
-                    disabled={!canManageOrganization}
-                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-transparent disabled:bg-gray-100"
-                  >
-                    <option value="en-US">English (US)</option>
-                    <option value="en-GB">English (UK)</option>
-                  </select>
+                  <Input id="subscriptionStatus" value={org.data?.subscriptionStatus ?? ''} readOnly className="bg-gray-50" />
                 </div>
               </div>
 
@@ -428,8 +469,56 @@ export default function Settings() {
                   {savingOrganization ? 'Saving...' : 'Save Organization Changes'}
                 </Button>
               ) : (
-                <p className="text-sm text-gray-500">Your role has read-only access to organization settings.</p>
+                <p className="text-sm text-gray-500">Contact an admin to change organization name, website, or notification settings.</p>
               )}
+            </Card>
+
+            <Card className="p-6 rounded-lg shadow-sm border border-gray-200 mt-6">
+              <h3 className="text-lg font-semibold text-[#1E3A5F] mb-6">Your Preferences</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                These preferences are saved to your user profile and override organization defaults.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <Label htmlFor="userTimezone" className="text-sm font-medium text-gray-700 mb-2 block">
+                    Timezone
+                  </Label>
+                  <select
+                    id="userTimezone"
+                    value={userTimezone}
+                    onChange={(e) => setUserTimezone(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-transparent"
+                  >
+                    <option value="America/New_York">America/New_York</option>
+                    <option value="America/Chicago">America/Chicago</option>
+                    <option value="America/Denver">America/Denver</option>
+                    <option value="America/Los_Angeles">America/Los_Angeles</option>
+                    <option value="America/Anchorage">America/Anchorage</option>
+                    <option value="Pacific/Honolulu">Pacific/Honolulu</option>
+                    <option value="Europe/London">Europe/London</option>
+                    <option value="Europe/Berlin">Europe/Berlin</option>
+                    <option value="Asia/Tokyo">Asia/Tokyo</option>
+                    <option value="Australia/Sydney">Australia/Sydney</option>
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="userLanguage" className="text-sm font-medium text-gray-700 mb-2 block">
+                    Default Content Language
+                  </Label>
+                  <select
+                    id="userLanguage"
+                    value={userLanguage}
+                    onChange={(e) => setUserLanguage(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-transparent"
+                  >
+                    <option value="en-US">English (US)</option>
+                    <option value="en-GB">English (UK)</option>
+                  </select>
+                </div>
+              </div>
+              <Button className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white" onClick={() => void handleUserPrefsSave()} disabled={savingUserPrefs}>
+                {savingUserPrefs ? 'Saving...' : 'Save Preferences'}
+              </Button>
             </Card>
           </div>
         ) : null}

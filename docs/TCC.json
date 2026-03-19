@@ -215,7 +215,7 @@
         "AUDIT_TRAIL"
       ],
       "preconditions": [
-        "User exists with verified email; email delivery enabled (SendGrid sandbox)"
+        "User exists with verified email; email delivery enabled (Mailgun sandbox)"
       ],
       "steps": [
         "Initiate password reset",
@@ -587,7 +587,7 @@
         "PII_PROTECTION"
       ],
       "preconditions": [
-        "System configured with OpenAI/SendGrid/Stripe keys"
+        "System configured with OpenAI/Mailgun/Stripe keys"
       ],
       "steps": [
         "Open settings/admin diagnostics",

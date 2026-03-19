@@ -420,9 +420,9 @@ New -> Contacted -> Engaged -> Meeting Scheduled -> Client -> Lost
 
 ## 10. Email Marketing
 
-### 10.1 SendGrid Integration
+### 10.1 Mailgun Integration
 
-**API:** SendGrid v3 API
+**API:** Mailgun API
 
 **Features:**
 - Transactional emails (notifications)
@@ -572,7 +572,7 @@ New -> Contacted -> Engaged -> Meeting Scheduled -> Client -> Lost
 **For Organization Admins:**
 - User management (invite, remove, roles)
 - Compliance rules configuration
-- Connected accounts (LinkedIn, Facebook, SendGrid)
+- Connected accounts (LinkedIn, Facebook, Mailgun)
 - Billing management
 - Data credit balance
 - Firm profile and branding
@@ -652,7 +652,7 @@ New -> Contacted -> Engaged -> Meeting Scheduled -> Client -> Lost
 | OpenAI | AI content generation | OpenAI API |
 | LinkedIn | Social posting + messaging | LinkedIn Marketing API |
 | Facebook | Social posting + ads | Facebook Graph API |
-| SendGrid | Email delivery | SendGrid v3 API |
+| Mailgun | Email delivery | Mailgun API |
 | Stripe | Billing + credit purchases | Stripe API |
 | Data Provider | Prospect list fulfillment (manual import in MVP) | CSV / future API |
 
@@ -715,7 +715,7 @@ New -> Contacted -> Engaged -> Meeting Scheduled -> Client -> Lost
 **Publishing:**
 - [ ] LinkedIn posting integration
 - [ ] Facebook posting integration
-- [ ] Email delivery via SendGrid
+- [ ] Email delivery via Mailgun
 - [ ] Post scheduling
 
 **LinkedIn Automation:**
@@ -809,7 +809,7 @@ The MVP is complete when:
 - Facebook ads management: $2,700
 - Prospect Finder module: $2,800
 - Lead management: $1,700
-- Email integration (SendGrid): $2,200
+- Email integration (Mailgun): $2,200
 - Analytics dashboard: $2,200
 - Stripe billing (subscriptions + data credits): $1,700
 - Marketing website (landing + about): $2,500
@@ -817,7 +817,7 @@ The MVP is complete when:
 
 **Infrastructure (not included in fixed price):**
 - Hosting: ~$50-200/month
-- API costs (OpenAI, SendGrid): ~$0.10-0.50 per user/month
+- API costs (OpenAI, Mailgun): ~$0.10-0.50 per user/month
 - Stripe fees: 2.9% + $0.30 per transaction
 - Data provider costs: passed through to advisors via credits
 
