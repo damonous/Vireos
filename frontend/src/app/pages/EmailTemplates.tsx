@@ -6,6 +6,16 @@ import { Button } from '../components/ui/button';
 import { EmptyState } from '../components/ui/empty-state';
 import { ErrorState } from '../components/ui/error-state';
 import { LoadingState } from '../components/ui/loading-state';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../components/ui/alert-dialog';
 import { apiClient } from '../lib/api-client';
 import { useApiData } from '../hooks/useApiData';
 import { EmailNav } from './email/EmailNav';
@@ -29,6 +39,7 @@ export default function EmailTemplates() {
   const templates = useApiData<TemplateList>('/email/templates?page=1&limit=100');
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TemplateRow | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -140,18 +151,10 @@ export default function EmailTemplates() {
                             type="button"
                             className="inline-flex items-center gap-1 text-sm font-medium text-red-600 hover:underline"
                             disabled={deletingId === template.id}
-                            onClick={() => {
-                              setDeletingId(template.id);
-                              setActionError(null);
-                              void apiClient
-                                .del(`/email/templates/${template.id}`)
-                                .then(() => templates.reload())
-                                .catch((error) => setActionError(error instanceof Error ? error.message : 'Failed to delete template.'))
-                                .finally(() => setDeletingId(null));
-                            }}
+                            onClick={() => setDeleteTarget(template)}
                           >
                             <Trash2 className="h-4 w-4" />
-                            Delete
+                            {deletingId === template.id ? 'Deleting...' : 'Delete'}
                           </button>
                         </div>
                       </td>
@@ -204,6 +207,37 @@ export default function EmailTemplates() {
           )}
         </Card>
       </div>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Template</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <span className="font-semibold text-[#1E3A5F]">{deleteTarget?.name}</span>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-700"
+              onClick={() => {
+                if (!deleteTarget) return;
+                const id = deleteTarget.id;
+                setDeleteTarget(null);
+                setDeletingId(id);
+                setActionError(null);
+                void apiClient
+                  .del(`/email/templates/${id}`)
+                  .then(() => templates.reload())
+                  .catch((error) => setActionError(error instanceof Error ? error.message : 'Failed to delete template.'))
+                  .finally(() => setDeletingId(null));
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

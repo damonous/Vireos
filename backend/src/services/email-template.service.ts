@@ -187,7 +187,7 @@ class EmailTemplateService {
 
   /**
    * Soft-deletes a template by marking it inactive, then hard-deletes.
-   * Only org admins and super admins may delete.
+   * Org admins, super admins, and advisors may delete.
    */
   async deleteTemplate(
     templateId: string,
@@ -195,7 +195,7 @@ class EmailTemplateService {
   ): Promise<void> {
     await this.getTemplate(templateId, user);
 
-    this.assertIsAdmin(user);
+    this.assertCanWrite(user);
 
     await prisma.emailTemplate.delete({
       where: { id: templateId },

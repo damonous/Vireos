@@ -120,12 +120,12 @@ router.put(
 
 /**
  * DELETE /v1/email/templates/:id
- * Delete an email template (admin only).
+ * Delete an email template (admin or advisor).
  */
 router.delete(
   '/templates/:id',
   auth,
-  adminOnly,
+  adminOrAdvisor,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const authReq = req as unknown as AuthenticatedRequest;
