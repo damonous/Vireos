@@ -50,7 +50,7 @@ export default function OrgSettings() {
     setLogoUrl(org.data.logoUrl ?? '');
     setTimezone(String(settings.timezone ?? 'America/New_York'));
     setRequireCompliance(Boolean(settings.requireComplianceReview ?? true));
-    setProhibitedTerms(Array.isArray(settings.prohibitedTerms) ? settings.prohibitedTerms.map(String) : []);
+    setProhibitedTerms(Array.isArray(org.data.prohibitedTerms) ? org.data.prohibitedTerms.map(String) : []);
   }, [org.data]);
 
   if (org.loading) {
