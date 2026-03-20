@@ -287,6 +287,64 @@ export async function update(
 }
 
 /**
+ * Updates only compliance-related fields on the organization.
+ * Allowed for viewer (compliance officer), org_admin, and super_admin roles.
+ */
+export async function updateComplianceSettings(
+  id: string,
+  dto: {
+    prohibitedTerms?: string[];
+    requiredDisclosures?: unknown;
+    complianceRules?: Record<string, unknown>;
+    settings?: Record<string, unknown>;
+  },
+  requestingUser: AuthenticatedUser
+): Promise<OrgResult> {
+  // Allow viewer (compliance officer) if they belong to this org
+  if (requestingUser.role !== UserRole.SUPER_ADMIN && requestingUser.orgId !== id) {
+    throw Errors.forbidden('You do not have permission to access this organization.');
+  }
+
+  const existing = await prisma.organization.findUnique({ where: { id } });
+  if (!existing) {
+    throw Errors.notFound('Organization');
+  }
+
+  const org = await prisma.organization.update({
+    where: { id },
+    data: {
+      ...(dto.prohibitedTerms !== undefined ? { prohibitedTerms: dto.prohibitedTerms } : {}),
+      ...(dto.requiredDisclosures !== undefined ? { requiredDisclosures: dto.requiredDisclosures as object } : {}),
+      ...(dto.complianceRules !== undefined ? { complianceRules: dto.complianceRules as object } : {}),
+      ...(dto.settings !== undefined ? { settings: dto.settings as object } : {}),
+    },
+  });
+
+  logger.info('Compliance settings updated', {
+    orgId: org.id,
+    updatedBy: requestingUser.id,
+  });
+
+  return {
+    id: org.id,
+    name: org.name,
+    slug: org.slug,
+    icpType: org.icpType,
+    complianceRules: org.complianceRules,
+    prohibitedTerms: org.prohibitedTerms,
+    requiredDisclosures: org.requiredDisclosures,
+    logoUrl: org.logoUrl,
+    website: org.website,
+    subscriptionStatus: org.subscriptionStatus,
+    creditBalance: org.creditBalance,
+    isActive: org.isActive,
+    settings: org.settings,
+    createdAt: org.createdAt,
+    updatedAt: org.updatedAt,
+  };
+}
+
+/**
  * Returns paginated list of organization members.
  */
 export async function getMembers(

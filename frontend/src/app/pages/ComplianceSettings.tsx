@@ -99,7 +99,7 @@ export default function ComplianceSettings() {
 
     setSaving(true);
     try {
-      await apiClient.put(`/organizations/${user.orgId}`, {
+      await apiClient.put(`/organizations/${user.orgId}/compliance-settings`, {
         prohibitedTerms,
         requiredDisclosures: disclosures,
         complianceRules: {

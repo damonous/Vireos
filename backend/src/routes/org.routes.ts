@@ -174,6 +174,35 @@ router.put('/:orgId',
 );
 
 // ---------------------------------------------------------------------------
+// PUT /:orgId/compliance-settings  (compliance officer / viewer + admin)
+// ---------------------------------------------------------------------------
+
+const complianceSettingsSchema = z.object({
+  prohibitedTerms: z.array(z.string().min(1).max(200)).optional(),
+  requiredDisclosures: z.any().optional(),
+  complianceRules: z.record(z.unknown()).optional(),
+  settings: z.record(z.unknown()).optional(),
+});
+
+router.put('/:orgId/compliance-settings',
+  auth,
+  orgAccess,
+  requireRole(UserRole.VIEWER, UserRole.ORG_ADMIN, UserRole.SUPER_ADMIN) as any,
+  validateParams(orgIdParamSchema),
+  validateBody(complianceSettingsSchema),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const authReq = req as unknown as AuthenticatedRequest;
+      const orgId = req.params['orgId'] as string;
+      const org = await orgService.updateComplianceSettings(orgId, req.body, authReq.user);
+      res.status(200).json({ success: true, data: org });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
 // GET /:orgId/members  (auth + org access)
 // ---------------------------------------------------------------------------
 
