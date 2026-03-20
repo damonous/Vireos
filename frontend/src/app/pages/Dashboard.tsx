@@ -1,4 +1,4 @@
-import { Bell, TrendingUp, AlertCircle, Users, Target, Sparkles, CheckCircle2, Calendar, UserPlus, X } from 'lucide-react';
+import { TrendingUp, AlertCircle, Users, Target, Sparkles, CheckCircle2, Calendar, UserPlus, X } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -179,10 +179,6 @@ export default function Dashboard() {
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">{user?.organization?.name ?? 'Organization'}</span>
             <DateRangeSelector value={preset} onChange={setPreset} />
-            <button className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <Bell className="w-5 h-5 text-gray-600" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
           </div>
         </div>
       </div>
