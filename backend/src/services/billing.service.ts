@@ -27,34 +27,35 @@ const stripe = new Stripe(config.STRIPE_SECRET_KEY, {
 export type CreditBundleId = string;
 
 // ---------------------------------------------------------------------------
-// Plan constants
+// Pricing & Plan constants
 // ---------------------------------------------------------------------------
 
+export const PRICING = {
+  basePriceId: process.env['STRIPE_PRICE_INDIVIDUAL'] ?? 'price_individual',
+  seatPriceId: process.env['STRIPE_PRICE_TEAM'] ?? 'price_team',
+  contactPriceId: process.env['STRIPE_PRICE_EXTRA_CONTACT'] ?? 'price_extra_contact',
+  includedSeats: 3,
+  baseAmount: 29900,
+  seatAmount: 5000,
+  contactAmount: 50,
+  freeContacts: 500,
+} as const;
+
 export const PLANS = {
-  individual: {
-    priceId: process.env['STRIPE_PRICE_INDIVIDUAL'] ?? 'price_individual',
-    name: 'Individual',
+  platform: {
+    priceId: PRICING.basePriceId,
+    name: 'Vireos Platform',
     amount: 29900,
     features: [
+      '$299/mo base platform (includes 3 users)',
+      '$50/mo per additional user',
+      '500 free contacts in first year',
+      '$0.50/mo per additional contact',
       'AI content generation',
       'LinkedIn & Facebook publishing',
       'Compliance review workflow',
       'Email campaigns',
-      'Basic analytics',
-      '1,000 credits/month',
-    ],
-  },
-  team: {
-    priceId: process.env['STRIPE_PRICE_TEAM'] ?? 'price_team',
-    name: 'Team',
-    amount: 0, // custom pricing
-    features: [
-      'Everything in Individual',
-      'Unlimited team members',
-      'Advanced analytics & reports',
-      'Lead management & prospect finder',
-      'Priority support',
-      '10,000 credits/month',
+      'Analytics & reports',
     ],
   },
 } as const;
@@ -139,12 +140,12 @@ export async function getOrCreateCustomer(org: Organization): Promise<string> {
 }
 
 /**
- * Creates a Stripe Checkout session for a subscription plan.
- * Returns the checkout URL for redirection.
+ * Creates a Stripe Checkout session for the Vireos Platform subscription.
+ * Builds multi-line-item checkout: base plan + optional additional seats.
  */
 export async function createCheckoutSession(
   orgId: string,
-  priceId: string,
+  additionalSeats: number,
   user: AuthenticatedUser
 ): Promise<{ url: string }> {
   requireAdminRole(user);
@@ -161,17 +162,26 @@ export async function createCheckoutSession(
   const cancelUrl =
     `${config.API_BASE_URL}/billing?checkout=cancelled`;
 
+  const lineItems: Array<{ price: string; quantity: number }> = [
+    { price: PRICING.basePriceId, quantity: 1 },
+  ];
+
+  if (additionalSeats > 0) {
+    lineItems.push({ price: PRICING.seatPriceId, quantity: additionalSeats });
+  }
+
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',
     payment_method_types: ['card'],
-    line_items: [{ price: priceId, quantity: 1 }],
+    line_items: lineItems,
     success_url: successUrl,
     cancel_url: cancelUrl,
     metadata: {
       organizationId: orgId,
       userId: user.id,
       type: 'subscription',
+      additionalSeats: String(additionalSeats),
     },
   });
 
@@ -182,7 +192,7 @@ export async function createCheckoutSession(
   logger.info('Checkout session created', {
     orgId,
     sessionId: session.id,
-    priceId,
+    additionalSeats,
   });
 
   return { url: session.url };
@@ -599,12 +609,18 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription): Promise<void
   const planName = resolvePlanName(priceId);
   const newStatus = mapStripeStatus(sub.status);
 
+  // Calculate total seats from subscription items
+  const seatItem = sub.items.data.find((item) => item.price.id === PRICING.seatPriceId);
+  const extraSeats = seatItem?.quantity ?? 0;
+  const totalSeats = PRICING.includedSeats + extraSeats;
+
   await prisma.subscription.update({
     where: { stripeSubscriptionId: sub.id },
     data: {
       status: newStatus,
       stripePriceId: priceId,
       planName,
+      seatQuantity: totalSeats,
       currentPeriodStart: new Date((sub.current_period_start ?? 0) * 1000),
       currentPeriodEnd: new Date((sub.current_period_end ?? 0) * 1000),
       cancelAtPeriodEnd: sub.cancel_at_period_end,
@@ -616,7 +632,7 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription): Promise<void
 
   await prisma.organization.update({
     where: { id: existing.organizationId },
-    data: { subscriptionStatus: newStatus },
+    data: { subscriptionStatus: newStatus, seatLimit: totalSeats },
   });
 
   logger.info('Subscription updated', {
@@ -819,10 +835,16 @@ function buildSubscriptionSnapshot(
   const priceId = sub.items.data[0]?.price.id ?? '';
   const planName = resolvePlanName(priceId);
 
+  // Calculate total seats from subscription items
+  const seatItem = sub.items.data.find((item) => item.price.id === PRICING.seatPriceId);
+  const extraSeats = seatItem?.quantity ?? 0;
+  const totalSeats = PRICING.includedSeats + extraSeats;
+
   return {
     organizationId: orgId,
     stripeSubscriptionId: sub.id,
     stripePriceId: priceId,
+    seatQuantity: totalSeats,
     status: mapStripeStatus(sub.status),
     planName,
     currentPeriodStart: new Date((sub.current_period_start ?? 0) * 1000),
@@ -845,12 +867,24 @@ async function persistSubscriptionSnapshot(
     update: snapshot,
   });
 
+  // Update org seatLimit and set subscriptionStartedAt (once, on first subscription)
+  const orgUpdateData: Record<string, unknown> = {
+    subscriptionStatus: snapshot.status,
+    stripeSubscriptionId: snapshot.stripeSubscriptionId,
+    seatLimit: snapshot.seatQuantity,
+  };
+
+  const org = await prisma.organization.findUnique({
+    where: { id: orgId },
+    select: { subscriptionStartedAt: true },
+  });
+  if (org && !org.subscriptionStartedAt) {
+    orgUpdateData['subscriptionStartedAt'] = new Date();
+  }
+
   await prisma.organization.update({
     where: { id: orgId },
-    data: {
-      subscriptionStatus: snapshot.status,
-      stripeSubscriptionId: snapshot.stripeSubscriptionId,
-    },
+    data: orgUpdateData,
   });
 
   return subscription;
@@ -934,9 +968,61 @@ async function resolveOrgIdFromCustomer(customerId: string): Promise<string | nu
 }
 
 /**
+ * Returns a usage summary for the organization: seats and contacts.
+ */
+export async function getUsageSummary(
+  orgId: string,
+  user: AuthenticatedUser
+): Promise<{
+  seats: { used: number; limit: number; additionalAvailable: number };
+  contacts: { total: number; freeLimit: number; overage: number; isFirstYear: boolean };
+}> {
+  requireReadRole(user);
+
+  const org = await prisma.organization.findUnique({
+    where: { id: orgId },
+    select: { seatLimit: true, freeContactLimit: true, subscriptionStartedAt: true },
+  });
+
+  if (!org) {
+    throw Errors.notFound('Organization');
+  }
+
+  const [userCount, leadCount] = await Promise.all([
+    prisma.user.count({ where: { organizationId: orgId } }),
+    prisma.lead.count({ where: { organizationId: orgId } }),
+  ]);
+
+  const isFirstYear = org.subscriptionStartedAt
+    ? new Date().getTime() - org.subscriptionStartedAt.getTime() < 365 * 24 * 60 * 60 * 1000
+    : true;
+
+  const freeLimit = isFirstYear ? org.freeContactLimit : 0;
+  const overage = Math.max(0, leadCount - freeLimit);
+
+  return {
+    seats: {
+      used: userCount,
+      limit: org.seatLimit,
+      additionalAvailable: Math.max(0, org.seatLimit - userCount),
+    },
+    contacts: {
+      total: leadCount,
+      freeLimit,
+      overage,
+      isFirstYear,
+    },
+  };
+}
+
+/**
  * Resolves a human-readable plan name from a Stripe price ID.
  */
 function resolvePlanName(priceId: string): string {
+  if (priceId === PRICING.basePriceId) return 'Vireos Platform';
+  if (priceId === PRICING.seatPriceId) return 'Additional Seat';
+  if (priceId === PRICING.contactPriceId) return 'Extra Contact';
+
   for (const [, plan] of Object.entries(PLANS)) {
     if (plan.priceId === priceId) {
       return plan.name;

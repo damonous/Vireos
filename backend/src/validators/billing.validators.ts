@@ -6,9 +6,7 @@ import { creditBundleConfigSchema } from '../services/platform-setting.service';
 // ---------------------------------------------------------------------------
 
 export const createCheckoutSchema = z.object({
-  priceId: z.string().min(1, 'Price ID is required'),
-  successUrl: z.string().url('Success URL must be a valid URL').optional(),
-  cancelUrl: z.string().url('Cancel URL must be a valid URL').optional(),
+  additionalSeats: z.number().int().min(0).default(0),
 });
 
 export const purchaseCreditsSchema = z.object({

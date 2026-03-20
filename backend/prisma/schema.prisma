@@ -184,6 +184,9 @@ model Organization {
   stripeCustomerId     String?            @unique
   stripeSubscriptionId String?
   creditBalance        Int                @default(0)
+  seatLimit            Int                @default(3)
+  freeContactLimit     Int                @default(500)
+  subscriptionStartedAt DateTime?
   settings             Json               @default("{}")
   isActive             Boolean            @default(true)
   createdAt            DateTime           @default(now())
@@ -692,6 +695,7 @@ model Subscription {
   organizationId       String             @unique
   stripeSubscriptionId String             @unique
   stripePriceId        String
+  seatQuantity         Int                @default(3)
   status               SubscriptionStatus
   planName             String
   currentPeriodStart   DateTime

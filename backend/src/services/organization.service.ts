@@ -410,6 +410,12 @@ export async function inviteMember(
     throw Errors.notFound('Organization');
   }
 
+  // Enforce seat limit
+  const currentUserCount = await prisma.user.count({ where: { organizationId: orgId } });
+  if (currentUserCount >= org.seatLimit) {
+    throw Errors.forbidden(`Seat limit reached (${org.seatLimit}). Upgrade to add more users.`);
+  }
+
   // Check email uniqueness
   const existingUser = await prisma.user.findUnique({
     where: { email: dto.email.toLowerCase() },

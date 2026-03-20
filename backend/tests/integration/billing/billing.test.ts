@@ -43,6 +43,22 @@ process.env['AWS_S3_BUCKET'] = 'vireos-test-bucket';
 process.env['AWS_REGION'] = 'us-east-1';
 process.env['API_BASE_URL'] = 'http://localhost:3001';
 process.env['CORS_ORIGINS'] = 'http://localhost:3001';
+process.env['STRIPE_PRICE_INDIVIDUAL'] = 'price_individual';
+process.env['STRIPE_PRICE_TEAM'] = 'price_team';
+process.env['STRIPE_PRICE_EXTRA_CONTACT'] = 'price_extra_contact';
+
+// ---- Mock BullMQ ----
+jest.mock('bullmq', () => ({
+  Queue: jest.fn().mockImplementation(() => ({
+    add: jest.fn().mockResolvedValue({ id: 'bull-job-id' }),
+    getJob: jest.fn().mockResolvedValue(null),
+    close: jest.fn().mockResolvedValue(undefined),
+  })),
+  Worker: jest.fn().mockImplementation(() => ({
+    on: jest.fn().mockReturnThis(),
+    close: jest.fn().mockResolvedValue(undefined),
+  })),
+}));
 
 // ---- Mock ioredis ----
 jest.mock('ioredis', () => {
@@ -132,6 +148,9 @@ jest.mock('../../../src/db/client', () => ({
       findMany: jest.fn(),
       count: jest.fn(),
     },
+    lead: {
+      count: jest.fn(),
+    },
     subscription: {
       findUnique: jest.fn(),
       upsert: jest.fn(),
@@ -186,6 +205,9 @@ const mockOrg = {
   creditBalance: 500,
   stripeCustomerId: STRIPE_CUSTOMER_ID,
   stripeSubscriptionId: null,
+  seatLimit: 3,
+  freeContactLimit: 500,
+  subscriptionStartedAt: null,
   settings: {},
   logoUrl: null,
   website: null,
@@ -203,8 +225,9 @@ const mockSubscription = {
   organizationId: TEST_ORG_ID,
   stripeSubscriptionId: STRIPE_SUBSCRIPTION_ID,
   stripePriceId: 'price_individual',
+  seatQuantity: 3,
   status: 'ACTIVE',
-  planName: 'Individual',
+  planName: 'Vireos Platform',
   currentPeriodStart: new Date('2024-01-01'),
   currentPeriodEnd: new Date('2024-02-01'),
   cancelAtPeriodEnd: false,
@@ -473,7 +496,7 @@ describe('PUT /api/v1/admin/billing/credit-bundles', () => {
 // ---------------------------------------------------------------------------
 
 describe('POST /api/v1/billing/checkout', () => {
-  it('creates a Stripe checkout session and returns the URL', async () => {
+  it('creates a Stripe checkout session with base plan only (0 additional seats)', async () => {
     (prisma.organization.findUnique as jest.Mock).mockResolvedValue(mockOrg);
     mockStripeCheckoutSessionCreate.mockResolvedValue({
       id: 'cs_test_abc123',
@@ -484,7 +507,7 @@ describe('POST /api/v1/billing/checkout', () => {
     const res = await client
       .post('/api/v1/billing/checkout')
       .set('Authorization', `Bearer ${token}`)
-      .send({ priceId: 'price_individual' });
+      .send({ additionalSeats: 0 });
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -493,9 +516,33 @@ describe('POST /api/v1/billing/checkout', () => {
       expect.objectContaining({
         customer: STRIPE_CUSTOMER_ID,
         mode: 'subscription',
-        line_items: expect.arrayContaining([
+        line_items: [
           expect.objectContaining({ price: 'price_individual', quantity: 1 }),
-        ]),
+        ],
+      })
+    );
+  });
+
+  it('creates a checkout session with additional seats', async () => {
+    (prisma.organization.findUnique as jest.Mock).mockResolvedValue(mockOrg);
+    mockStripeCheckoutSessionCreate.mockResolvedValue({
+      id: 'cs_test_seats',
+      url: STRIPE_SESSION_URL,
+    });
+
+    const token = makeAccessToken(TEST_USER_ID, 'org_admin');
+    const res = await client
+      .post('/api/v1/billing/checkout')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ additionalSeats: 2 });
+
+    expect(res.status).toBe(200);
+    expect(mockStripeCheckoutSessionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        line_items: [
+          expect.objectContaining({ price: 'price_individual', quantity: 1 }),
+          expect.objectContaining({ price: 'price_team', quantity: 2 }),
+        ],
       })
     );
   });
@@ -516,7 +563,7 @@ describe('POST /api/v1/billing/checkout', () => {
     const res = await client
       .post('/api/v1/billing/checkout')
       .set('Authorization', `Bearer ${token}`)
-      .send({ priceId: 'price_individual' });
+      .send({ additionalSeats: 0 });
 
     expect(res.status).toBe(200);
     expect(mockStripeCustomersCreate).toHaveBeenCalledWith(
@@ -530,7 +577,7 @@ describe('POST /api/v1/billing/checkout', () => {
   it('returns 401 when unauthenticated', async () => {
     const res = await client
       .post('/api/v1/billing/checkout')
-      .send({ priceId: 'price_individual' });
+      .send({ additionalSeats: 0 });
 
     expect(res.status).toBe(401);
   });
@@ -540,20 +587,32 @@ describe('POST /api/v1/billing/checkout', () => {
     const res = await client
       .post('/api/v1/billing/checkout')
       .set('Authorization', `Bearer ${token}`)
-      .send({ priceId: 'price_individual' });
+      .send({ additionalSeats: 0 });
 
     expect(res.status).toBe(403);
   });
 
-  it('returns 422 for missing priceId', async () => {
+  it('defaults additionalSeats to 0 when body is empty', async () => {
+    (prisma.organization.findUnique as jest.Mock).mockResolvedValue(mockOrg);
+    mockStripeCheckoutSessionCreate.mockResolvedValue({
+      id: 'cs_test_default',
+      url: STRIPE_SESSION_URL,
+    });
+
     const token = makeAccessToken(TEST_USER_ID, 'org_admin');
     const res = await client
       .post('/api/v1/billing/checkout')
       .set('Authorization', `Bearer ${token}`)
       .send({});
 
-    expect(res.status).toBe(422);
-    expect(res.body.success).toBe(false);
+    expect(res.status).toBe(200);
+    expect(mockStripeCheckoutSessionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        line_items: [
+          expect.objectContaining({ price: 'price_individual', quantity: 1 }),
+        ],
+      })
+    );
   });
 });
 
@@ -653,7 +712,7 @@ describe('GET /api/v1/billing/subscription', () => {
       id: mockSubscription.id,
       organizationId: TEST_ORG_ID,
       status: 'ACTIVE',
-      planName: 'Individual',
+      planName: 'Vireos Platform',
     });
   });
 
@@ -930,7 +989,7 @@ describe('GET /api/v1/billing/credits/balance', () => {
 // ---------------------------------------------------------------------------
 
 describe('POST /api/v1/billing/webhook — subscription events', () => {
-  it('subscription.created → creates Subscription record and updates org', async () => {
+  it('subscription.created → creates Subscription record and updates org with seatLimit', async () => {
     const stripeSubEvent: Record<string, unknown> = {
       id: 'evt_sub_created',
       type: 'customer.subscription.created',
@@ -940,7 +999,10 @@ describe('POST /api/v1/billing/webhook — subscription events', () => {
           customer: STRIPE_CUSTOMER_ID,
           status: 'active',
           items: {
-            data: [{ price: { id: 'price_individual' } }],
+            data: [
+              { price: { id: 'price_individual' } },
+              { price: { id: 'price_team' }, quantity: 2 },
+            ],
           },
           current_period_start: Math.floor(Date.now() / 1000) - 86400,
           current_period_end: Math.floor(Date.now() / 1000) + 2592000,
@@ -956,6 +1018,12 @@ describe('POST /api/v1/billing/webhook — subscription events', () => {
       id: TEST_ORG_ID,
     });
     (prisma.subscription.upsert as jest.Mock).mockResolvedValue(mockSubscription);
+    // First call: persistSubscriptionSnapshot reads subscriptionStartedAt
+    // Second call: persistSubscriptionSnapshot updates org
+    (prisma.organization.findUnique as jest.Mock).mockResolvedValue({
+      ...mockOrg,
+      subscriptionStartedAt: null,
+    });
     (prisma.organization.update as jest.Mock).mockResolvedValue(mockOrg);
 
     const res = await client
@@ -968,26 +1036,28 @@ describe('POST /api/v1/billing/webhook — subscription events', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data).toEqual({ received: true });
 
-    // Verify subscription was upserted
+    // Verify subscription was upserted with seatQuantity = 3 (included) + 2 (extra) = 5
     expect(prisma.subscription.upsert as jest.Mock).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { organizationId: TEST_ORG_ID },
         create: expect.objectContaining({
           organizationId: TEST_ORG_ID,
           stripeSubscriptionId: STRIPE_SUBSCRIPTION_ID,
+          seatQuantity: 5,
           status: 'ACTIVE',
-          planName: 'price_individual',
         }),
       })
     );
 
-    // Verify org subscription status was updated
+    // Verify org seatLimit was updated and subscriptionStartedAt was set
     expect(prisma.organization.update as jest.Mock).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: TEST_ORG_ID },
         data: expect.objectContaining({
           subscriptionStatus: 'ACTIVE',
           stripeSubscriptionId: STRIPE_SUBSCRIPTION_ID,
+          seatLimit: 5,
+          subscriptionStartedAt: expect.any(Date),
         }),
       })
     );
@@ -1448,5 +1518,99 @@ describe('GET /api/v1/billing/invoices', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data[0]).toMatchObject({ id: 'in_test_1', status: 'paid' });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/billing/usage
+// ---------------------------------------------------------------------------
+
+describe('GET /api/v1/billing/usage', () => {
+  it('returns seat and contact usage summary', async () => {
+    (prisma.organization.findUnique as jest.Mock).mockResolvedValue({
+      seatLimit: 5,
+      freeContactLimit: 500,
+      subscriptionStartedAt: new Date(),
+    });
+    (prisma.user.count as jest.Mock).mockResolvedValue(3);
+    (prisma.lead.count as jest.Mock).mockResolvedValue(150);
+
+    const token = makeAccessToken(TEST_USER_ID, 'org_admin');
+    const res = await client
+      .get('/api/v1/billing/usage')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toMatchObject({
+      seats: { used: 3, limit: 5, additionalAvailable: 2 },
+      contacts: { total: 150, freeLimit: 500, overage: 0, isFirstYear: true },
+    });
+  });
+
+  it('returns overage when contacts exceed free limit', async () => {
+    (prisma.organization.findUnique as jest.Mock).mockResolvedValue({
+      seatLimit: 3,
+      freeContactLimit: 500,
+      subscriptionStartedAt: new Date(),
+    });
+    (prisma.user.count as jest.Mock).mockResolvedValue(2);
+    (prisma.lead.count as jest.Mock).mockResolvedValue(750);
+
+    const token = makeAccessToken(TEST_USER_ID, 'org_admin');
+    const res = await client
+      .get('/api/v1/billing/usage')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.contacts).toMatchObject({
+      total: 750,
+      freeLimit: 500,
+      overage: 250,
+      isFirstYear: true,
+    });
+  });
+
+  it('returns 401 when unauthenticated', async () => {
+    const res = await client.get('/api/v1/billing/usage');
+    expect(res.status).toBe(401);
+  });
+
+  it('works for advisor role (read-only access)', async () => {
+    (prisma.organization.findUnique as jest.Mock).mockResolvedValue({
+      seatLimit: 3,
+      freeContactLimit: 500,
+      subscriptionStartedAt: new Date(),
+    });
+    (prisma.user.count as jest.Mock).mockResolvedValue(1);
+    (prisma.lead.count as jest.Mock).mockResolvedValue(10);
+
+    const token = makeAdvisorToken();
+    const res = await client
+      .get('/api/v1/billing/usage')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.seats).toMatchObject({ used: 1, limit: 3 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/billing/plans — pricing metadata
+// ---------------------------------------------------------------------------
+
+describe('GET /api/v1/billing/plans — pricing metadata', () => {
+  it('includes pricing metadata in response', async () => {
+    const res = await client.get('/api/v1/billing/plans');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveProperty('pricing');
+    expect(res.body.data.pricing).toMatchObject({
+      baseAmount: 29900,
+      seatAmount: 5000,
+      contactAmount: 50,
+      includedSeats: 3,
+      freeContacts: 500,
+    });
   });
 });

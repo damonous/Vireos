@@ -89,6 +89,41 @@ function buildLeadWhere(
 }
 
 // ---------------------------------------------------------------------------
+// Contact overage check (non-blocking, soft logging only)
+// ---------------------------------------------------------------------------
+
+async function checkContactOverage(orgId: string): Promise<void> {
+  try {
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { freeContactLimit: true, subscriptionStartedAt: true },
+    });
+    if (!org) return;
+
+    const isFirstYear = org.subscriptionStartedAt
+      ? new Date().getTime() - org.subscriptionStartedAt.getTime() < 365 * 24 * 60 * 60 * 1000
+      : true;
+    const freeLimit = isFirstYear ? org.freeContactLimit : 0;
+
+    const leadCount = await prisma.lead.count({ where: { organizationId: orgId } });
+    if (leadCount > freeLimit) {
+      logger.warn('Contact overage detected', {
+        orgId,
+        leadCount,
+        freeLimit,
+        overage: leadCount - freeLimit,
+        isFirstYear,
+      });
+    }
+  } catch (err) {
+    logger.error('Failed to check contact overage', {
+      orgId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Lead Service
 // ---------------------------------------------------------------------------
 
@@ -185,6 +220,9 @@ export async function createLead(
     email: lead.email,
     actorId: user.id,
   });
+
+  // Non-blocking: check contact overage and log if exceeded
+  void checkContactOverage(orgId);
 
   return lead;
 }

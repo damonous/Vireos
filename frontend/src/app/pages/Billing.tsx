@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Check, CreditCard, ExternalLink, Receipt, Wallet } from 'lucide-react';
+import { Check, CreditCard, ExternalLink, Minus, Plus, Receipt, Users, Wallet } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { EmptyState } from '../components/ui/empty-state';
@@ -23,6 +23,13 @@ interface PlanResponse {
     credits: number;
     amount: number;
   }>;
+  pricing?: {
+    baseAmount: number;
+    seatAmount: number;
+    contactAmount: number;
+    includedSeats: number;
+    freeContacts: number;
+  };
 }
 
 interface SubscriptionRecord {
@@ -45,6 +52,11 @@ interface CreditBalanceResponse {
     description: string;
     createdAt: string;
   }>;
+}
+
+interface UsageSummary {
+  seats: { used: number; limit: number; additionalAvailable: number };
+  contacts: { total: number; freeLimit: number; overage: number; isFirstYear: boolean };
 }
 
 interface InvoiceRecord {
@@ -76,8 +88,10 @@ export default function Billing() {
   const subscription = useApiData<SubscriptionRecord | null>('/billing/subscription');
   const creditBalance = useApiData<CreditBalanceResponse>('/billing/credits/balance');
   const invoices = useApiData<InvoiceRecord[]>('/billing/invoices');
+  const usage = useApiData<UsageSummary>('/billing/usage');
   const [actionError, setActionError] = useState<string | null>(null);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
+  const [additionalSeats, setAdditionalSeats] = useState(0);
   const statusMessage = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('onboarding') === 'required') return 'Choose a subscription plan to complete onboarding and unlock the workspace.';
@@ -89,8 +103,8 @@ export default function Billing() {
   }, []);
 
   const isLoading =
-    plans.loading || subscription.loading || creditBalance.loading || invoices.loading;
-  const error = plans.error || subscription.error || creditBalance.error || invoices.error;
+    plans.loading || subscription.loading || creditBalance.loading || invoices.loading || usage.loading;
+  const error = plans.error || subscription.error || creditBalance.error || invoices.error || usage.error;
 
   if (isLoading) {
     return <LoadingState label="Loading billing..." />;
@@ -105,6 +119,7 @@ export default function Billing() {
           void subscription.reload();
           void creditBalance.reload();
           void invoices.reload();
+          void usage.reload();
         }}
       />
     );
@@ -112,15 +127,18 @@ export default function Billing() {
 
   const planList = plans.data?.plans ?? [];
   const bundleList = plans.data?.bundles ?? [];
+  const pricing = plans.data?.pricing;
   const currentSubscription = subscription.data;
-  const currentPlan =
-    currentSubscription
-      ? planList.find((plan) => plan.priceId === currentSubscription.stripePriceId) ?? null
-      : null;
+  const hasSubscription = !!currentSubscription;
   const balance = creditBalance.data?.balance ?? 0;
   const transactions = creditBalance.data?.transactions ?? [];
   const invoiceRows = invoices.data ?? [];
+  const usageData = usage.data;
   const isAdmin = user?.role === 'admin' || user?.role === 'super-admin';
+
+  const baseAmount = pricing?.baseAmount ?? 29900;
+  const seatAmount = pricing?.seatAmount ?? 5000;
+  const totalAmount = baseAmount + additionalSeats * seatAmount;
 
   const runBillingAction = async (
     actionKey: string,
@@ -137,6 +155,8 @@ export default function Billing() {
       setProcessingAction(null);
     }
   };
+
+  const platformPlan = planList[0];
 
   return (
     <div className="flex-1 overflow-auto bg-gray-50">
@@ -158,92 +178,168 @@ export default function Billing() {
             {actionError}
           </div>
         ) : null}
+
+        {/* Usage Summary */}
+        {usageData ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <Card className="p-5 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-3 mb-2">
+                <Users className="w-5 h-5 text-[#0EA5E9]" />
+                <p className="text-sm font-semibold text-gray-700">Seats Used</p>
+              </div>
+              <p className="text-3xl font-bold text-[#1E3A5F]">
+                {usageData.seats.used} <span className="text-lg font-normal text-gray-400">/ {usageData.seats.limit}</span>
+              </p>
+              <p className="text-xs text-gray-500 mt-1">{usageData.seats.additionalAvailable} available</p>
+            </Card>
+            <Card className="p-5 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-3 mb-2">
+                <CreditCard className="w-5 h-5 text-[#0EA5E9]" />
+                <p className="text-sm font-semibold text-gray-700">Contacts</p>
+              </div>
+              <p className="text-3xl font-bold text-[#1E3A5F]">
+                {usageData.contacts.total.toLocaleString()}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {usageData.contacts.isFirstYear
+                  ? `${usageData.contacts.freeLimit.toLocaleString()} free (first year)`
+                  : 'Free contacts expired'}
+                {usageData.contacts.overage > 0 ? ` | ${usageData.contacts.overage.toLocaleString()} overage` : ''}
+              </p>
+            </Card>
+            <Card className="p-5 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-3 mb-2">
+                <Wallet className="w-5 h-5 text-[#0EA5E9]" />
+                <p className="text-sm font-semibold text-gray-700">Credit Balance</p>
+              </div>
+              <p className="text-3xl font-bold text-[#1E3A5F]">{balance.toLocaleString()}</p>
+              <p className="text-xs text-gray-500 mt-1">Available credits</p>
+            </Card>
+            <Card className="p-5 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-3 mb-2">
+                <Receipt className="w-5 h-5 text-[#0EA5E9]" />
+                <p className="text-sm font-semibold text-gray-700">Status</p>
+              </div>
+              <p className="text-xl font-bold text-[#1E3A5F]">
+                {currentSubscription?.status ?? user?.organization?.subscriptionStatus ?? 'TRIALING'}
+              </p>
+              {currentSubscription?.currentPeriodEnd ? (
+                <p className="text-xs text-gray-500 mt-1">
+                  Renews {new Date(currentSubscription.currentPeriodEnd).toLocaleDateString()}
+                </p>
+              ) : null}
+            </Card>
+          </div>
+        ) : null}
+
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          {/* Plan Card */}
           <Card className="p-6 rounded-lg shadow-sm border-2 border-[#0EA5E9] bg-gradient-to-br from-blue-50 to-white xl:col-span-2">
             <div className="flex items-start justify-between gap-6 mb-6">
               <div>
-                <p className="text-xs font-semibold text-[#0EA5E9] uppercase tracking-wide mb-2">Current Plan</p>
-                <h3 className="text-2xl font-semibold text-[#1E3A5F]">{currentPlan?.name ?? 'No active paid plan'}</h3>
+                <p className="text-xs font-semibold text-[#0EA5E9] uppercase tracking-wide mb-2">
+                  {hasSubscription ? 'Current Plan' : 'Subscribe'}
+                </p>
+                <h3 className="text-2xl font-semibold text-[#1E3A5F]">
+                  {platformPlan?.name ?? 'Vireos Platform'}
+                </h3>
                 <p className="text-3xl font-bold text-[#1E3A5F] mt-2">
-                  {currentPlan ? `${formatCents(currentPlan.amount)}/month` : 'Trial'}
+                  {formatCents(baseAmount)}/month
                 </p>
-                <p className="text-sm text-gray-600 mt-3">
-                  Status: {currentSubscription?.status ?? user?.organization?.subscriptionStatus ?? 'TRIALING'}
-                </p>
-                {currentSubscription?.currentPeriodEnd ? (
-                  <p className="text-sm text-gray-500 mt-1">
-                    Renews {new Date(currentSubscription.currentPeriodEnd).toLocaleDateString()}
-                  </p>
-                ) : null}
+                <p className="text-sm text-gray-500 mt-1">Includes {pricing?.includedSeats ?? 3} users</p>
               </div>
               <div className="w-14 h-14 bg-white rounded-xl border border-blue-100 flex items-center justify-center">
                 <CreditCard className="w-7 h-7 text-[#0EA5E9]" />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {planList.map((plan) => (
-                <div key={plan.id} className="rounded-lg border border-gray-200 bg-white p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-semibold text-[#1E3A5F]">{plan.name}</p>
-                    <p className="text-sm font-semibold text-[#0EA5E9]">
-                      {plan.amount > 0 ? `${formatCents(plan.amount)}/mo` : 'Custom pricing'}
-                    </p>
-                  </div>
-                  <ul className="space-y-2">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-center gap-2 text-sm text-gray-700">
-                        <Check className="w-4 h-4 text-[#0EA5E9] flex-shrink-0" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6">
-              <p className="text-sm font-semibold text-gray-700 mb-3">Credit Bundles</p>
-              <div className="flex flex-wrap gap-3">
-                {bundleList.map((bundle) => (
-                  <span key={bundle.id} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
-                    <Wallet className="w-4 h-4 text-[#0EA5E9] flex-shrink-0" />
-                    {bundle.label} • {formatCents(bundle.amount)}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              {isAdmin ? (
-                <div className="flex flex-wrap gap-3">
-                  {planList.map((plan) => (
-                    <Button
-                      key={plan.id}
-                      variant={currentPlan?.priceId === plan.priceId ? 'secondary' : 'default'}
-                      className={currentPlan?.priceId === plan.priceId ? 'bg-white border border-gray-300 text-[#1E3A5F]' : 'bg-[#0EA5E9] hover:bg-[#0284C7] text-white'}
-                      onClick={() => void runBillingAction(`checkout:${plan.priceId}`, () => apiClient.post('/billing/checkout', { priceId: plan.priceId }))}
-                      disabled={processingAction === `checkout:${plan.priceId}`}
-                    >
-                      {processingAction === `checkout:${plan.priceId}` ? 'Redirecting...' : `Choose ${plan.name}`}
-                    </Button>
+            {platformPlan ? (
+              <div className="rounded-lg border border-gray-200 bg-white p-4 mb-6">
+                <ul className="space-y-2">
+                  {platformPlan.features.map((feature) => (
+                    <li key={feature} className="flex items-center gap-2 text-sm text-gray-700">
+                      <Check className="w-4 h-4 text-[#0EA5E9] flex-shrink-0" />
+                      {feature}
+                    </li>
                   ))}
-                  <Button
-                    variant="outline"
-                    onClick={() => void runBillingAction('portal', () => apiClient.post('/billing/portal'))}
-                    disabled={processingAction === 'portal'}
-                  >
-                    {processingAction === 'portal' ? 'Opening...' : 'Open Billing Portal'}
-                  </Button>
+                </ul>
+              </div>
+            ) : null}
+
+            {!hasSubscription && isAdmin ? (
+              <div className="space-y-4">
+                <div className="rounded-lg border border-gray-200 bg-white p-4">
+                  <p className="text-sm font-semibold text-gray-700 mb-3">Additional Seats</p>
+                  <div className="flex items-center gap-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setAdditionalSeats(Math.max(0, additionalSeats - 1))}
+                      disabled={additionalSeats === 0}
+                    >
+                      <Minus className="w-4 h-4" />
+                    </Button>
+                    <span className="text-2xl font-bold text-[#1E3A5F] w-12 text-center">{additionalSeats}</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setAdditionalSeats(additionalSeats + 1)}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                    <span className="text-sm text-gray-500">
+                      {additionalSeats > 0 ? `+${formatCents(additionalSeats * seatAmount)}/mo` : 'No additional seats'}
+                    </span>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-gray-100">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Base platform ({pricing?.includedSeats ?? 3} users)</span>
+                      <span className="font-medium text-[#1E3A5F]">{formatCents(baseAmount)}/mo</span>
+                    </div>
+                    {additionalSeats > 0 ? (
+                      <div className="flex justify-between text-sm mt-1">
+                        <span className="text-gray-600">{additionalSeats} additional seat{additionalSeats > 1 ? 's' : ''}</span>
+                        <span className="font-medium text-[#1E3A5F]">{formatCents(additionalSeats * seatAmount)}/mo</span>
+                      </div>
+                    ) : null}
+                    <div className="flex justify-between text-base font-semibold mt-2 pt-2 border-t border-gray-100">
+                      <span className="text-[#1E3A5F]">Total</span>
+                      <span className="text-[#0EA5E9]">{formatCents(totalAmount)}/mo</span>
+                    </div>
+                  </div>
                 </div>
-              ) : (
+                <Button
+                  className="w-full bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
+                  onClick={() => void runBillingAction('checkout', () => apiClient.post('/billing/checkout', { additionalSeats }))}
+                  disabled={processingAction === 'checkout'}
+                >
+                  {processingAction === 'checkout' ? 'Redirecting...' : `Subscribe — ${formatCents(totalAmount)}/mo`}
+                </Button>
+              </div>
+            ) : null}
+
+            {hasSubscription && isAdmin ? (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <Button
+                  variant="outline"
+                  onClick={() => void runBillingAction('portal', () => apiClient.post('/billing/portal'))}
+                  disabled={processingAction === 'portal'}
+                >
+                  {processingAction === 'portal' ? 'Opening...' : 'Open Billing Portal'}
+                </Button>
+              </div>
+            ) : null}
+
+            {!isAdmin ? (
+              <div className="mt-6 pt-6 border-t border-gray-200">
                 <p className="text-sm text-gray-600">
                   You have read-only access to billing details for this organization.
                 </p>
-              )}
-            </div>
+              </div>
+            ) : null}
           </Card>
 
+          {/* Credits Card */}
           <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
             <h3 className="text-lg font-semibold text-[#1E3A5F] mb-4">Credits</h3>
             <div className="rounded-xl bg-slate-900 text-white p-5 mb-5">
@@ -292,6 +388,7 @@ export default function Billing() {
           </Card>
         </div>
 
+        {/* Invoice History */}
         <Card className="rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="p-6 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-[#1E3A5F]">Invoice History</h3>

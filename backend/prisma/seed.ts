@@ -174,6 +174,12 @@ async function main(): Promise<void> {
       role: UserRole.ADMIN,
     },
     {
+      email: 'admin2@vireos-demo.com',
+      firstName: 'Second',
+      lastName: 'Admin',
+      role: UserRole.ADMIN,
+    },
+    {
       email: 'advisor@vireos-demo.com',
       firstName: 'Alex',
       lastName: 'Advisor',

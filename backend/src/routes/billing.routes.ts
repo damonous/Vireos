@@ -28,10 +28,10 @@ router.post(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const authReq = req as unknown as AuthenticatedRequest;
-      const { priceId } = req.body as { priceId: string };
+      const { additionalSeats } = req.body as { additionalSeats: number };
       const result = await billingService.createCheckoutSession(
         authReq.user.orgId,
-        priceId,
+        additionalSeats ?? 0,
         authReq.user
       );
       res.status(200).json({ success: true, data: result });
@@ -155,6 +155,28 @@ router.get(
 );
 
 // ---------------------------------------------------------------------------
+// GET /v1/billing/usage  (all authenticated roles)
+// ---------------------------------------------------------------------------
+
+router.get(
+  '/usage',
+  auth,
+  requireRole(UserRole.ORG_ADMIN, UserRole.SUPER_ADMIN, UserRole.ADVISOR, UserRole.VIEWER) as any,
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const authReq = req as unknown as AuthenticatedRequest;
+      const usage = await billingService.getUsageSummary(
+        authReq.user.orgId,
+        authReq.user
+      );
+      res.status(200).json({ success: true, data: usage });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
 // POST /v1/billing/webhook  (PUBLIC — Stripe webhook, raw body, HMAC only)
 // ---------------------------------------------------------------------------
 
@@ -205,7 +227,17 @@ router.get('/plans', async (_req: Request, res: Response, next: NextFunction): P
 
     res.status(200).json({
       success: true,
-      data: { plans, bundles },
+      data: {
+        plans,
+        bundles,
+        pricing: {
+          baseAmount: billingService.PRICING.baseAmount,
+          seatAmount: billingService.PRICING.seatAmount,
+          contactAmount: billingService.PRICING.contactAmount,
+          includedSeats: billingService.PRICING.includedSeats,
+          freeContacts: billingService.PRICING.freeContacts,
+        },
+      },
     });
   } catch (err) {
     next(err);
