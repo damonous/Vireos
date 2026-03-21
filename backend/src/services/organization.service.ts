@@ -12,6 +12,7 @@ import { generateSecureToken, sha256Hex } from '../utils/crypto';
 import type {
   CreateOrgDto,
   UpdateOrgDto,
+  UpdateComplianceSettingsDto,
   InviteMemberDto,
   PaginationQuery,
 } from '../validators/auth.validators';
@@ -287,24 +288,18 @@ export async function update(
 }
 
 /**
- * Updates only compliance-related fields on the organization.
- * Allowed for viewer (compliance officer), org_admin, and super_admin roles.
+ * Updates compliance-specific settings on an organization.
+ * Any authenticated member of the organization can call this (including Compliance / viewer role).
+ * Only updates compliance-related fields: prohibitedTerms, requiredDisclosures, complianceRules, settings.
  */
 export async function updateComplianceSettings(
   id: string,
-  dto: {
-    prohibitedTerms?: string[];
-    requiredDisclosures?: unknown;
-    complianceRules?: Record<string, unknown>;
-    settings?: Record<string, unknown>;
-  },
+  dto: UpdateComplianceSettingsDto,
   requestingUser: AuthenticatedUser
 ): Promise<OrgResult> {
-  // Allow viewer (compliance officer) if they belong to this org
-  if (requestingUser.role !== UserRole.SUPER_ADMIN && requestingUser.orgId !== id) {
-    throw Errors.forbidden('You do not have permission to access this organization.');
-  }
+  assertOrgAccess(requestingUser, id);
 
+  // Verify org exists
   const existing = await prisma.organization.findUnique({ where: { id } });
   if (!existing) {
     throw Errors.notFound('Organization');
@@ -323,6 +318,7 @@ export async function updateComplianceSettings(
   logger.info('Compliance settings updated', {
     orgId: org.id,
     updatedBy: requestingUser.id,
+    changes: dto,
   });
 
   return {
@@ -408,12 +404,6 @@ export async function inviteMember(
   const org = await prisma.organization.findUnique({ where: { id: orgId } });
   if (!org) {
     throw Errors.notFound('Organization');
-  }
-
-  // Enforce seat limit
-  const currentUserCount = await prisma.user.count({ where: { organizationId: orgId } });
-  if (currentUserCount >= org.seatLimit) {
-    throw Errors.forbidden(`Seat limit reached (${org.seatLimit}). Upgrade to add more users.`);
   }
 
   // Check email uniqueness

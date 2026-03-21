@@ -50,7 +50,9 @@ router.get(
 
 router.get(
   '/linkedin/callback',
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
+    const settingsUrl = '/settings?tab=integrations';
+
     try {
       const { code, state, error, error_description } = req.query as Record<
         string,
@@ -59,32 +61,29 @@ router.get(
 
       // Handle OAuth error from LinkedIn (e.g., user denied access)
       if (error) {
-        throw Errors.badRequest(
-          `LinkedIn OAuth error: ${error}. ${error_description ?? ''}`
+        const msg = encodeURIComponent(
+          `LinkedIn authorization failed: ${error}. ${error_description ?? ''}`
         );
+        res.redirect(`${settingsUrl}&oauth=linkedin&status=error&message=${msg}`);
+        return;
       }
 
       if (!code || !state) {
-        throw Errors.badRequest('Missing code or state parameter in LinkedIn callback.');
+        const msg = encodeURIComponent(
+          'Missing code or state parameter in LinkedIn callback.'
+        );
+        res.redirect(`${settingsUrl}&oauth=linkedin&status=error&message=${msg}`);
+        return;
       }
 
-      const connection = await socialConnectionService.handleCallback(
-        'LINKEDIN',
-        code,
-        state
-      );
+      await socialConnectionService.handleCallback('LINKEDIN', code, state);
 
-      res.status(200).json({
-        success: true,
-        data: {
-          connectionId: connection.id,
-          platform: connection.platform,
-          platformUsername: connection.platformUsername,
-          message: 'LinkedIn account connected successfully.',
-        },
-      });
+      res.redirect(`${settingsUrl}&oauth=linkedin&status=success`);
     } catch (err) {
-      next(err);
+      const message =
+        err instanceof Error ? err.message : 'LinkedIn connection failed.';
+      const msg = encodeURIComponent(message);
+      res.redirect(`${settingsUrl}&oauth=linkedin&status=error&message=${msg}`);
     }
   }
 );
@@ -118,7 +117,9 @@ router.get(
 
 router.get(
   '/facebook/callback',
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
+    const settingsUrl = '/settings?tab=integrations';
+
     try {
       const { code, state, error, error_description } = req.query as Record<
         string,
@@ -126,32 +127,29 @@ router.get(
       >;
 
       if (error) {
-        throw Errors.badRequest(
-          `Facebook OAuth error: ${error}. ${error_description ?? ''}`
+        const msg = encodeURIComponent(
+          `Facebook authorization failed: ${error}. ${error_description ?? ''}`
         );
+        res.redirect(`${settingsUrl}&oauth=facebook&status=error&message=${msg}`);
+        return;
       }
 
       if (!code || !state) {
-        throw Errors.badRequest('Missing code or state parameter in Facebook callback.');
+        const msg = encodeURIComponent(
+          'Missing code or state parameter in Facebook callback.'
+        );
+        res.redirect(`${settingsUrl}&oauth=facebook&status=error&message=${msg}`);
+        return;
       }
 
-      const connection = await socialConnectionService.handleCallback(
-        'FACEBOOK',
-        code,
-        state
-      );
+      await socialConnectionService.handleCallback('FACEBOOK', code, state);
 
-      res.status(200).json({
-        success: true,
-        data: {
-          connectionId: connection.id,
-          platform: connection.platform,
-          platformUsername: connection.platformUsername,
-          message: 'Facebook account connected successfully.',
-        },
-      });
+      res.redirect(`${settingsUrl}&oauth=facebook&status=success`);
     } catch (err) {
-      next(err);
+      const message =
+        err instanceof Error ? err.message : 'Facebook connection failed.';
+      const msg = encodeURIComponent(message);
+      res.redirect(`${settingsUrl}&oauth=facebook&status=error&message=${msg}`);
     }
   }
 );

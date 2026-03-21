@@ -11,7 +11,7 @@ import { ErrorState } from '../components/ui/error-state';
 import { LoadingState } from '../components/ui/loading-state';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { useApiData } from '../hooks/useApiData';
-import { apiClient } from '../lib/api-client';
+import { ApiError, apiClient } from '../lib/api-client';
 
 type Platform = 'LINKEDIN' | 'FACEBOOK' | 'EMAIL' | 'AD_COPY';
 
@@ -24,6 +24,7 @@ interface Draft {
   facebookContent?: string | null;
   emailContent?: string | null;
   adCopyContent?: string | null;
+  flagsJson?: Record<string, unknown> | null;
   createdAt: string;
 }
 
@@ -37,6 +38,39 @@ const platformConfig: Record<Platform, { label: string; icon: typeof Linkedin }>
   EMAIL: { label: 'Email', icon: Mail },
   AD_COPY: { label: 'Ad Copy', icon: Megaphone },
 };
+
+function renderHighlightedText(text: string, terms: string[]) {
+  if (!text || terms.length === 0) {
+    return <span>{text}</span>;
+  }
+
+  const escapedTerms = terms
+    .map((term) => term.trim())
+    .filter(Boolean)
+    .map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+  if (escapedTerms.length === 0) {
+    return <span>{text}</span>;
+  }
+
+  const regex = new RegExp(`(${escapedTerms.join('|')})`, 'gi');
+  const parts = text.split(regex);
+
+  return (
+    <>
+      {parts.map((part, index) => {
+        const flagged = terms.some((term) => term.toLowerCase() === part.toLowerCase());
+        return flagged ? (
+          <mark key={`${part}-${index}`} className="rounded bg-red-100 px-1 text-red-800 font-medium">
+            {part}
+          </mark>
+        ) : (
+          <span key={`${part}-${index}`}>{part}</span>
+        );
+      })}
+    </>
+  );
+}
 
 function getDraftContent(draft: Draft | null, platform: Platform): string {
   if (!draft) return '';
@@ -55,11 +89,16 @@ export default function AIContent() {
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>(['LINKEDIN', 'FACEBOOK', 'EMAIL', 'AD_COPY']);
   const [isGenerating, setIsGenerating] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [flaggedTerms, setFlaggedTerms] = useState<string[]>([]);
   const [activePreviewTab, setActivePreviewTab] = useState<Platform>('LINKEDIN');
   const [previewDraft, setPreviewDraft] = useState<Draft | null>(null);
 
   const draftRows = Array.isArray(drafts.data) ? drafts.data : drafts.data?.data ?? [];
   const newestDraft = previewDraft ?? draftRows[0] ?? null;
+  const previewFlaggedTerms = useMemo(() => {
+    const flags = newestDraft?.flagsJson?.['post_generation_flags'];
+    return Array.isArray(flags) ? flags.map((f) => String(f)) : [];
+  }, [newestDraft]);
   const draftPlatforms = (Object.keys(platformConfig) as Platform[]).filter((platform) => Boolean(getDraftContent(newestDraft, platform)));
   const availablePreviewTabs = useMemo(
     () => draftPlatforms,
@@ -80,6 +119,7 @@ export default function AIContent() {
   const handleGenerate = async () => {
     setIsGenerating(true);
     setSubmitError(null);
+    setFlaggedTerms([]);
     try {
       const prompt = [
         `Topic: ${topic.trim()}`,
@@ -103,6 +143,13 @@ export default function AIContent() {
         return [created, ...existing].slice(0, 8) as typeof current;
       });
     } catch (error) {
+      // Extract flagged terms from compliance error details
+      if (error instanceof ApiError && error.details) {
+        const details = error.details as { flagged_terms?: string[] };
+        if (Array.isArray(details.flagged_terms) && details.flagged_terms.length > 0) {
+          setFlaggedTerms(details.flagged_terms);
+        }
+      }
       setSubmitError(error instanceof Error ? error.message : 'Failed to generate content.');
     } finally {
       setIsGenerating(false);
@@ -178,6 +225,23 @@ export default function AIContent() {
               />
             </div>
 
+            {flaggedTerms.length > 0 && (topic || audience || talkingPoints) ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                <p className="text-sm font-semibold text-red-800 mb-2">Prohibited terms detected in your input:</p>
+                <div className="space-y-2 text-sm leading-6 text-gray-700">
+                  {topic ? (
+                    <p><span className="font-medium text-gray-900">Topic:</span> {renderHighlightedText(topic, flaggedTerms)}</p>
+                  ) : null}
+                  {audience ? (
+                    <p><span className="font-medium text-gray-900">Audience:</span> {renderHighlightedText(audience, flaggedTerms)}</p>
+                  ) : null}
+                  {talkingPoints ? (
+                    <p><span className="font-medium text-gray-900">Talking points:</span> {renderHighlightedText(talkingPoints, flaggedTerms)}</p>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
             <div>
               <label className="block text-sm font-medium text-[#1E3A5F] mb-2">Channels</label>
               <div className="grid grid-cols-2 gap-3">
@@ -204,8 +268,28 @@ export default function AIContent() {
             </div>
 
             {submitError ? (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                {submitError}
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                <div className="flex gap-3">
+                  <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-red-700">
+                    <p>{submitError}</p>
+                    {flaggedTerms.length > 0 ? (
+                      <div className="mt-2">
+                        <p className="font-semibold text-red-800">Flagged terms:</p>
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          {flaggedTerms.map((term) => (
+                            <span
+                              key={term}
+                              className="inline-block rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 border border-red-300"
+                            >
+                              {term}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
               </div>
             ) : null}
 
@@ -259,17 +343,31 @@ export default function AIContent() {
                     );
                   })}
                 </TabsList>
-                {availablePreviewTabs.map((platform) => (
-                  <TabsContent key={platform} value={platform} className="mt-0">
-                    <div className="mb-3 flex items-center justify-between text-xs text-gray-500">
-                      <span>Saved channel output</span>
-                      <span>{getDraftContent(newestDraft, platform).length} characters</span>
-                    </div>
-                    <div className="rounded-lg border border-gray-200 bg-white p-4 whitespace-pre-wrap text-sm text-gray-700 leading-6 min-h-[280px]">
-                      {getDraftContent(newestDraft, platform)}
-                    </div>
-                  </TabsContent>
-                ))}
+                {availablePreviewTabs.map((platform) => {
+                  const content = getDraftContent(newestDraft, platform);
+                  return (
+                    <TabsContent key={platform} value={platform} className="mt-0">
+                      <div className="mb-3 flex items-center justify-between text-xs text-gray-500">
+                        <span>Saved channel output</span>
+                        <span>{content.length} characters</span>
+                      </div>
+                      {previewFlaggedTerms.length > 0 ? (
+                        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 flex gap-2">
+                          <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                          <div className="text-xs text-amber-800">
+                            <span className="font-semibold">Compliance flags:</span>{' '}
+                            {previewFlaggedTerms.join(', ')}
+                          </div>
+                        </div>
+                      ) : null}
+                      <div className="rounded-lg border border-gray-200 bg-white p-4 whitespace-pre-wrap text-sm text-gray-700 leading-6 min-h-[280px]">
+                        {previewFlaggedTerms.length > 0
+                          ? renderHighlightedText(content, previewFlaggedTerms)
+                          : content}
+                      </div>
+                    </TabsContent>
+                  );
+                })}
               </Tabs>
             ) : (
               <EmptyState

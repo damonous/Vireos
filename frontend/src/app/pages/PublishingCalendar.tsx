@@ -88,7 +88,8 @@ export default function PublishingCalendar() {
 
   const upcomingJobs = [...jobRows]
     .filter((job) => Boolean(job.scheduledAt))
-    .sort((left, right) => new Date(right.scheduledAt ?? right.createdAt).getTime() - new Date(left.scheduledAt ?? left.createdAt).getTime());
+    .sort((left, right) => new Date(left.scheduledAt ?? left.createdAt).getTime() - new Date(right.scheduledAt ?? right.createdAt).getTime())
+    .slice(0, 5);
 
   const handleSchedule = async () => {
     if (!selectedDraftId) return;
@@ -103,7 +104,7 @@ export default function PublishingCalendar() {
 
       jobs.setData((current) => [created, ...(current ?? [])]);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Failed to schedule post.');
+      setSubmitError(error instanceof Error ? error.message : 'Failed to schedule publish job.');
     } finally {
       setSubmitting(false);
     }
@@ -114,19 +115,26 @@ export default function PublishingCalendar() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const updated = await apiClient.patch<PublishJob>(`/publish/${editingJobId}`, {
+      await apiClient.patch<PublishJob>(`/publish/${editingJobId}`, {
         channel: selectedChannel,
         scheduledAt: new Date(scheduledDate).toISOString(),
       });
 
-      jobs.setData((current) => (current ?? []).map((job) => (job.id === updated.id ? updated : job)));
+      // Reload from server to get fresh data including draft relations
+      await jobs.reload();
       setEditingJobId(null);
       setSelectedDraftId('');
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Failed to update scheduled post.');
+      setSubmitError(error instanceof Error ? error.message : 'Failed to update publish job.');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingJobId(null);
+    setSelectedDraftId('');
+    setSubmitError(null);
   };
 
   if (jobs.loading || approvedDrafts.loading) {
@@ -175,19 +183,7 @@ export default function PublishingCalendar() {
                       <div className="space-y-1">
                         {cell.jobs.length === 0 ? <div className="text-xs text-gray-400">No scheduled posts</div> : null}
                         {cell.jobs.map((job) => (
-                          <div
-                            key={job.id}
-                            className={`rounded border px-2 py-1 text-xs ${statusClasses(job.status)} ${job.status !== 'PUBLISHED' && job.status !== 'CANCELLED' ? 'cursor-pointer hover:opacity-80' : ''}`}
-                            onClick={() => {
-                              if (job.status !== 'PUBLISHED' && job.status !== 'CANCELLED') {
-                                setEditingJobId(job.id);
-                                setSelectedDraftId(job.draftId);
-                                setSelectedChannel(job.channel);
-                                setScheduledDate(new Date(job.scheduledAt ?? job.createdAt).toISOString().slice(0, 16));
-                                document.getElementById('schedule-form')?.scrollIntoView({ behavior: 'smooth' });
-                              }
-                            }}
-                          >
+                          <div key={job.id} className={`rounded border px-2 py-1 text-xs ${statusClasses(job.status)}`}>
                             <div className="font-medium">{job.channel.replace('_', ' ')}</div>
                             <div className="truncate">{job.draft?.title ?? 'Untitled draft'}</div>
                           </div>
@@ -200,16 +196,16 @@ export default function PublishingCalendar() {
             </div>
           </Card>
 
-          <Card id="schedule-form" className="p-6 rounded-lg shadow-sm border border-gray-200">
+          <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center gap-2 mb-4">
               <Plus className="w-4 h-4 text-[#0EA5E9]" />
-              <h3 className="text-lg font-semibold text-[#1E3A5F]">Schedule Approved Content</h3>
+              <h3 className="text-lg font-semibold text-[#1E3A5F]">{editingJobId ? 'Edit Scheduled Post' : 'Schedule Approved Content'}</h3>
             </div>
             {editingJobId ? (
-              <p className="mb-4 text-sm text-sky-700">Editing scheduled post. Saving will reschedule the existing post.</p>
+              <p className="mb-4 text-sm text-sky-700">Change the channel or date/time below, then save to reschedule the post.</p>
             ) : null}
 
-            {draftRows.length === 0 ? (
+            {!editingJobId && draftRows.length === 0 ? (
               <EmptyState
                 title="No approved drafts available"
                 description="A draft must be approved before it can be scheduled for publishing."
@@ -218,16 +214,22 @@ export default function PublishingCalendar() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <label className="block text-sm">
                   <span className="mb-2 block font-medium text-[#1E3A5F]">Approved draft</span>
-                  <select
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-                    value={selectedDraftId}
-                    onChange={(event) => setSelectedDraftId(event.target.value)}
-                  >
-                    <option value="">Select a draft</option>
-                    {draftRows.map((draft) => (
-                      <option key={draft.id} value={draft.id}>{draft.title}</option>
-                    ))}
-                  </select>
+                  {editingJobId ? (
+                    <div className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                      {jobRows.find((j) => j.id === editingJobId)?.draft?.title ?? 'Draft'}
+                    </div>
+                  ) : (
+                    <select
+                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                      value={selectedDraftId}
+                      onChange={(event) => setSelectedDraftId(event.target.value)}
+                    >
+                      <option value="">Select a draft</option>
+                      {draftRows.map((draft) => (
+                        <option key={draft.id} value={draft.id}>{draft.title}</option>
+                      ))}
+                    </select>
+                  )}
                 </label>
 
                 <label className="block text-sm">
@@ -253,13 +255,18 @@ export default function PublishingCalendar() {
 
             {submitError ? <p className="mt-4 text-sm text-red-600">{submitError}</p> : null}
 
-            <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex justify-end gap-2">
+              {editingJobId ? (
+                <Button variant="outline" onClick={handleCancelEdit} disabled={submitting}>
+                  Cancel
+                </Button>
+              ) : null}
               <Button
                 className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
                 onClick={() => void (editingJobId ? handleSaveJob() : handleSchedule())}
-                disabled={submitting || !selectedDraftId}
+                disabled={submitting || (!editingJobId && !selectedDraftId)}
               >
-                {submitting ? (editingJobId ? 'Saving...' : 'Scheduling...') : (editingJobId ? 'Save Changes' : 'Schedule Post')}
+                {submitting ? (editingJobId ? 'Saving...' : 'Scheduling...') : (editingJobId ? 'Save Publish Job' : 'Create Publish Job')}
               </Button>
             </div>
           </Card>
@@ -269,16 +276,16 @@ export default function PublishingCalendar() {
           <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center gap-2 mb-4">
               <Clock3 className="w-4 h-4 text-gray-500" />
-              <h3 className="text-lg font-semibold text-[#1E3A5F]">Upcoming Posts</h3>
+              <h3 className="text-lg font-semibold text-[#1E3A5F]">Upcoming Jobs</h3>
             </div>
 
             {upcomingJobs.length === 0 ? (
               <EmptyState
                 title="Nothing scheduled"
-                description="Scheduled posts will appear here as soon as approved content is queued."
+                description="Scheduled publish jobs will appear here as soon as approved content is queued."
               />
             ) : (
-              <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+              <div className="space-y-3">
                 {upcomingJobs.map((job) => (
                   <div key={job.id} className="rounded-lg border border-gray-200 p-4">
                     <p className="text-sm font-semibold text-[#1E3A5F]">{job.draft?.title ?? 'Untitled draft'}</p>
@@ -324,7 +331,7 @@ export default function PublishingCalendar() {
                 <p className="text-2xl font-semibold text-[#1E3A5F] mt-1">{draftRows.length}</p>
               </div>
               <div className="rounded-lg bg-gray-50 p-4">
-                <p className="text-xs text-gray-500">Scheduled Posts</p>
+                <p className="text-xs text-gray-500">Publish Jobs</p>
                 <p className="text-2xl font-semibold text-[#1E3A5F] mt-1">{jobRows.length}</p>
               </div>
             </div>

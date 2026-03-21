@@ -31,54 +31,6 @@ interface LinkedInUgcPostResponse {
   id: string;
 }
 
-interface FacebookManagedPage {
-  id: string;
-  name?: string;
-  access_token?: string;
-}
-
-async function getFacebookPagePublishingContext(
-  userAccessToken: string,
-  preferredPageId?: string
-): Promise<{ pageId: string; pageName: string | null; pageAccessToken: string }> {
-  const response = await fetch(
-    'https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token',
-    {
-      headers: { Authorization: `Bearer ${userAccessToken}` },
-    }
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    logger.error('Facebook managed pages lookup failed', {
-      status: response.status,
-      body: errorText,
-    });
-    throw new Error(`Facebook managed pages lookup failed: ${response.status} ${errorText}`);
-  }
-
-  const payload = (await response.json()) as { data?: FacebookManagedPage[] };
-  const page =
-    payload.data?.find((candidate) => candidate.id === preferredPageId && Boolean(candidate.access_token)) ??
-    (!preferredPageId
-      ? payload.data?.find((candidate) => Boolean(candidate.id && candidate.access_token))
-      : null);
-
-  if (!page?.id || !page.access_token) {
-    throw new Error(
-      preferredPageId
-        ? 'The connected Facebook Page is no longer available for publishing. Reconnect the Facebook integration.'
-        : 'No Facebook Page with publishing access was returned for this account. Connect a Page admin account and grant page permissions.'
-    );
-  }
-
-  return {
-    pageId: page.id,
-    pageName: page.name ?? null,
-    pageAccessToken: page.access_token,
-  };
-}
-
 async function publishToLinkedIn(
   accessToken: string,
   platformUserId: string,
@@ -463,33 +415,50 @@ export async function updateJob(
     include: { draft: { select: { id: true, title: true, status: true } } },
   });
 
-  // Remove the old BullMQ job and re-add with the correct delay so the
-  // rescheduled time is honoured reliably (changeDelay can silently fail).
-  try {
-    const existingJob = await publishQueue.getJob(jobId);
-    if (existingJob) {
-      await existingJob.remove();
-    }
+  // Reschedule the BullMQ job using remove + re-add for reliability.
+  // changeDelay() can silently fail depending on job state; removing the old
+  // job and re-enqueueing guarantees the new delay is applied correctly.
+  const delayMs = scheduledAt
+    ? Math.max(0, scheduledAt.getTime() - Date.now())
+    : 0;
 
-    if (scheduledAt) {
-      const delay = Math.max(0, scheduledAt.getTime() - Date.now());
-      const jobData: PublishJobData = {
-        postId: jobId,
-        orgId: publishJob.organizationId,
-        advisorId: publishJob.advisorId,
-        platforms: [platform],
-        scheduledAt: scheduledAt.toISOString(),
-      };
-      await publishQueue.add(`publish:${jobId}`, jobData, {
-        delay,
-        jobId,
-      });
+  try {
+    const bullJob = await publishQueue.getJob(jobId);
+    if (bullJob) {
+      await bullJob.remove();
     }
   } catch (err) {
-    logger.warn('Failed to reschedule BullMQ job', {
+    logger.warn('Failed to remove old BullMQ job during reschedule', {
       jobId,
       error: err instanceof Error ? err.message : String(err),
     });
+  }
+
+  try {
+    const jobData: PublishJobData = {
+      postId: jobId,
+      orgId: publishJob.organizationId,
+      advisorId: publishJob.advisorId,
+      platforms: [platform],
+      scheduledAt: (scheduledAt ?? new Date()).toISOString(),
+    };
+
+    await publishQueue.add(
+      `publish:${jobId}`,
+      jobData,
+      {
+        delay: delayMs,
+        jobId,
+      }
+    );
+  } catch (err) {
+    logger.error('Failed to re-enqueue BullMQ job during reschedule', {
+      jobId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw Errors.internal(
+      'The publish job was updated in the database but failed to reschedule in the queue. Please try again.'
+    );
   }
 
   await writeAuditTrail({
@@ -678,13 +647,14 @@ export async function processPublishJob(job: Job<PublishJobData>): Promise<void>
       platformPostId = result.postId;
       platformUrl = result.postUrl;
     } else if (publishJob.platform === SocialPlatform.FACEBOOK) {
-      const pageContext = await getFacebookPagePublishingContext(
-        accessToken,
-        connection.platformUserId
-      );
+      // The social-connection callback already stores the Facebook Page
+      // access token (not user token) and the Page ID in the connection
+      // record.  We can publish directly without re-fetching page context
+      // — calling /me/accounts with a page token would fail (that
+      // endpoint requires a user token).
       const result = await publishToFacebook(
-        pageContext.pageAccessToken,
-        pageContext.pageId,
+        accessToken,
+        connection.platformUserId,
         content
       );
       platformPostId = result.postId;

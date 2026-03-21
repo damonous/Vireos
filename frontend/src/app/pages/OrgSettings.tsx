@@ -20,6 +20,7 @@ interface OrganizationResponse {
   logoUrl: string | null;
   website: string | null;
   subscriptionStatus: string;
+  prohibitedTerms: string[];
   settings?: Record<string, unknown>;
 }
 

@@ -7,7 +7,7 @@ import { z } from 'zod';
 export const analyticsQuerySchema = z.object({
   from: z.string().datetime({ offset: true }).optional(),
   to: z.string().datetime({ offset: true }).optional(),
-  preset: z.enum(['7d', '14d', '30d', 'this_month', 'last_month']).optional(),
+  preset: z.enum(['7d', '14d', '30d', 'this_month', 'last_month', 'custom']).optional(),
 });
 
 export type AnalyticsQuery = z.infer<typeof analyticsQuerySchema>;
@@ -65,6 +65,9 @@ export function resolveDateRange(query: AnalyticsQuery): DateRange {
           to: endOfMonth(lastMonth),
         };
       }
+      case 'custom':
+        // Custom range uses from/to params; fall through to from/to handling below
+        break;
     }
   }
 

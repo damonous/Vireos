@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { Bell, Building2, Check, KeyRound, Link2, User, X } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -72,7 +73,10 @@ interface NotificationRow {
 
 export default function Settings() {
   const { user, refresh } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('profile');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<Tab>(
+    (searchParams.get('tab') as Tab) || 'profile'
+  );
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [profileFirstName, setProfileFirstName] = useState('');
   const [profileLastName, setProfileLastName] = useState('');
@@ -92,6 +96,36 @@ export default function Settings() {
   const [savingOrganization, setSavingOrganization] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
   const [integrationAction, setIntegrationAction] = useState<string | null>(null);
+
+  // Handle OAuth redirect query parameters (e.g., ?tab=integrations&oauth=linkedin&status=success)
+  useEffect(() => {
+    const oauthPlatform = searchParams.get('oauth');
+    const oauthStatus = searchParams.get('status');
+    if (oauthPlatform && oauthStatus) {
+      const platformName = oauthPlatform === 'linkedin' ? 'LinkedIn' : 'Facebook';
+      if (oauthStatus === 'success') {
+        setToastMessage(`${platformName} account connected successfully.`);
+      } else {
+        const errorMessage = searchParams.get('message');
+        setToastMessage(
+          errorMessage
+            ? decodeURIComponent(errorMessage)
+            : `${platformName} connection failed. Please try again.`
+        );
+      }
+      // Clean up the URL query params without triggering navigation
+      const cleaned = new URLSearchParams(searchParams);
+      cleaned.delete('oauth');
+      cleaned.delete('status');
+      cleaned.delete('message');
+      // Keep the tab param if present
+      if (cleaned.toString()) {
+        setSearchParams(cleaned, { replace: true });
+      } else {
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const me = useApiData<MeResponse>('/auth/me');
   const org = useApiData<OrganizationResponse>(

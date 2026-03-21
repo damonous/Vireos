@@ -85,6 +85,13 @@ export const updateOrgSchema = z.object({
   settings: z.record(z.unknown()).optional(),
 });
 
+export const updateComplianceSettingsSchema = z.object({
+  prohibitedTerms: z.array(z.string().min(1).max(200)).optional(),
+  requiredDisclosures: z.union([z.array(z.string().min(1).max(1000)), z.record(z.unknown())]).optional(),
+  complianceRules: z.record(z.unknown()).optional(),
+  settings: z.record(z.unknown()).optional(),
+});
+
 export const inviteMemberSchema = z.object({
   email: z.string().email('Invalid email address'),
   firstName: z.string().min(1).max(50),
@@ -114,5 +121,6 @@ export type ChangePasswordDto = z.infer<typeof changePasswordSchema>;
 export type CreateOrgDto = z.infer<typeof createOrgSchema>;
 export type UpdateOrgDto = z.infer<typeof updateOrgSchema>;
 export type InviteMemberDto = z.infer<typeof inviteMemberSchema>;
+export type UpdateComplianceSettingsDto = z.infer<typeof updateComplianceSettingsSchema>;
 export type UpdateMemberRoleDto = z.infer<typeof updateMemberRoleSchema>;
 export type PaginationQuery = z.infer<typeof paginationQuerySchema>;

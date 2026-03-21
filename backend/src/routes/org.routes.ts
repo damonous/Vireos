@@ -6,6 +6,7 @@ import { z } from 'zod';
 import {
   createOrgSchema,
   updateOrgSchema,
+  updateComplianceSettingsSchema,
   inviteMemberSchema,
   updateMemberRoleSchema,
   paginationQuerySchema,
@@ -144,6 +145,27 @@ router.get('/:orgId',
       const authReq = req as unknown as AuthenticatedRequest;
       const orgId = req.params['orgId'] as string;
       const org = await orgService.findById(orgId, authReq.user);
+      res.status(200).json({ success: true, data: org });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// PUT /:orgId/compliance-settings  (any org member including compliance/viewer)
+// ---------------------------------------------------------------------------
+
+router.put('/:orgId/compliance-settings',
+  auth,
+  orgAccess,
+  validateParams(orgIdParamSchema),
+  validateBody(updateComplianceSettingsSchema),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const authReq = req as unknown as AuthenticatedRequest;
+      const orgId = req.params['orgId'] as string;
+      const org = await orgService.updateComplianceSettings(orgId, req.body, authReq.user);
       res.status(200).json({ success: true, data: org });
     } catch (err) {
       next(err);
