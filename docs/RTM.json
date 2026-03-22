@@ -1076,7 +1076,7 @@
       "time_criticality": 8,
       "value": 8,
       "weight": 2,
-      "implementation_notes": "Backend publish endpoints hard-gate non-approved drafts and block non-advisor/admin roles. AC-1 verified with publish-gating.json; AC-2/AC-3 still need explicit audit-path evidence."
+      "implementation_notes": "Backend publish endpoints hard-gate non-approved drafts and block non-advisor/admin roles. Easy Mode now resolves explicit publish-now commands to the real publish_now tool before the model summary phase, so the agent returns grounded blocker reasons instead of stalling in draft-search narration. AC-1 is covered by publish-gating.json plus backend/tests/integration/agent/agent.service.test.ts and the 2026-03-22 Easy Mode value audit; AC-2/AC-3 still need explicit audit-path evidence."
     },
     {
       "id": "FR-014",

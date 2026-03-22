@@ -42,6 +42,72 @@ router.post(
 );
 
 // ---------------------------------------------------------------------------
+// POST /command/stream — Process a command with SSE streaming
+// ---------------------------------------------------------------------------
+
+router.post(
+  '/command/stream',
+  auth,
+  agentRoles,
+  validateBody(processCommandSchema),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const authReq = req as unknown as AuthenticatedRequest;
+
+      // Set SSE headers. Do not opt out of response transforms here:
+      // compression's res.flush() support is what forces small HTTPS chunks through.
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
+      // Disable Nagle's algorithm for immediate TCP delivery
+      if (req.socket) {
+        req.socket.setNoDelay(true);
+      }
+      res.flushHeaders();
+      // Send an initial SSE comment to open the stream
+      res.write(':ok\n\n');
+      if (typeof (res as any).flush === 'function') {
+        (res as any).flush();
+      }
+
+      let clientDisconnected = false;
+      const markClientDisconnected = () => {
+        if (!res.writableEnded) {
+          clientDisconnected = true;
+        }
+      };
+      req.on('aborted', markClientDisconnected);
+      res.on('close', markClientDisconnected);
+
+      const emit = (event: import('../services/agent/types').SSEEvent) => {
+        if (clientDisconnected) return;
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+        // Flush through compression/TLS layers so the client receives data immediately
+        if (typeof (res as any).flush === 'function') {
+          (res as any).flush();
+        }
+      };
+
+      await agentService.processCommandStream(req.body, authReq.user, emit);
+
+      if (!clientDisconnected) {
+        res.end();
+      }
+    } catch (err) {
+      // If headers already sent, emit error event and end
+      if (res.headersSent) {
+        const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+        res.write(`data: ${JSON.stringify({ event: 'error', message })}\n\n`);
+        res.end();
+      } else {
+        next(err);
+      }
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
 // GET /conversations — List conversations
 // ---------------------------------------------------------------------------
 

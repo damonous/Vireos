@@ -2,10 +2,12 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import express from 'express';
 import { authenticate, requireRole } from '../middleware/auth';
-import { validateBody } from '../middleware/validate';
+import { validateBody, validateQuery } from '../middleware/validate';
 import {
   createCheckoutSchema,
   purchaseCreditsSchema,
+  creditTransactionsQuerySchema,
+  CreditTransactionsQueryDto,
 } from '../validators/billing.validators';
 import * as billingService from '../services/billing.service';
 import * as platformSettingService from '../services/platform-setting.service';
@@ -124,6 +126,37 @@ router.get(
       const result = await billingService.getCreditBalance(
         authReq.user.orgId,
         authReq.user
+      );
+      res.status(200).json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// GET /v1/billing/credits/transactions  (admin, advisor, compliance — read-only)
+// ---------------------------------------------------------------------------
+
+router.get(
+  '/credits/transactions',
+  auth,
+  requireRole(UserRole.ORG_ADMIN, UserRole.SUPER_ADMIN, UserRole.ADVISOR, UserRole.VIEWER) as any,
+  validateQuery(creditTransactionsQuerySchema),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const authReq = req as unknown as AuthenticatedRequest;
+      const query = req.query as unknown as CreditTransactionsQueryDto;
+      const result = await billingService.getCreditTransactions(
+        authReq.user.orgId,
+        authReq.user,
+        {
+          from: query.from,
+          to: query.to,
+          type: query.type as any,
+          page: query.page,
+          limit: query.limit,
+        }
       );
       res.status(200).json({ success: true, data: result });
     } catch (err) {

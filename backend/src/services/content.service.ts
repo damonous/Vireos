@@ -1,4 +1,4 @@
-import { ContentStatus, AuditAction } from '@prisma/client';
+import { ContentStatus, AuditAction, NotificationType, UserRole as PrismaUserRole } from '@prisma/client';
 import { prisma } from '../db/client';
 import { config } from '../config';
 import { logger } from '../utils/logger';
@@ -6,6 +6,7 @@ import { Errors, AppError } from '../middleware/errorHandler';
 import type { AuthenticatedUser } from '../types';
 import { UserRole } from '../types';
 import type { GenerateContentDto, UpdateDraftDto } from '../validators/content.validators';
+import { createVersion } from './version.service';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -31,13 +32,14 @@ const FINRA_PROHIBITED_TERMS: string[] = [
 ];
 
 /**
- * Max token limits per content channel.
+ * Hard character limits per content channel before persistence.
+ * These are intentionally conservative to keep advisor-facing output usable.
  */
-const CHANNEL_MAX_TOKENS: Record<string, number> = {
-  linkedin: 700,
-  facebook: 500,
-  email: 1500,
-  adCopy: 300,
+const CHANNEL_MAX_CHARS: Record<keyof GeneratedChannelContent, number> = {
+  linkedin: 1300,
+  facebook: 1500,
+  email: 2200,
+  adCopy: 500,
 };
 
 // ---------------------------------------------------------------------------
@@ -91,7 +93,39 @@ async function getOpenAIClient(): Promise<import('openai').default> {
  */
 function scanForProhibitedTerms(text: string, terms: string[]): string[] {
   const lowerText = text.toLowerCase();
-  return terms.filter((term) => lowerText.includes(term.toLowerCase()));
+  const negationPattern =
+    /\b(avoid|avoids|avoiding|without|omit|excluding|exclude|excluded|never use|do not use|don't use|must not use|should not use|prohibited|restricted|forbidden|ban|banned|no)\b/;
+
+  return terms.filter((term) => {
+    const normalizedTerm = term.toLowerCase().trim();
+    const escapedTerm = normalizedTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`\\b${escapedTerm}(?:s)?\\b`, 'gi');
+
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(lowerText)) !== null) {
+      const contextStart = Math.max(0, match.index - 160);
+      const prefix = lowerText.slice(contextStart, match.index);
+      const clauseStart = Math.max(
+        prefix.lastIndexOf('.'),
+        prefix.lastIndexOf('!'),
+        prefix.lastIndexOf('?'),
+        prefix.lastIndexOf('\n'),
+        prefix.lastIndexOf(':'),
+        prefix.lastIndexOf(';')
+      );
+      const localClause = prefix.slice(clauseStart + 1).trim();
+
+      // Allow prompts that mention prohibited terms only to forbid them,
+      // e.g. "avoid guaranteed returns" or "no promises/guarantees".
+      if (negationPattern.test(localClause)) {
+        continue;
+      }
+
+      return true;
+    }
+
+    return false;
+  });
 }
 
 /**
@@ -170,26 +204,122 @@ function appendRequiredDisclosures(
     return content;
   }
 
-  // Build a disclosure footer from any string values in the disclosures config
-  const disclosureLines: string[] = [];
-
-  for (const [, value] of Object.entries(requiredDisclosures)) {
-    if (typeof value === 'string' && value.trim()) {
-      disclosureLines.push(value.trim());
+  const appendChannelDisclosure = (channelContent: string, disclosure: unknown): string => {
+    if (typeof disclosure !== 'string' || !disclosure.trim()) {
+      return channelContent;
     }
-  }
 
-  if (disclosureLines.length === 0) {
-    return content;
-  }
+    const normalizedDisclosure = disclosure.trim();
+    if (channelContent.toLowerCase().includes(normalizedDisclosure.toLowerCase())) {
+      return channelContent;
+    }
 
-  const disclosureText = '\n\n' + disclosureLines.join('\n');
+    return `${channelContent}\n\n${normalizedDisclosure}`;
+  };
 
   return {
-    linkedin: content.linkedin + disclosureText,
-    facebook: content.facebook + disclosureText,
-    email: content.email + disclosureText,
-    adCopy: content.adCopy + disclosureText,
+    linkedin: appendChannelDisclosure(content.linkedin, requiredDisclosures['linkedin']),
+    facebook: appendChannelDisclosure(content.facebook, requiredDisclosures['facebook']),
+    email: appendChannelDisclosure(content.email, requiredDisclosures['email']),
+    adCopy: appendChannelDisclosure(content.adCopy, requiredDisclosures['adCopy']),
+  };
+}
+
+function normalizeWhitespace(text: string): string {
+  return text
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function dedupeConsecutiveLines(text: string): string {
+  const deduped: string[] = [];
+  for (const rawLine of text.split('\n')) {
+    const line = rawLine.trimEnd();
+    const previous = deduped[deduped.length - 1];
+    if (line && previous?.trim() === line.trim()) {
+      continue;
+    }
+    deduped.push(line);
+  }
+  return deduped.join('\n').trim();
+}
+
+function truncateAtSentenceBoundary(text: string, maxChars: number): string {
+  if (text.length <= maxChars) {
+    return text;
+  }
+
+  const candidate = text.slice(0, maxChars).trim();
+  const lastBoundary = Math.max(
+    candidate.lastIndexOf('. '),
+    candidate.lastIndexOf('! '),
+    candidate.lastIndexOf('? '),
+    candidate.lastIndexOf('\n\n')
+  );
+
+  if (lastBoundary >= Math.floor(maxChars * 0.6)) {
+    return candidate.slice(0, lastBoundary + 1).trim();
+  }
+
+  return `${candidate.slice(0, Math.max(0, maxChars - 1)).trimEnd()}…`;
+}
+
+function enforceChannelLimit(
+  channelContent: string,
+  maxChars: number,
+  disclosure: unknown
+): string {
+  const cleaned = dedupeConsecutiveLines(normalizeWhitespace(channelContent));
+  if (cleaned.length <= maxChars) {
+    return cleaned;
+  }
+
+  const normalizedDisclosure =
+    typeof disclosure === 'string' && disclosure.trim()
+      ? normalizeWhitespace(disclosure)
+      : '';
+
+  if (!normalizedDisclosure || !cleaned.toLowerCase().includes(normalizedDisclosure.toLowerCase())) {
+    return truncateAtSentenceBoundary(cleaned, maxChars);
+  }
+
+  const contentWithoutDisclosure = cleaned
+    .replace(new RegExp(`${normalizedDisclosure.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'), '')
+    .trimEnd();
+  const reservedChars = normalizedDisclosure.length + 2;
+  const maxBodyChars = Math.max(80, maxChars - reservedChars);
+  const truncatedBody = truncateAtSentenceBoundary(contentWithoutDisclosure, maxBodyChars);
+
+  return `${truncatedBody}\n\n${normalizedDisclosure}`.trim();
+}
+
+function enforceChannelContentLimits(
+  content: GeneratedChannelContent,
+  requiredDisclosures: Record<string, unknown>
+): GeneratedChannelContent {
+  return {
+    linkedin: enforceChannelLimit(
+      content.linkedin,
+      CHANNEL_MAX_CHARS.linkedin,
+      requiredDisclosures['linkedin']
+    ),
+    facebook: enforceChannelLimit(
+      content.facebook,
+      CHANNEL_MAX_CHARS.facebook,
+      requiredDisclosures['facebook']
+    ),
+    email: enforceChannelLimit(
+      content.email,
+      CHANNEL_MAX_CHARS.email,
+      requiredDisclosures['email']
+    ),
+    adCopy: enforceChannelLimit(
+      content.adCopy,
+      CHANNEL_MAX_CHARS.adCopy,
+      requiredDisclosures['adCopy']
+    ),
   };
 }
 
@@ -232,6 +362,143 @@ function parseGeneratedContent(raw: string): GeneratedChannelContent {
     email: typeof obj['email'] === 'string' ? obj['email'] : String(obj['email']),
     adCopy: typeof obj['adCopy'] === 'string' ? obj['adCopy'] : String(obj['adCopy']),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Notification helpers (mirrors review.service.ts patterns)
+// ---------------------------------------------------------------------------
+
+/**
+ * Finds compliance officers (COMPLIANCE or ADMIN role) within the organization.
+ */
+async function findComplianceOfficerIds(organizationId: string): Promise<string[]> {
+  try {
+    const officers = await prisma.user.findMany({
+      where: {
+        organizationId,
+        role: { in: [PrismaUserRole.COMPLIANCE, PrismaUserRole.ADMIN] },
+      },
+      select: { id: true },
+    });
+    return officers.map((u) => u.id);
+  } catch (err) {
+    logger.warn('Failed to find compliance officers for auto-flag notification', {
+      error: err instanceof Error ? err.message : String(err),
+      organizationId,
+    });
+    return [];
+  }
+}
+
+/**
+ * Persists an in-app notification for a single user. Fire-and-forget safe.
+ */
+async function sendNotification(params: {
+  organizationId: string;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  try {
+    await prisma.notification.create({
+      data: {
+        organizationId: params.organizationId,
+        userId: params.userId,
+        type: params.type,
+        title: params.title,
+        body: params.body,
+        metadata: (params.metadata ?? {}) as object,
+      },
+    });
+    logger.info('NOTIFICATION: Auto-flag notification sent', {
+      userId: params.userId,
+      type: params.type,
+      title: params.title,
+    });
+  } catch (err) {
+    logger.warn('Failed to create auto-flag notification', {
+      error: err instanceof Error ? err.message : String(err),
+      userId: params.userId,
+      type: params.type,
+    });
+  }
+}
+
+/**
+ * Notifies compliance officers that a draft was auto-flagged and routed
+ * to PENDING_REVIEW. Runs fire-and-forget so it never blocks the response.
+ */
+function notifyComplianceOfAutoFlag(
+  organizationId: string,
+  draftId: string,
+  draftTitle: string,
+  creatorId: string,
+  flaggedTerms: string[]
+): void {
+  // Fire-and-forget — we intentionally do not await this
+  void (async () => {
+    try {
+      const officerIds = await findComplianceOfficerIds(organizationId);
+      for (const officerId of officerIds) {
+        await sendNotification({
+          organizationId,
+          userId: officerId,
+          type: NotificationType.CONTENT_SUBMITTED,
+          title: 'Auto-flagged content requires review',
+          body:
+            `A draft titled "${draftTitle}" was auto-flagged for prohibited terms ` +
+            `(${flaggedTerms.join(', ')}) and routed to compliance review.`,
+          metadata: { draftId, creatorId, flaggedTerms, autoFlagged: true },
+        });
+      }
+    } catch (err) {
+      logger.warn('Failed to notify compliance officers of auto-flagged draft', {
+        error: err instanceof Error ? err.message : String(err),
+        draftId,
+        organizationId,
+      });
+    }
+  })();
+}
+
+// ---------------------------------------------------------------------------
+// Compliance scoring
+// ---------------------------------------------------------------------------
+
+/**
+ * Calculates a deterministic compliance score between 0.0 and 1.0 based on:
+ * - Prohibited terms found: subtract 0.15 per flagged term (min 0.0)
+ * - Missing disclosures: subtract 0.2 if org has required disclosures but they are absent
+ * - Short content: subtract 0.1 if any channel content is less than 50 chars
+ */
+export function calculateComplianceScore(params: {
+  flaggedTermCount: number;
+  hasRequiredDisclosures: boolean;
+  disclosuresAppended: boolean;
+  channelContents: (string | null)[];
+}): number {
+  let score = 1.0;
+
+  // Penalty for prohibited terms: -0.15 per term
+  score -= params.flaggedTermCount * 0.15;
+
+  // Penalty for missing disclosures: -0.2 if org requires them but they were not appended
+  if (params.hasRequiredDisclosures && !params.disclosuresAppended) {
+    score -= 0.2;
+  }
+
+  // Penalty for short content: -0.1 if any selected channel has content < 50 chars
+  const hasShortContent = params.channelContents
+    .filter((c): c is string => c !== null)
+    .some((c) => c.length < 50);
+  if (hasShortContent) {
+    score -= 0.1;
+  }
+
+  // Clamp to [0.0, 1.0]
+  return Math.max(0.0, Math.min(1.0, parseFloat(score.toFixed(4))));
 }
 
 // ---------------------------------------------------------------------------
@@ -368,6 +635,7 @@ export async function generateContent(
   // 7. Append required disclosures
   const requiredDisclosures = (orgRecord.requiredDisclosures ?? {}) as Record<string, unknown>;
   const contentWithDisclosures = appendRequiredDisclosures(generatedContent, requiredDisclosures);
+  const normalizedContent = enforceChannelContentLimits(contentWithDisclosures, requiredDisclosures);
 
   // 8. Determine draft title
   const title = dto.title ?? dto.prompt.slice(0, 100);
@@ -375,26 +643,66 @@ export async function generateContent(
   // 9. Filter content to only selected channels
   const selectedChannels = dto.channels ?? ['LINKEDIN', 'FACEBOOK', 'EMAIL', 'AD_COPY'];
 
-  // 10. Store draft in DB
+  // 9a. Calculate compliance score
+  const hasRequiredDisclosures =
+    requiredDisclosures !== null &&
+    typeof requiredDisclosures === 'object' &&
+    Object.values(requiredDisclosures).some(
+      (v) => typeof v === 'string' && v.trim().length > 0
+    );
+
+  // Disclosures are considered appended if the org has them configured and
+  // the appendRequiredDisclosures function was called (it always is at step 7).
+  // The function only skips appending if the disclosure is already present,
+  // so we treat disclosures as appended when they are configured.
+  const disclosuresAppended = hasRequiredDisclosures;
+
+  const selectedChannelContents: (string | null)[] = [
+    selectedChannels.includes('LINKEDIN') ? contentWithDisclosures.linkedin : null,
+    selectedChannels.includes('FACEBOOK') ? contentWithDisclosures.facebook : null,
+    selectedChannels.includes('EMAIL') ? contentWithDisclosures.email : null,
+    selectedChannels.includes('AD_COPY') ? contentWithDisclosures.adCopy : null,
+  ];
+
+  const complianceScore = calculateComplianceScore({
+    flaggedTermCount: postGenFlaggedTerms.length,
+    hasRequiredDisclosures,
+    disclosuresAppended,
+    channelContents: selectedChannelContents,
+  });
+
+  // 10. Determine draft status — auto-route to PENDING_REVIEW if flagged OR low score
+  const autoFlagged = postGenFlaggedTerms.length > 0;
+  const lowComplianceScore = complianceScore < 0.7;
+  const draftStatus = autoFlagged || lowComplianceScore
+    ? ContentStatus.PENDING_REVIEW
+    : ContentStatus.DRAFT;
+
+  if (flagsJson && lowComplianceScore && !autoFlagged) {
+    flagsJson['low_compliance_score'] = complianceScore;
+  }
+
+  // 11. Store draft in DB
   const draft = await prisma.draft.create({
     data: {
       organizationId: orgId,
       creatorId: user.id,
       title,
       originalPrompt: dto.prompt,
-      linkedinContent: selectedChannels.includes('LINKEDIN') ? contentWithDisclosures.linkedin : null,
-      facebookContent: selectedChannels.includes('FACEBOOK') ? contentWithDisclosures.facebook : null,
-      emailContent: selectedChannels.includes('EMAIL') ? contentWithDisclosures.email : null,
-      adCopyContent: selectedChannels.includes('AD_COPY') ? contentWithDisclosures.adCopy : null,
-      variantsJson: contentWithDisclosures as unknown as object,
+      linkedinContent: selectedChannels.includes('LINKEDIN') ? normalizedContent.linkedin : null,
+      facebookContent: selectedChannels.includes('FACEBOOK') ? normalizedContent.facebook : null,
+      emailContent: selectedChannels.includes('EMAIL') ? normalizedContent.email : null,
+      adCopyContent: selectedChannels.includes('AD_COPY') ? normalizedContent.adCopy : null,
+      variantsJson: normalizedContent as unknown as object,
       flagsJson: flagsJson as object,
-      status: ContentStatus.DRAFT,
+      status: draftStatus,
+      complianceScore,
       aiModel,
       tokensUsed,
     },
   });
 
-  // 11. Write audit trail
+  // 12. Write audit trail — CREATED
   await writeAuditTrail({
     organizationId: orgId,
     actorId: user.id,
@@ -406,10 +714,63 @@ export async function generateContent(
       aiModel,
       tokensUsed,
       flagCount: postGenFlaggedTerms.length,
+      complianceScore,
     },
   });
 
-  // 11. Publish BullMQ notification event (lazy import to avoid module-level Redis connections)
+  // 13. If auto-flagged or low compliance score, write a SUBMITTED audit entry and notify compliance
+  if (autoFlagged) {
+    await writeAuditTrail({
+      organizationId: orgId,
+      actorId: user.id,
+      entityType: 'Draft',
+      entityId: draft.id,
+      action: AuditAction.SUBMITTED,
+      metadata: {
+        autoFlagged: true,
+        flaggedTerms: postGenFlaggedTerms,
+        complianceScore,
+        previousStatus: null,
+        newStatus: ContentStatus.PENDING_REVIEW,
+      },
+    });
+
+    // Fire-and-forget: notify compliance officers
+    notifyComplianceOfAutoFlag(orgId, draft.id, title, user.id, postGenFlaggedTerms);
+
+    logger.info('Draft auto-flagged and routed to PENDING_REVIEW', {
+      draftId: draft.id,
+      userId: user.id,
+      orgId,
+      flaggedTerms: postGenFlaggedTerms,
+      complianceScore,
+    });
+  } else if (lowComplianceScore) {
+    // Low score but no flagged terms — still route to review
+    await writeAuditTrail({
+      organizationId: orgId,
+      actorId: user.id,
+      entityType: 'Draft',
+      entityId: draft.id,
+      action: AuditAction.SUBMITTED,
+      metadata: {
+        autoFlagged: false,
+        lowComplianceScore: true,
+        complianceScore,
+        previousStatus: null,
+        newStatus: ContentStatus.PENDING_REVIEW,
+      },
+    });
+
+    logger.info('Draft routed to PENDING_REVIEW due to low compliance score', {
+      draftId: draft.id,
+      userId: user.id,
+      orgId,
+      complianceScore,
+    });
+  }
+
+  // 14. Publish BullMQ notification event (lazy import to avoid module-level Redis connections)
   try {
     const { notificationQueue } = await import('../queues');
     await notificationQueue.add('content.draft.created', {
@@ -440,6 +801,7 @@ export async function generateContent(
     tokensUsed,
     aiModel,
     flagCount: postGenFlaggedTerms.length,
+    complianceScore,
   });
 
   return draft;
@@ -569,6 +931,9 @@ export async function updateDraft(
       );
     }
   }
+
+  // Snapshot current state before overwriting
+  await createVersion(draft, user.id, 'Pre-edit snapshot (advisor/admin content update)');
 
   const updated = await prisma.draft.update({
     where: { id: draftId },

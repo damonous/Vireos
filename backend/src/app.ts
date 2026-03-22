@@ -1,6 +1,8 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import compression from 'compression';
+import cookieParser from 'cookie-parser';
 import fs from 'fs';
 import path from 'path';
 import { config } from './config';
@@ -78,12 +80,21 @@ export function createApp(): Application {
     })
   );
 
+  // ---- Compression -----------------------------------------------------------
+  // Keep compression enabled globally so SSE routes can use res.flush().
+  // The compression middleware performs a sync flush on streamed chunks,
+  // which is what pushes small HTTPS writes through immediately.
+  app.use(compression());
+
   // ---- Request parsing -----------------------------------------------------
   // JSON body — 10mb limit for content with embedded images/data URIs
   app.use(express.json({ limit: '10mb' }));
 
   // URL-encoded form data (OAuth redirects, Stripe webhooks)
   app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+  // ---- Cookie parsing ------------------------------------------------------
+  app.use(cookieParser());
 
   // ---- Request logging & tracing ------------------------------------------
   app.use(requestLogger);

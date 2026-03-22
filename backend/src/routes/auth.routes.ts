@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response, NextFunction, CookieOptions } from 'express';
 import { authenticate } from '../middleware/auth';
 import { authRateLimit } from '../middleware/rateLimiter';
 import { validateBody } from '../middleware/validate';
@@ -17,6 +17,37 @@ import { AuthenticatedRequest } from '../types';
 
 const router = Router();
 
+// ---------------------------------------------------------------------------
+// Cookie configuration for HttpOnly secure auth tokens
+// ---------------------------------------------------------------------------
+
+const ACCESS_TOKEN_COOKIE_OPTIONS: CookieOptions = {
+  httpOnly: true,
+  secure: true,
+  sameSite: 'lax',
+  maxAge: 15 * 60 * 1000, // 15 minutes
+  path: '/',
+};
+
+const REFRESH_TOKEN_COOKIE_OPTIONS: CookieOptions = {
+  httpOnly: true,
+  secure: true,
+  sameSite: 'lax',
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  path: '/api/v1/auth',
+};
+
+/**
+ * Sets access_token and refresh_token HttpOnly cookies on the response.
+ */
+function setAuthCookies(
+  res: Response,
+  tokens: { accessToken: string; refreshToken: string }
+): void {
+  res.cookie('access_token', tokens.accessToken, ACCESS_TOKEN_COOKIE_OPTIONS);
+  res.cookie('refresh_token', tokens.refreshToken, REFRESH_TOKEN_COOKIE_OPTIONS);
+}
+
 // Type-cast authenticate so TypeScript accepts it in route chains.
 // At runtime, authenticate populates req.user — subsequent handlers cast req safely.
 const auth = authenticate as any;
@@ -33,6 +64,7 @@ router.post('/register', authRateLimit, validateBody(registerSchema), async (
   try {
     const ipAddress = req.ip ?? undefined;
     const tokens = await authService.register(req.body, ipAddress);
+    setAuthCookies(res, tokens);
     res.status(201).json({ success: true, data: tokens });
   } catch (err) {
     next(err);
@@ -51,6 +83,7 @@ router.post('/login', authRateLimit, validateBody(loginSchema), async (
   try {
     const ipAddress = req.ip ?? undefined;
     const tokens = await authService.login(req.body, ipAddress);
+    setAuthCookies(res, tokens);
     res.status(200).json({ success: true, data: tokens });
   } catch (err) {
     next(err);
@@ -61,14 +94,30 @@ router.post('/login', authRateLimit, validateBody(loginSchema), async (
 // POST /refresh
 // ---------------------------------------------------------------------------
 
-router.post('/refresh', authRateLimit, validateBody(refreshTokenSchema), async (
+router.post('/refresh', authRateLimit, async (
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { refreshToken } = req.body as { refreshToken: string };
+    // Accept refresh token from request body (existing behavior) or from HttpOnly cookie
+    const bodyToken = (req.body as { refreshToken?: string })?.refreshToken;
+    const cookieToken = req.cookies?.refresh_token as string | undefined;
+    const refreshToken = bodyToken || cookieToken;
+
+    if (!refreshToken) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Refresh token is required (in body or cookie).',
+        },
+      });
+      return;
+    }
+
     const tokens = await authService.refreshTokens(refreshToken);
+    setAuthCookies(res, tokens);
     res.status(200).json({ success: true, data: tokens });
   } catch (err) {
     next(err);
@@ -88,6 +137,8 @@ router.post('/logout', auth, async (
     const authReq = req as unknown as AuthenticatedRequest;
     const ipAddress = req.ip ?? undefined;
     await authService.logout(authReq.user.id, authReq.user.orgId, ipAddress);
+    res.clearCookie('access_token', { path: '/' });
+    res.clearCookie('refresh_token', { path: '/api/v1/auth' });
     res.status(200).json({ success: true, data: { message: 'Logged out successfully.' } });
   } catch (err) {
     next(err);

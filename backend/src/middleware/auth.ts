@@ -25,22 +25,28 @@ export function authenticate(
   res: Response,
   next: NextFunction
 ): void {
+  // Try Authorization: Bearer header first (existing behavior), then fall back
+  // to HttpOnly cookie for browser-based sessions.
   const authHeader = req.headers['authorization'];
+  let token: string | undefined;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.slice(7).trim();
+  }
+
+  // Fall back to HttpOnly cookie if no Bearer token
+  if (!token) {
+    token = req.cookies?.access_token as string | undefined;
+  }
+
+  if (!token) {
     return next(
       new AppError(
-        'Authorization header is missing or invalid. Expected: Bearer <token>',
+        'Authorization header is missing or invalid. Expected: Bearer <token> or access_token cookie.',
         401,
         'UNAUTHORIZED'
       )
     );
-  }
-
-  const token = authHeader.slice(7).trim();
-
-  if (!token) {
-    return next(new AppError('Bearer token is empty', 401, 'UNAUTHORIZED'));
   }
 
   try {
@@ -213,12 +219,16 @@ export function optionalAuthenticate(
   next: NextFunction
 ): void {
   const authHeader = req.headers['authorization'];
+  let token: string | undefined;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return next();
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.slice(7).trim();
   }
 
-  const token = authHeader.slice(7).trim();
+  // Fall back to HttpOnly cookie
+  if (!token) {
+    token = req.cookies?.access_token as string | undefined;
+  }
 
   if (!token) {
     return next();

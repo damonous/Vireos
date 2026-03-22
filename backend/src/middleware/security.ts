@@ -250,6 +250,15 @@ export function detectSuspiciousRequest(
       userAgent: req.headers['user-agent'],
       detections,
     });
+
+    res.status(403).json({
+      success: false,
+      error: {
+        code: 'SUSPICIOUS_REQUEST',
+        message: 'Request blocked for security reasons.',
+      },
+    });
+    return;
   }
 
   next();

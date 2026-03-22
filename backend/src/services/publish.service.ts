@@ -14,6 +14,7 @@ import { decrypt, encrypt } from '../utils/crypto';
 import { publishQueue, notificationQueue } from '../queues';
 import type { AuthenticatedUser, PublishJobData } from '../types';
 import type { PublishDto, UpdatePublishDto } from '../validators/publish.validators';
+import { ensureFreshToken, refreshToken } from './social-connection.service';
 import {
   buildOffsetPaginationResult,
   calcSkip,
@@ -601,10 +602,13 @@ export async function processPublishJob(job: Job<PublishJobData>): Promise<void>
     throw new Error(errorMessage);
   }
 
-  // Decrypt the OAuth token
+  // Proactively refresh the token if it is expiring soon or already expired
+  const freshConnection = await ensureFreshToken(connection.id);
+
+  // Decrypt the OAuth token from the (potentially refreshed) connection
   let accessToken: string;
   try {
-    accessToken = decrypt(connection.accessToken);
+    accessToken = decrypt(freshConnection.accessToken);
   } catch (err) {
     const errorMessage = 'Failed to decrypt OAuth access token';
     await prisma.publishJob.update({
@@ -633,78 +637,153 @@ export async function processPublishJob(job: Job<PublishJobData>): Promise<void>
       content = draft.title;
   }
 
-  // Publish to the platform
-  let platformPostId: string;
-  let platformUrl: string;
+  // Capture platform locally so TypeScript narrows correctly inside closures
+  const platform = publishJob.platform;
 
-  try {
-    if (publishJob.platform === SocialPlatform.LINKEDIN) {
-      const result = await publishToLinkedIn(
-        accessToken,
-        connection.platformUserId,
-        content
-      );
-      platformPostId = result.postId;
-      platformUrl = result.postUrl;
-    } else if (publishJob.platform === SocialPlatform.FACEBOOK) {
+  // Helper to call the correct platform API
+  async function callPlatformApi(
+    token: string,
+    platformUserId: string
+  ): Promise<{ postId: string; postUrl: string }> {
+    if (platform === SocialPlatform.LINKEDIN) {
+      return publishToLinkedIn(token, platformUserId, content);
+    } else if (platform === SocialPlatform.FACEBOOK) {
       // The social-connection callback already stores the Facebook Page
       // access token (not user token) and the Page ID in the connection
       // record.  We can publish directly without re-fetching page context
       // — calling /me/accounts with a page token would fail (that
       // endpoint requires a user token).
-      const result = await publishToFacebook(
-        accessToken,
-        connection.platformUserId,
-        content
-      );
-      platformPostId = result.postId;
-      platformUrl = result.postUrl;
-    } else {
-      throw new Error(`Unsupported platform: ${publishJob.platform}`);
+      return publishToFacebook(token, platformUserId, content);
     }
+    throw new Error(`Unsupported platform: ${platform}`);
+  }
+
+  // Publish to the platform with automatic 401 retry
+  let platformPostId: string;
+  let platformUrl: string;
+
+  try {
+    const result = await callPlatformApi(accessToken, freshConnection.platformUserId);
+    platformPostId = result.postId;
+    platformUrl = result.postUrl;
   } catch (err) {
-    const errorMessage =
-      err instanceof Error ? err.message : `Unknown error publishing to ${publishJob.platform}`;
+    // Check if the error is a 401 (unauthorized) — attempt one token refresh and retry
+    const is401 =
+      err instanceof Error &&
+      (err.message.includes('API error 401') || err.message.includes('status 401'));
 
-    logger.error('Publish job failed', {
-      postId,
-      platform: publishJob.platform,
-      error: errorMessage,
-      attempt: job.attemptsMade,
-    });
+    if (is401) {
+      logger.info('Received 401 from platform API, attempting token refresh and retry', {
+        postId,
+        platform: publishJob.platform,
+        connectionId: freshConnection.id,
+      });
 
-    await prisma.publishJob.update({
-      where: { id: postId },
-      data: {
-        status: PublishJobStatus.FAILED,
-        errorMessage,
-        retryCount: { increment: 1 },
-      },
-    });
+      try {
+        const refreshedConnection = await refreshToken(freshConnection.id);
+        const refreshedToken = decrypt(refreshedConnection.accessToken);
+        const retryResult = await callPlatformApi(
+          refreshedToken,
+          refreshedConnection.platformUserId
+        );
+        platformPostId = retryResult.postId;
+        platformUrl = retryResult.postUrl;
 
-    // Notify the advisor via notification queue
-    try {
-      await notificationQueue.add(`notify:publish-failed:${postId}`, {
-        type: 'in_app',
-        userId: publishJob.advisorId,
-        orgId: publishJob.organizationId,
-        subject: `Post failed to publish on ${publishJob.platform}`,
-        templateId: 'publish_failed',
-        variables: {
+        logger.info('Retry after token refresh succeeded', {
+          postId,
           platform: publishJob.platform,
-          draftId: publishJob.draftId,
+        });
+      } catch (retryErr) {
+        // Retry also failed — fall through to the existing error handling below
+        const retryErrorMessage =
+          retryErr instanceof Error
+            ? retryErr.message
+            : `Unknown error publishing to ${publishJob.platform}`;
+
+        logger.error('Publish job failed after 401 retry', {
+          postId,
+          platform: publishJob.platform,
+          error: retryErrorMessage,
+          attempt: job.attemptsMade,
+        });
+
+        await prisma.publishJob.update({
+          where: { id: postId },
+          data: {
+            status: PublishJobStatus.FAILED,
+            errorMessage: retryErrorMessage,
+            retryCount: { increment: 1 },
+          },
+        });
+
+        try {
+          await notificationQueue.add(`notify:publish-failed:${postId}`, {
+            type: 'in_app',
+            userId: publishJob.advisorId,
+            orgId: publishJob.organizationId,
+            subject: `Post failed to publish on ${publishJob.platform}`,
+            templateId: 'publish_failed',
+            variables: {
+              platform: publishJob.platform,
+              draftId: publishJob.draftId,
+              errorMessage: retryErrorMessage,
+            },
+          });
+        } catch (notifyErr) {
+          logger.warn('Failed to enqueue failure notification', {
+            postId,
+            error:
+              notifyErr instanceof Error ? notifyErr.message : String(notifyErr),
+          });
+        }
+
+        throw retryErr;
+      }
+    } else {
+      // Non-401 error — existing error handling
+      const errorMessage =
+        err instanceof Error ? err.message : `Unknown error publishing to ${publishJob.platform}`;
+
+      logger.error('Publish job failed', {
+        postId,
+        platform: publishJob.platform,
+        error: errorMessage,
+        attempt: job.attemptsMade,
+      });
+
+      await prisma.publishJob.update({
+        where: { id: postId },
+        data: {
+          status: PublishJobStatus.FAILED,
           errorMessage,
+          retryCount: { increment: 1 },
         },
       });
-    } catch (notifyErr) {
-      logger.warn('Failed to enqueue failure notification', {
-        postId,
-        error:
-          notifyErr instanceof Error ? notifyErr.message : String(notifyErr),
-      });
-    }
 
-    throw err;
+      // Notify the advisor via notification queue
+      try {
+        await notificationQueue.add(`notify:publish-failed:${postId}`, {
+          type: 'in_app',
+          userId: publishJob.advisorId,
+          orgId: publishJob.organizationId,
+          subject: `Post failed to publish on ${publishJob.platform}`,
+          templateId: 'publish_failed',
+          variables: {
+            platform: publishJob.platform,
+            draftId: publishJob.draftId,
+            errorMessage,
+          },
+        });
+      } catch (notifyErr) {
+        logger.warn('Failed to enqueue failure notification', {
+          postId,
+          error:
+            notifyErr instanceof Error ? notifyErr.message : String(notifyErr),
+        });
+      }
+
+      throw err;
+    }
   }
 
   // Success — update job record

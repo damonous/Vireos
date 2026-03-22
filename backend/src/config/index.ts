@@ -46,6 +46,13 @@ const configSchema = z.object({
       /^[0-9a-fA-F]{64}$/,
       'ENCRYPTION_KEY must be a 64-character hex string (32 bytes)'
     ),
+  ENCRYPTION_KEY_PREVIOUS: z
+    .string()
+    .regex(
+      /^[0-9a-fA-F]{64}$/,
+      'ENCRYPTION_KEY_PREVIOUS must be a 64-character hex string (32 bytes)'
+    )
+    .optional(),
 
   // OpenAI
   OPENAI_API_KEY: z.string().min(1, 'OPENAI_API_KEY is required'),
@@ -150,7 +157,30 @@ if (!parseResult.success) {
   process.exit(1);
 }
 
-export const config = parseResult.data;
+export const config = Object.freeze(parseResult.data);
+
+// ---------------------------------------------------------------------------
+// Scrub sensitive environment variables — values are captured in frozen config
+// ---------------------------------------------------------------------------
+
+const sensitiveEnvKeys = [
+  'ENCRYPTION_KEY',
+  'ENCRYPTION_KEY_PREVIOUS',
+  'JWT_SECRET',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'MAILGUN_API_KEY',
+] as const;
+
+for (const key of sensitiveEnvKeys) {
+  delete process.env[key];
+}
+
+// Import logger lazily to avoid circular dependency (logger reads process.env directly)
+import { logger } from '../utils/logger';
+logger.info(
+  'Secrets loaded and environment scrubbed — sensitive values removed from process.env'
+);
 
 // Convenience aliases
 export const isDev = config.NODE_ENV === 'development';

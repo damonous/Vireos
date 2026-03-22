@@ -13,6 +13,7 @@ import {
   listLeadsQuerySchema,
   bulkUpdateStatusSchema,
 } from '../validators/lead.validators';
+import { LeadStatus } from '@prisma/client';
 import * as leadService from '../services/lead.service';
 import { AuthenticatedRequest, UserRole } from '../types';
 
@@ -160,6 +161,43 @@ router.post(
         authReq.user
       );
       res.status(200).json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// GET /v1/leads/export — export leads as CSV (all roles, scoped) (FR-012)
+// NOTE: Must be registered BEFORE /:id routes to avoid param capture
+// ---------------------------------------------------------------------------
+
+const exportLeadsQuerySchema = z.object({
+  status: z
+    .nativeEnum(LeadStatus, { errorMap: () => ({ message: 'Invalid lead status' }) })
+    .optional(),
+  format: z.enum(['csv']).default('csv'),
+});
+
+router.get(
+  '/export',
+  auth,
+  validateQuery(exportLeadsQuerySchema),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const authReq = req as unknown as AuthenticatedRequest;
+      const query = req.query as any;
+
+      const { csv } = await leadService.exportLeadsCsv(authReq.user, {
+        status: query.status,
+      });
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="leads-export-${new Date().toISOString().slice(0, 10)}.csv"`
+      );
+      res.status(200).send(csv);
     } catch (err) {
       next(err);
     }

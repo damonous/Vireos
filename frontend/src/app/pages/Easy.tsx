@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Sparkles,
@@ -15,6 +15,9 @@ import {
   Search,
   Shield,
   MessageSquare,
+  Loader2,
+  Check,
+  Wrench,
 } from 'lucide-react';
 import { apiClient } from '../lib/api-client';
 import { useApiData } from '../hooks/useApiData';
@@ -30,9 +33,7 @@ interface ConversationSummary {
   updatedAt: string;
 }
 
-interface ConversationListResponse {
-  data: ConversationSummary[];
-}
+type ConversationListResponse = ConversationSummary[];
 
 interface Message {
   id: string;
@@ -166,6 +167,186 @@ const quickActions = [
   { label: 'Start a campaign', value: 'Start a new marketing campaign for this month' },
 ];
 
+interface StreamingTool {
+  id: string;
+  name: string;
+  status: 'running' | 'complete';
+  summary?: string;
+}
+
+function humanizeToolName(name: string): string {
+  return name
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function renderInlineMarkdown(text: string): ReactNode[] {
+  const parts = text.split(/(\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g);
+
+  return parts.filter(Boolean).map((part, index) => {
+    const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (linkMatch) {
+      const [, label, href] = linkMatch;
+      return (
+        <a
+          key={`inline-${index}`}
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="text-[#0EA5E9] underline underline-offset-2 break-all"
+        >
+          {label}
+        </a>
+      );
+    }
+
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <code
+          key={`inline-${index}`}
+          className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.9em] text-slate-800"
+        >
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={`inline-${index}`}>{part.slice(2, -2)}</strong>;
+    }
+
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return <em key={`inline-${index}`}>{part.slice(1, -1)}</em>;
+    }
+
+    return <Fragment key={`inline-${index}`}>{part}</Fragment>;
+  });
+}
+
+function renderMarkdownParagraph(text: string, key: string): ReactNode {
+  const lines = text.split('\n');
+
+  return (
+    <p key={key} className="text-sm text-gray-900 leading-6 whitespace-pre-wrap">
+      {lines.map((line, index) => (
+        <Fragment key={`${key}-line-${index}`}>
+          {renderInlineMarkdown(line)}
+          {index < lines.length - 1 ? <br /> : null}
+        </Fragment>
+      ))}
+    </p>
+  );
+}
+
+function renderMarkdown(content: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  const fencePattern = /```(\w+)?\n([\s\S]*?)```/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let keyIndex = 0;
+
+  const pushTextBlock = (text: string) => {
+    const chunks = text
+      .split(/\n{2,}/)
+      .map((chunk) => chunk.trim())
+      .filter(Boolean);
+
+    chunks.forEach((chunk) => {
+      const headingMatch = chunk.match(/^(#{1,3})\s+(.+)$/);
+      if (headingMatch) {
+        const level = headingMatch[1].length;
+        const title = headingMatch[2];
+        const className =
+          level === 1
+            ? 'text-lg font-semibold text-gray-900'
+            : level === 2
+              ? 'text-base font-semibold text-gray-900'
+              : 'text-sm font-semibold text-gray-900';
+
+        nodes.push(
+          <div key={`md-${keyIndex++}`} className={className}>
+            {renderInlineMarkdown(title)}
+          </div>
+        );
+        return;
+      }
+
+      const unorderedItems = chunk
+        .split('\n')
+        .map((line) => line.match(/^[-*]\s+(.+)$/)?.[1] ?? null);
+      if (unorderedItems.every(Boolean)) {
+        nodes.push(
+          <ul key={`md-${keyIndex++}`} className="list-disc pl-5 space-y-1 text-sm text-gray-900 leading-6">
+            {unorderedItems.map((item, index) => (
+              <li key={`md-${keyIndex}-ul-${index}`}>{renderInlineMarkdown(item!)}</li>
+            ))}
+          </ul>
+        );
+        return;
+      }
+
+      const orderedItems = chunk
+        .split('\n')
+        .map((line) => line.match(/^\d+\.\s+(.+)$/)?.[1] ?? null);
+      if (orderedItems.every(Boolean)) {
+        nodes.push(
+          <ol key={`md-${keyIndex++}`} className="list-decimal pl-5 space-y-1 text-sm text-gray-900 leading-6">
+            {orderedItems.map((item, index) => (
+              <li key={`md-${keyIndex}-ol-${index}`}>{renderInlineMarkdown(item!)}</li>
+            ))}
+          </ol>
+        );
+        return;
+      }
+
+      nodes.push(renderMarkdownParagraph(chunk, `md-${keyIndex++}`));
+    });
+  };
+
+  while ((match = fencePattern.exec(content)) !== null) {
+    const [fullMatch, language = '', code] = match;
+    const before = content.slice(lastIndex, match.index);
+    if (before.trim()) {
+      pushTextBlock(before);
+    }
+
+    nodes.push(
+      <div key={`md-${keyIndex++}`} className="overflow-hidden rounded-xl border border-slate-200 bg-slate-950">
+        {language ? (
+          <div className="border-b border-slate-800 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-slate-400">
+            {language}
+          </div>
+        ) : null}
+        <pre className="overflow-x-auto p-3 text-sm leading-6 text-slate-100">
+          <code>{code.replace(/\n$/, '')}</code>
+        </pre>
+      </div>
+    );
+
+    lastIndex = match.index + fullMatch.length;
+  }
+
+  const trailing = content.slice(lastIndex);
+  if (trailing.trim()) {
+    pushTextBlock(trailing);
+  }
+
+  return nodes;
+}
+
+function MarkdownMessage({ content, streaming = false }: { content: string; streaming?: boolean }) {
+  const nodes = renderMarkdown(content);
+
+  return (
+    <div className="space-y-3">
+      {nodes.length > 0 ? nodes : renderMarkdownParagraph(content, 'md-fallback')}
+      {streaming ? (
+        <span className="inline-block w-0.5 h-4 bg-[#0EA5E9] animate-pulse align-text-bottom" aria-hidden="true" />
+      ) : null}
+    </div>
+  );
+}
+
 export default function Easy() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -182,11 +363,17 @@ export default function Easy() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [streamingMessage, setStreamingMessage] = useState<string | null>(null);
+  const [streamingTools, setStreamingTools] = useState<StreamingTool[]>([]);
+  const [streamingConversationId, setStreamingConversationId] = useState<string | null>(null);
+  const sentCommandRef = useRef<string>('');
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const detailReloadRef = useRef(detail.reload);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const rows = conversations.data?.data ?? [];
+  const rows = conversations.data ?? [];
   const filteredRows = useMemo(
     () =>
       rows.filter((conversation) =>
@@ -204,10 +391,12 @@ export default function Easy() {
   }, [rows, selectedId, showEmptyState]);
 
   useEffect(() => {
-    if (selectedId && !rows.some((conversation) => conversation.id === selectedId)) {
+    // Don't reset selectedId while streaming — the new conversation may not
+    // be in the sidebar list yet until conversations.reload() completes.
+    if (selectedId && !submitting && streamingConversationId === null && !rows.some((conversation) => conversation.id === selectedId)) {
       setSelectedId(rows[0]?.id ?? null);
     }
-  }, [rows, selectedId]);
+  }, [rows, selectedId, submitting, streamingConversationId]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -231,7 +420,11 @@ export default function Easy() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [detail.data?.messages, selectedId, showEmptyState]);
+  }, [detail.data?.messages, selectedId, showEmptyState, streamingMessage, streamingTools]);
+
+  useEffect(() => {
+    detailReloadRef.current = detail.reload;
+  }, [detail.reload]);
 
   const handleSignOut = async () => {
     await logout();
@@ -239,36 +432,110 @@ export default function Easy() {
   };
 
   const handleNewChat = () => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
     setSelectedId(null);
     setShowEmptyState(true);
     setInputValue('');
     setSubmitError(null);
+    setStreamingMessage(null);
+    setStreamingTools([]);
+    setStreamingConversationId(null);
+    setSubmitting(false);
   };
 
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     if (!inputValue.trim()) {
       return;
     }
 
+    const command = inputValue.trim();
+    sentCommandRef.current = command;
+    setInputValue('');
     setSubmitting(true);
     setSubmitError(null);
+    setShowEmptyState(false);
+    setStreamingMessage('');
+    setStreamingTools([]);
+    setStreamingConversationId(selectedId);
 
-    try {
-      const result = await apiClient.post<AgentCommandResult>('/agent/command', {
-        command: inputValue.trim(),
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    await apiClient.streamPost(
+      '/agent/command/stream',
+      {
+        command,
         conversationId: selectedId ?? undefined,
-      });
-
-      setInputValue('');
-      setShowEmptyState(false);
-      await conversations.reload();
-      setSelectedId(result.conversationId);
-    } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Failed to reach Easy Mode.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+      },
+      {
+        onEvent: (event: Record<string, unknown>) => {
+          switch (event.event) {
+            case 'conversation_created':
+              setSelectedId(event.conversationId as string);
+              setStreamingConversationId(event.conversationId as string);
+              break;
+            case 'text_delta':
+              setStreamingMessage((prev) => (prev ?? '') + (event.delta as string));
+              break;
+            case 'tool_call_start':
+              setStreamingTools((prev) => [
+                ...prev,
+                { id: event.callId as string, name: event.name as string, status: 'running' },
+              ]);
+              // Reset streaming message for post-tool summary
+              setStreamingMessage('');
+              break;
+            case 'tool_call_complete':
+              setStreamingTools((prev) =>
+                prev.map((t) =>
+                  t.id === (event.callId as string)
+                    ? { ...t, status: 'complete' as const, summary: event.summary as string }
+                    : t
+                )
+              );
+              break;
+            case 'done':
+              // Don't clear streamingMessage here — keep it visible until
+              // onComplete reloads persisted messages from the backend.
+              setStreamingTools([]);
+              setSubmitting(false);
+              sentCommandRef.current = '';
+              break;
+            case 'error':
+              setSubmitError(event.message as string);
+              setStreamingMessage(null);
+              setStreamingTools([]);
+              setStreamingConversationId(null);
+              setSubmitting(false);
+              sentCommandRef.current = '';
+              break;
+          }
+        },
+        onError: (err: Error) => {
+          setSubmitError(err.message);
+          setStreamingMessage(null);
+          setStreamingTools([]);
+          setStreamingConversationId(null);
+          setSubmitting(false);
+          sentCommandRef.current = '';
+        },
+        onComplete: () => {
+          abortControllerRef.current = null;
+          // Small delay to ensure the backend has finished persisting
+          // messages before we reload the conversation detail.
+          setTimeout(() => {
+            void conversations.reload();
+            void detailReloadRef.current().then(() => {
+              setStreamingMessage(null);
+              setStreamingConversationId(null);
+            });
+          }, 300);
+        },
+      },
+      abortController.signal
+    );
+  }, [inputValue, selectedId, conversations, detail.reload]);
 
   const handleQuickAction = (text: string) => {
     setInputValue(text);
@@ -280,6 +547,13 @@ export default function Easy() {
     setShowEmptyState(false);
     setSubmitError(null);
   };
+
+  const isActiveStreamingConversation =
+    streamingMessage !== null &&
+    !showEmptyState &&
+    ((streamingConversationId !== null && streamingConversationId === selectedId) ||
+      (streamingConversationId === null && selectedId === null));
+  const showConversationLoader = detail.loading && !detail.data && !isActiveStreamingConversation;
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -516,7 +790,7 @@ export default function Easy() {
                 </div>
               </div>
             </div>
-          ) : detail.loading ? (
+          ) : showConversationLoader ? (
             <div className="h-full flex items-center justify-center">
               <LoadingState label="Loading conversation..." />
             </div>
@@ -542,9 +816,7 @@ export default function Easy() {
 
                     <div className="flex-1">
                       <div className="bg-white rounded-2xl rounded-bl-sm border border-gray-200 px-4 py-3">
-                        <p className="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">
-                          {message.content}
-                        </p>
+                        <MarkdownMessage content={message.content} />
 
                         {activeConversation ? (
                           (() => {
@@ -585,7 +857,69 @@ export default function Easy() {
                 )
               )}
 
-              {!detail.loading && (detail.data?.messages?.length ?? 0) === 0 ? (
+              {/* Optimistic user bubble while streaming */}
+              {isActiveStreamingConversation && sentCommandRef.current && (
+                <div className="flex justify-end">
+                  <div className="max-w-[85%] md:max-w-[70%]">
+                    <div className="bg-[#6366F1] text-white rounded-2xl rounded-br-sm px-4 py-3">
+                      <p className="text-sm whitespace-pre-wrap">{sentCommandRef.current}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tool execution indicators */}
+              {isActiveStreamingConversation && streamingTools.length > 0 && (
+                <div className="space-y-2">
+                  {streamingTools.map((tool) => (
+                    <div
+                      key={tool.id}
+                      className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2 border border-gray-200"
+                    >
+                      {tool.status === 'running' ? (
+                        <Loader2 className="w-4 h-4 text-[#0EA5E9] animate-spin" />
+                      ) : (
+                        <Check className="w-4 h-4 text-green-500" />
+                      )}
+                      <Wrench className="w-3.5 h-3.5 text-gray-400" />
+                      <span className="font-medium">{humanizeToolName(tool.name)}</span>
+                      {tool.status === 'running' && (
+                        <span className="text-gray-400">Running...</span>
+                      )}
+                      {tool.status === 'complete' && tool.summary && (
+                        <span className="text-gray-500 truncate">{tool.summary}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Streaming assistant bubble */}
+              {isActiveStreamingConversation && (
+                <div className="flex gap-3 max-w-[92%] md:max-w-[70%]">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#0EA5E9] flex items-center justify-center text-white text-xs font-bold">
+                    V
+                  </div>
+                  <div className="flex-1">
+                    <div className="bg-white rounded-2xl rounded-bl-sm border border-gray-200 px-4 py-3">
+                      {streamingMessage === '' ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm text-gray-400">Thinking</span>
+                          <span className="flex gap-0.5">
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                          </span>
+                        </div>
+                      ) : (
+                        <MarkdownMessage content={streamingMessage} streaming />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!detail.loading && (detail.data?.messages?.length ?? 0) === 0 && streamingMessage === null ? (
                 <div className="h-full flex items-center justify-center">
                   <div className="text-center max-w-xl mx-auto px-4 py-16">
                     <MessageSquare className="w-12 h-12 text-sky-400 mx-auto" />
@@ -613,8 +947,9 @@ export default function Easy() {
               value={inputValue}
               onChange={(event) => setInputValue(event.target.value)}
               onKeyDown={handleKeyDown}
+              disabled={submitting}
               rows={1}
-              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 pr-12 resize-none text-sm focus:outline-none focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9]"
+              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 pr-12 resize-none text-sm focus:outline-none focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] disabled:opacity-60 disabled:cursor-not-allowed"
               placeholder="Ask Vireos AI to help with your marketing..."
               style={{ maxHeight: '120px' }}
             />

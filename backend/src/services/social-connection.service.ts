@@ -12,13 +12,16 @@ import type { AuthenticatedUser } from '../types';
 
 const LINKEDIN_AUTH_URL = 'https://www.linkedin.com/oauth/v2/authorization';
 const LINKEDIN_TOKEN_URL = 'https://www.linkedin.com/oauth/v2/accessToken';
+const LINKEDIN_REVOKE_URL = 'https://www.linkedin.com/oauth/v2/revoke';
 const LINKEDIN_PROFILE_URL = 'https://api.linkedin.com/v2/userinfo';
 const LINKEDIN_SCOPES = 'w_member_social openid profile email';
 
 const FACEBOOK_AUTH_URL = 'https://www.facebook.com/v18.0/dialog/oauth';
 const FACEBOOK_TOKEN_URL = 'https://graph.facebook.com/v18.0/oauth/access_token';
 const FACEBOOK_ME_URL = 'https://graph.facebook.com/me';
-const FACEBOOK_SCOPES = 'pages_manage_posts,pages_read_engagement';
+const FACEBOOK_PERMISSIONS_URL = 'https://graph.facebook.com/v19.0/me/permissions';
+const FACEBOOK_SCOPES =
+  'pages_show_list,pages_manage_posts,pages_read_engagement,ads_management,ads_read,business_management';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -308,6 +311,97 @@ async function fetchFacebookPages(accessToken: string): Promise<Array<{
   return payload.data ?? [];
 }
 
+async function fetchFacebookAdAccounts(accessToken: string): Promise<Array<{
+  id: string;
+  account_id?: string;
+  name?: string;
+  account_status?: number;
+}>> {
+  const params = new URLSearchParams({
+    fields: 'id,account_id,name,account_status',
+    access_token: accessToken,
+  });
+
+  const response = await fetch(`https://graph.facebook.com/v18.0/me/adaccounts?${params.toString()}`);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    logger.warn('Facebook ad accounts fetch failed', {
+      status: response.status,
+      body: errorText,
+    });
+    return [];
+  }
+
+  const payload = (await response.json()) as {
+    data?: Array<{ id: string; account_id?: string; name?: string; account_status?: number }>;
+  };
+
+  return payload.data ?? [];
+}
+
+// ---------------------------------------------------------------------------
+// Token revocation helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Attempts to revoke an OAuth token with the platform's revocation endpoint.
+ * Failures are logged as warnings but never thrown — disconnection must not
+ * be blocked by a failed revocation attempt.
+ */
+async function revokeTokenAtPlatform(
+  platform: SocialPlatform,
+  accessToken: string
+): Promise<void> {
+  try {
+    if (platform === 'LINKEDIN') {
+      const body = new URLSearchParams({
+        client_id: config.LINKEDIN_CLIENT_ID,
+        client_secret: config.LINKEDIN_CLIENT_SECRET,
+        token: accessToken,
+      });
+
+      const response = await fetch(LINKEDIN_REVOKE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      });
+
+      if (response.ok) {
+        logger.info('LinkedIn token revoked successfully');
+      } else {
+        const errorText = await response.text();
+        logger.warn('LinkedIn token revocation failed', {
+          status: response.status,
+          body: errorText,
+        });
+      }
+    } else if (platform === 'FACEBOOK') {
+      const params = new URLSearchParams({ access_token: accessToken });
+
+      const response = await fetch(
+        `${FACEBOOK_PERMISSIONS_URL}?${params.toString()}`,
+        { method: 'DELETE' }
+      );
+
+      if (response.ok) {
+        logger.info('Facebook token revoked successfully');
+      } else {
+        const errorText = await response.text();
+        logger.warn('Facebook token revocation failed', {
+          status: response.status,
+          body: errorText,
+        });
+      }
+    }
+  } catch (err) {
+    logger.warn('Token revocation request failed due to network error', {
+      platform,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
 // ---------------------------------------------------------------------------
 // SocialConnectionService
 // ---------------------------------------------------------------------------
@@ -395,6 +489,7 @@ export async function handleCallback(
     scopes = LINKEDIN_SCOPES.split(' ');
   } else {
     const tokens = await exchangeFacebookCode(code);
+    const adAccounts = await fetchFacebookAdAccounts(tokens.access_token);
 
     // Fetch the user's Facebook Page — we need the page ID and page access
     // token to publish on behalf of the page (not the user's personal ID).
@@ -402,11 +497,16 @@ export async function handleCallback(
 
     // Store the page access token (not the user token) so publish jobs work.
     encryptedAccessToken = encrypt(page.pageAccessToken);
+    // Reuse refreshToken to retain the user token for Ads API calls. Facebook
+    // does not use refresh tokens in this flow, so this field is otherwise idle.
+    encryptedRefreshToken = encrypt(tokens.access_token);
     // Page tokens obtained via /me/accounts with a long-lived user token
     // are long-lived and do not expire, so we leave tokenExpiresAt null.
     tokenExpiresAt = null;
     platformUserId = page.pageId;
-    platformUsername = page.pageName;
+    platformUsername = adAccounts[0]?.account_id
+      ? `${page.pageName} [ad_account:${adAccounts[0].account_id}]`
+      : page.pageName;
     scopes = FACEBOOK_SCOPES.split(',');
   }
 
@@ -556,6 +656,63 @@ export async function refreshToken(
 }
 
 /**
+ * Ensures the OAuth token for a connection is fresh before making API calls.
+ * If the token expires within 5 minutes (or is already expired), attempts a
+ * proactive refresh. If the refresh fails, it logs the error and returns the
+ * existing connection so the caller can still attempt the API call with the
+ * current token (it may still work, or the caller can handle 401 separately).
+ */
+export async function ensureFreshToken(
+  connectionId: string
+): Promise<SocialConnection> {
+  const connection = await prisma.socialConnection.findUnique({
+    where: { id: connectionId },
+  });
+
+  if (!connection) {
+    throw Errors.notFound('SocialConnection');
+  }
+
+  // If there is no expiry tracked (e.g. Facebook long-lived tokens), skip refresh
+  if (!connection.tokenExpiresAt) {
+    return connection;
+  }
+
+  const FIVE_MINUTES_MS = 5 * 60 * 1000;
+  const expiresAt = new Date(connection.tokenExpiresAt).getTime();
+  const now = Date.now();
+
+  if (expiresAt - now > FIVE_MINUTES_MS) {
+    // Token is still fresh — no refresh needed
+    return connection;
+  }
+
+  logger.info('Token expiring soon or already expired, attempting refresh', {
+    connectionId,
+    platform: connection.platform,
+    tokenExpiresAt: connection.tokenExpiresAt,
+    minutesUntilExpiry: Math.round((expiresAt - now) / 60000),
+  });
+
+  try {
+    const refreshed = await refreshToken(connectionId);
+    logger.info('Proactive token refresh succeeded', {
+      connectionId,
+      platform: connection.platform,
+    });
+    return refreshed;
+  } catch (err) {
+    logger.warn('Proactive token refresh failed, continuing with existing token', {
+      connectionId,
+      platform: connection.platform,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    // Return the original connection — let the caller attempt the API call
+    return connection;
+  }
+}
+
+/**
  * Disconnects (deactivates) a social connection.
  * Advisors can only disconnect their own connections; admins can disconnect any.
  */
@@ -582,6 +739,20 @@ export async function disconnect(
     connection.userId !== user.id
   ) {
     throw Errors.forbidden('You can only disconnect your own social connections.');
+  }
+
+  // Attempt to revoke the token at the platform before deleting the record.
+  // We decrypt the access token and call the platform's revocation endpoint.
+  // Failures are logged but do not block the disconnect flow.
+  try {
+    const plainAccessToken = decrypt(connection.accessToken);
+    await revokeTokenAtPlatform(connection.platform, plainAccessToken);
+  } catch (err) {
+    logger.warn('Failed to decrypt or revoke token during disconnect', {
+      connectionId,
+      platform: connection.platform,
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 
   await prisma.socialConnection.delete({ where: { id: connectionId } });

@@ -26,6 +26,10 @@ const FB_WEBHOOK_VERIFY_TOKEN =
   process.env['FACEBOOK_WEBHOOK_VERIFY_TOKEN'] ??
   process.env['FB_WEBHOOK_VERIFY_TOKEN'] ??
   '';
+const FB_AD_ACCOUNT_ENV =
+  process.env['FACEBOOK_AD_ACCOUNT_ID'] ??
+  process.env['FB_AD_ACCOUNT_ID'] ??
+  '';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,6 +78,39 @@ function buildCampaignWhere(
   }
 
   return { ...base, ...overrides };
+}
+
+function extractStoredAdAccountId(connection: { platformUsername?: string | null }): string | null {
+  const value = connection.platformUsername ?? '';
+  const match = value.match(/\[ad_account:([^\]]+)\]/i);
+  return match?.[1] ?? null;
+}
+
+async function fetchFacebookAdAccountId(userAccessToken: string): Promise<string | null> {
+  const params = new URLSearchParams({
+    fields: 'id,account_id,name,account_status',
+    access_token: userAccessToken,
+  });
+
+  const response = await fetch(`${FB_GRAPH_URL}/me/adaccounts?${params.toString()}`);
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
+    logger.warn('Unable to fetch Facebook ad accounts', {
+      status: response.status,
+      body: errorBody,
+    });
+    return null;
+  }
+
+  const payload = (await response.json()) as {
+    data?: Array<{ id?: string; account_id?: string; account_status?: number }>;
+  };
+
+  const activeAccount = (payload.data ?? []).find((account) => account.account_status === 1)
+    ?? (payload.data ?? [])[0];
+
+  return activeAccount?.account_id ?? activeAccount?.id?.replace(/^act_/, '') ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -308,16 +345,19 @@ export async function launchCampaign(
   }
 
   // Decrypt the access token
-  const accessToken = decrypt(connection.accessToken);
+  const pageAccessToken = decrypt(connection.accessToken);
+  const userAccessToken = connection.refreshToken ? decrypt(connection.refreshToken) : null;
 
   // Determine ad account ID
   const adAccountId =
     dto?.adAccountId ??
-    (connection.platformUserId ? `${connection.platformUserId}` : null);
+    extractStoredAdAccountId(connection) ??
+    (userAccessToken ? await fetchFacebookAdAccountId(userAccessToken) : null) ??
+    (FB_AD_ACCOUNT_ENV || null);
 
   if (!adAccountId) {
     throw Errors.badRequest(
-      'Ad account ID is required to launch a campaign. Provide adAccountId in the request.'
+      'Ad account ID is not available for this Facebook connection. Reconnect Facebook with ads permissions or provide adAccountId in the request.'
     );
   }
 
@@ -332,7 +372,7 @@ export async function launchCampaign(
   let fbResponse: Response;
   try {
     fbResponse = await fetch(
-      `${FB_GRAPH_URL}/act_${adAccountId}/campaigns?access_token=${accessToken}`,
+      `${FB_GRAPH_URL}/act_${adAccountId}/campaigns?access_token=${userAccessToken ?? pageAccessToken}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -430,7 +470,9 @@ export async function pauseCampaign(
     });
 
     if (connection && connection.isActive) {
-      const accessToken = decrypt(connection.accessToken);
+      const accessToken = connection.refreshToken
+        ? decrypt(connection.refreshToken)
+        : decrypt(connection.accessToken);
 
       try {
         const fbResponse = await fetch(

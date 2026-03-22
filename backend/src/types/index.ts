@@ -133,6 +133,8 @@ export interface NotificationJobData {
   subject: string;
   templateId: string;
   variables: Record<string, string>;
+  /** When set, the worker reads the Notification record and sends an email to the user. */
+  notificationId?: string;
 }
 
 // ---------------------------------------------------------------------------

@@ -123,6 +123,8 @@ enum AuditAction {
   LOGGED_IN
   LOGGED_OUT
   PASSWORD_RESET
+  VIEWED
+  EXPORTED
 }
 
 enum EmailSequenceStatus {
@@ -259,6 +261,7 @@ model User {
   creditTransactions        CreditTransaction[]
   notifications             Notification[]
   agentConversations        AgentConversation[]
+  contentVersions           ContentVersion[]
 
   @@index([organizationId, role])
   @@index([organizationId, status])
@@ -329,6 +332,7 @@ model Draft {
   publishedChannels ContentChannel[]
   aiModel           String?
   tokensUsed        Int              @default(0)
+  complianceScore   Float?
   version           Int              @default(1)
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
@@ -338,6 +342,7 @@ model Draft {
   creator      User         @relation("DraftCreator", fields: [creatorId], references: [id], onDelete: Restrict)
   reviewer     User?        @relation("DraftReviewer", fields: [reviewerId], references: [id])
   publishJobs  PublishJob[]
+  versions     ContentVersion[]
 
   @@index([organizationId, status])
   @@index([organizationId, creatorId])
@@ -853,4 +858,40 @@ model AgentAction {
   @@index([conversationId, createdAt])
   @@index([organizationId, userId])
   @@map("agent_actions")
+}
+
+/// Immutable snapshot of draft content at a point in time.
+/// Created automatically before each edit so that the full history is preserved
+/// and field-level diffs can be computed between any two versions.
+model ContentVersion {
+  id              String        @id @default(cuid())
+  draftId         String
+  draft           Draft         @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  versionNumber   Int
+  linkedinContent String?
+  facebookContent String?
+  emailContent    String?
+  adCopyContent   String?
+  status          ContentStatus
+  createdById     String
+  createdBy       User          @relation(fields: [createdById], references: [id])
+  createdAt       DateTime      @default(now())
+  changeNote      String?
+
+  @@unique([draftId, versionNumber])
+  @@index([draftId])
+  @@map("content_versions")
+}
+
+/// Tracks processed Stripe webhook events to ensure idempotency.
+/// Prevents duplicate processing when Stripe replays events.
+model ProcessedWebhookEvent {
+  id          String   @id @default(cuid())
+  eventId     String   @unique
+  eventType   String
+  processedAt DateTime @default(now())
+
+  @@index([eventId])
+  @@index([processedAt])
+  @@map("processed_webhook_events")
 }

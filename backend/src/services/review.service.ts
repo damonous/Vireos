@@ -4,6 +4,7 @@ import { logger } from '../utils/logger';
 import { Errors } from '../middleware/errorHandler';
 import { UserRole, AuthenticatedUser } from '../types';
 import type { ReviewActionDto, EditContentDto } from '../validators/review.validators';
+import { createVersion } from './version.service';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -95,7 +96,7 @@ async function sendNotification(params: {
 }): Promise<void> {
   try {
     // Write an in-app notification record
-    await prisma.notification.create({
+    const notification = await prisma.notification.create({
       data: {
         organizationId: params.organizationId,
         userId: params.userId,
@@ -111,6 +112,33 @@ async function sendNotification(params: {
       type: params.type,
       title: params.title,
     });
+
+    // Enqueue an email notification job so the worker sends a real email
+    try {
+      const { notificationQueue } = await import('../queues');
+      await notificationQueue.add(`notify:compliance-email:${notification.id}`, {
+        type: 'email',
+        userId: params.userId,
+        orgId: params.organizationId,
+        subject: params.title,
+        templateId: '',
+        variables: {},
+        notificationId: notification.id,
+      });
+
+      logger.info('Compliance email notification job enqueued', {
+        notificationId: notification.id,
+        userId: params.userId,
+        type: params.type,
+      });
+    } catch (queueErr) {
+      // Queue failures must never break the main flow
+      logger.warn('Failed to enqueue compliance email notification', {
+        error: queueErr instanceof Error ? queueErr.message : String(queueErr),
+        notificationId: notification.id,
+        userId: params.userId,
+      });
+    }
   } catch (err) {
     // Notification failures must never break the main flow
     logger.warn('Failed to create notification', {
@@ -638,6 +666,9 @@ export async function editDraftContent(
       `Current status: "${draft.status}".`
     );
   }
+
+  // Snapshot current state before overwriting
+  await createVersion(draft, user.id, 'Pre-edit snapshot (compliance/admin inline edit)');
 
   const previousState = draftToState(draft);
 

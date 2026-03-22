@@ -250,6 +250,22 @@ export async function getLead(
     throw Errors.notFound('Lead');
   }
 
+  // Fire-and-forget: log PII access for compliance (FR-012)
+  writeAuditTrail({
+    organizationId: user.orgId,
+    actorId: user.id,
+    entityType: 'Lead',
+    entityId: lead.id,
+    action: AuditAction.VIEWED,
+    metadata: { email: lead.email },
+  }).catch((err) => {
+    logger.error('Failed to write VIEWED audit trail for lead', {
+      error: err instanceof Error ? err.message : String(err),
+      leadId: lead.id,
+      actorId: user.id,
+    });
+  });
+
   const { leadActivities, ...rest } = lead;
 
   return {
@@ -837,4 +853,101 @@ export async function bulkUpdateStatus(
   });
 
   return { updated: ownedIds.length };
+}
+
+// ---------------------------------------------------------------------------
+// CSV Export
+// ---------------------------------------------------------------------------
+
+export interface ExportLeadsOptions {
+  status?: LeadStatus;
+}
+
+/**
+ * Exports leads for an org as a CSV string. Respects role-based visibility
+ * (advisors only see their own assigned leads). Logs an EXPORTED audit entry.
+ */
+export async function exportLeadsCsv(
+  user: AuthenticatedUser,
+  options: ExportLeadsOptions = {}
+): Promise<{ csv: string; count: number }> {
+  const where = buildLeadWhere(user.orgId, user);
+
+  if (options.status) {
+    (where as Record<string, unknown>)['status'] = options.status;
+  }
+
+  const leads = await prisma.lead.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+      company: true,
+      status: true,
+      createdAt: true,
+    },
+  });
+
+  // Build CSV content
+  const headers = ['id', 'firstName', 'lastName', 'email', 'phone', 'company', 'status', 'createdAt'];
+  const rows = leads.map((lead) =>
+    [
+      lead.id,
+      escapeCsvField(lead.firstName),
+      escapeCsvField(lead.lastName),
+      escapeCsvField(lead.email),
+      escapeCsvField(lead.phone ?? ''),
+      escapeCsvField(lead.company ?? ''),
+      lead.status,
+      lead.createdAt.toISOString(),
+    ].join(',')
+  );
+
+  const csv = [headers.join(','), ...rows].join('\n');
+
+  // Fire-and-forget: log the export for compliance (FR-012)
+  writeAuditTrail({
+    organizationId: user.orgId,
+    actorId: user.id,
+    entityType: 'Lead',
+    entityId: user.orgId,
+    action: AuditAction.EXPORTED,
+    metadata: {
+      format: 'csv',
+      count: leads.length,
+      filters: {
+        status: options.status ?? null,
+      },
+    },
+  }).catch((err) => {
+    logger.error('Failed to write EXPORTED audit trail for leads', {
+      error: err instanceof Error ? err.message : String(err),
+      actorId: user.id,
+      orgId: user.orgId,
+    });
+  });
+
+  logger.info('Leads exported as CSV', {
+    orgId: user.orgId,
+    actorId: user.id,
+    count: leads.length,
+    statusFilter: options.status ?? 'all',
+  });
+
+  return { csv, count: leads.length };
+}
+
+/**
+ * Escapes a string field for CSV output. Wraps in double quotes if the
+ * value contains commas, double quotes, or newlines.
+ */
+function escapeCsvField(value: string): string {
+  if (value.includes(',') || value.includes('"') || value.includes('\n') || value.includes('\r')) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
 }

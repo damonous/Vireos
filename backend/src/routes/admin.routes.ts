@@ -7,6 +7,7 @@ import { prisma } from '../db/client';
 import { UserRole } from '../types';
 import { updateCreditBundlesSchema } from '../validators/billing.validators';
 import * as platformSettingService from '../services/platform-setting.service';
+import { reEncryptAllTokens } from '../utils/crypto';
 
 const router = Router();
 const auth = authenticate as any;
@@ -303,6 +304,28 @@ router.get(
           hasNextPage: skip + limit < total,
           hasPreviousPage: page > 1,
         },
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Encryption key rotation
+// ---------------------------------------------------------------------------
+
+router.post(
+  '/v1/admin/rotate-encryption-keys',
+  auth,
+  requireRole(UserRole.SUPER_ADMIN) as any,
+  async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const reEncryptedCount = await reEncryptAllTokens();
+
+      res.status(200).json({
+        success: true,
+        data: { reEncryptedCount },
       });
     } catch (err) {
       next(err);

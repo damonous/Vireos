@@ -25,6 +25,10 @@ export const listDraftsQuerySchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(20),
 });
 
+export const exportQuerySchema = z.object({
+  format: z.enum(['pdf', 'docx']).default('pdf'),
+});
+
 // ---------------------------------------------------------------------------
 // Types inferred from schemas
 // ---------------------------------------------------------------------------
@@ -32,3 +36,4 @@ export const listDraftsQuerySchema = z.object({
 export type GenerateContentDto = z.infer<typeof generateContentSchema>;
 export type UpdateDraftDto = z.infer<typeof updateDraftSchema>;
 export type ListDraftsQuery = z.infer<typeof listDraftsQuerySchema>;
+export type ExportQuery = z.infer<typeof exportQuerySchema>;

@@ -401,6 +401,58 @@ describe('POST /api/v1/content/generate', () => {
     );
   });
 
+  it('trims overlong generated content before persistence and avoids duplicating channel disclosures', async () => {
+    const accessToken = makeAccessToken(TEST_USER_ID);
+    const longParagraph = 'Steady retirement planning matters during volatile markets. '.repeat(80);
+
+    (prisma.organization.findUnique as jest.Mock).mockResolvedValue({
+      ...mockOrg,
+      requiredDisclosures: {
+        linkedin: 'Past performance is not indicative of future results. Investments involve risk.',
+        facebook: 'Past performance is not indicative of future results. Investments involve risk.',
+        email: 'This communication is for informational purposes only and does not constitute investment advice.',
+        adCopy: 'Investing involves risk. Past performance does not guarantee future results.',
+      },
+    });
+
+    mockOpenAICreate.mockResolvedValue({
+      output_text: JSON.stringify({
+        linkedin: `${longParagraph}\n\nPast performance is not indicative of future results. Investments involve risk.\nPast performance is not indicative of future results. Investments involve risk.`,
+        facebook: `${longParagraph}\n\nPast performance is not indicative of future results. Investments involve risk.`,
+        email: `${longParagraph}\n\nThis communication is for informational purposes only and does not constitute investment advice.`,
+        adCopy: `${longParagraph}\n\nInvesting involves risk. Past performance does not guarantee future results.`,
+      }),
+      usage: { total_tokens: 500 },
+      model: 'gpt-4o-mini',
+    });
+
+    await client
+      .post('/api/v1/content/generate')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        prompt: 'Create concise compliant retirement planning content for volatile markets',
+        title: 'Volatility Content',
+      });
+
+    expect(prisma.draft.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          linkedinContent: expect.any(String),
+          facebookContent: expect.any(String),
+          emailContent: expect.any(String),
+          adCopyContent: expect.any(String),
+        }),
+      })
+    );
+
+    const createArg = (prisma.draft.create as jest.Mock).mock.calls.at(-1)?.[0];
+    expect(createArg.data.linkedinContent.length).toBeLessThanOrEqual(1300);
+    expect(createArg.data.facebookContent.length).toBeLessThanOrEqual(1500);
+    expect(createArg.data.emailContent.length).toBeLessThanOrEqual(2200);
+    expect(createArg.data.adCopyContent.length).toBeLessThanOrEqual(500);
+    expect(createArg.data.linkedinContent.match(/Past performance is not indicative of future results\. Investments involve risk\./g)).toHaveLength(1);
+  });
+
   it('writes an audit trail after successful generation', async () => {
     const accessToken = makeAccessToken(TEST_USER_ID);
 

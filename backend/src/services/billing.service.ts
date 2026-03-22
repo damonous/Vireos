@@ -341,6 +341,63 @@ export async function getCreditBalance(
 }
 
 /**
+ * Returns paginated, date-filtered credit transactions for an organization.
+ */
+export async function getCreditTransactions(
+  orgId: string,
+  user: AuthenticatedUser,
+  filters: {
+    from?: string;
+    to?: string;
+    type?: CreditTransactionType;
+    page: number;
+    limit: number;
+  }
+): Promise<{
+  transactions: CreditTransaction[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+}> {
+  requireReadRole(user);
+
+  const where: Record<string, unknown> = { organizationId: orgId };
+
+  // Date range filter on createdAt
+  if (filters.from || filters.to) {
+    const createdAt: Record<string, Date> = {};
+    if (filters.from) createdAt['gte'] = new Date(filters.from);
+    if (filters.to) createdAt['lte'] = new Date(filters.to);
+    where['createdAt'] = createdAt;
+  }
+
+  // Transaction type filter
+  if (filters.type) {
+    where['type'] = filters.type;
+  }
+
+  const skip = (filters.page - 1) * filters.limit;
+
+  const [transactions, total] = await Promise.all([
+    prisma.creditTransaction.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: filters.limit,
+    }),
+    prisma.creditTransaction.count({ where }),
+  ]);
+
+  return {
+    transactions,
+    pagination: {
+      page: filters.page,
+      limit: filters.limit,
+      total,
+      totalPages: Math.ceil(total / filters.limit),
+    },
+  };
+}
+
+/**
  * Atomically deducts credits from an organization's balance.
  *
  * - Verifies sufficient balance first; throws 402 Payment Required if insufficient.
@@ -540,6 +597,20 @@ export async function handleWebhook(
     eventType: event.type,
   });
 
+  // ------ Idempotency: check if this event has already been processed ------
+  const existingEvent = await prisma.processedWebhookEvent.findUnique({
+    where: { eventId: event.id },
+  });
+
+  if (existingEvent) {
+    logger.warn('Duplicate Stripe webhook event detected, skipping', {
+      eventId: event.id,
+      eventType: event.type,
+      originallyProcessedAt: existingEvent.processedAt,
+    });
+    return;
+  }
+
   try {
     switch (event.type) {
       case 'customer.subscription.created':
@@ -565,6 +636,39 @@ export async function handleWebhook(
       default:
         logger.debug('Unhandled Stripe webhook event type', { eventType: event.type });
         break;
+    }
+
+    // ------ Idempotency: record the event as processed ------
+    try {
+      await prisma.processedWebhookEvent.create({
+        data: {
+          eventId: event.id,
+          eventType: event.type,
+        },
+      });
+    } catch (storeErr: unknown) {
+      // Handle race condition: if another request already stored this event
+      // (unique constraint violation on eventId), log and continue gracefully.
+      const isPrismaUniqueViolation =
+        storeErr != null &&
+        typeof storeErr === 'object' &&
+        'code' in storeErr &&
+        (storeErr as { code: string }).code === 'P2002';
+
+      if (isPrismaUniqueViolation) {
+        logger.warn('Race condition: webhook event already recorded by concurrent request', {
+          eventId: event.id,
+          eventType: event.type,
+        });
+      } else {
+        // Non-unique-constraint error — log but do not fail the webhook
+        // (the event was already processed successfully above)
+        logger.error('Failed to store processed webhook event record', {
+          eventId: event.id,
+          eventType: event.type,
+          error: storeErr instanceof Error ? storeErr.message : String(storeErr),
+        });
+      }
     }
   } catch (err) {
     logger.error('Error processing Stripe webhook event', {

@@ -159,6 +159,121 @@ async function request<T>(
   return parseResponse<T>(response);
 }
 
+// ---------------------------------------------------------------------------
+// SSE streaming support
+// ---------------------------------------------------------------------------
+
+export interface SSECallbacks {
+  onEvent: (event: Record<string, unknown>) => void;
+  onError: (err: Error) => void;
+  onComplete: () => void;
+}
+
+async function streamPost(
+  path: string,
+  body: unknown,
+  callbacks: SSECallbacks,
+  signal?: AbortSignal,
+  retry = true
+): Promise<void> {
+  const token = getAccessToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(resolveUrl(path), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (err) {
+    callbacks.onError(err instanceof Error ? err : new Error(String(err)));
+    return;
+  }
+
+  if (response.status === 401 && retry && !path.includes('/auth/login') && !path.includes('/auth/refresh')) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      return streamPost(path, body, callbacks, signal, false);
+    }
+    clearAuthStorage();
+    if (window.location.pathname !== '/login') {
+      window.location.replace('/login');
+    }
+    return;
+  }
+
+  if (!response.ok) {
+    let message = `Request failed with status ${response.status}`;
+    try {
+      const errorBody = await response.json();
+      if (errorBody?.error?.message) {
+        message = errorBody.error.message;
+      }
+    } catch {
+      // ignore parse errors
+    }
+    callbacks.onError(new ApiError(message, response.status, 'HTTP_ERROR'));
+    return;
+  }
+
+  if (!response.body) {
+    callbacks.onError(new Error('Response body is not readable'));
+    return;
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      // Keep the last potentially incomplete line in the buffer
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('data: ')) {
+          try {
+            const parsed = JSON.parse(trimmed.slice(6));
+            callbacks.onEvent(parsed);
+          } catch {
+            // skip malformed JSON
+          }
+        }
+      }
+    }
+
+    // Process any remaining buffer
+    if (buffer.trim().startsWith('data: ')) {
+      try {
+        const parsed = JSON.parse(buffer.trim().slice(6));
+        callbacks.onEvent(parsed);
+      } catch {
+        // skip malformed JSON
+      }
+    }
+
+    callbacks.onComplete();
+  } catch (err) {
+    if (signal?.aborted) return;
+    callbacks.onError(err instanceof Error ? err : new Error(String(err)));
+  }
+}
+
 export const apiClient = {
   get: <T>(path: string): Promise<T> => request<T>('GET', path),
   post: <T>(path: string, body?: unknown): Promise<T> => request<T>('POST', path, body),
@@ -181,5 +296,6 @@ export const apiClient = {
 
     return parseResponse<T>(response);
   },
+  streamPost,
   keys: STORAGE_KEYS,
 };

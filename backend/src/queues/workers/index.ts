@@ -11,6 +11,7 @@
  */
 
 import { Worker, Job } from 'bullmq';
+import { NotificationType } from '@prisma/client';
 import { logger } from '../../utils/logger';
 import {
   PublishJobData,
@@ -21,6 +22,8 @@ import {
 import { processPublishJob as handlePublishJob } from '../../services/publish.service';
 import { emailSequenceService } from '../../services/email-sequence.service';
 import { linkedinCampaignService } from '../../services/linkedin-campaign.service';
+import { emailService } from '../../services/email.service';
+import { prisma } from '../../db/client';
 
 // ---------------------------------------------------------------------------
 // Redis connection (same config as queues/index.ts)
@@ -129,13 +132,52 @@ async function processLinkedInCampaignJob(
 }
 
 /**
+ * Maps a NotificationType to a human-readable email subject line.
+ */
+function getEmailSubjectForNotificationType(type: NotificationType): string {
+  switch (type) {
+    case NotificationType.CONTENT_SUBMITTED:
+      return 'Content Submitted for Review';
+    case NotificationType.CONTENT_APPROVED:
+      return 'Your Content Has Been Approved';
+    case NotificationType.CONTENT_REJECTED:
+      return 'Your Content Has Been Rejected';
+    case NotificationType.CONTENT_NEEDS_CHANGES:
+      return 'Changes Requested on Your Content';
+    default:
+      return 'Notification from Vireos';
+  }
+}
+
+/**
+ * Builds an HTML email body from a notification record.
+ */
+function buildNotificationEmailHtml(title: string, body: string): string {
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h2 style="color: #333;">${title}</h2>
+      <p style="color: #555; font-size: 16px; line-height: 1.5;">${body}</p>
+      <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+      <p style="color: #999; font-size: 12px;">This is an automated notification from Vireos. Please do not reply to this email.</p>
+    </div>
+  `.trim();
+}
+
+/**
  * Processes a user/system notification.
- * Routes to email (Mailgun) or in-app notification storage.
+ *
+ * When `notificationId` is present (compliance email flow):
+ *   1. Reads the Notification record from the database
+ *   2. Looks up the recipient user's email address
+ *   3. Sends an email via Mailgun using the existing email service
+ *
+ * When `notificationId` is absent (template-based flow):
+ *   Falls back to sending via the email template service.
  */
 async function processNotificationJob(
   job: Job<NotificationJobData>
 ): Promise<void> {
-  const { type, userId, orgId, subject } = job.data;
+  const { type, userId, orgId, subject, notificationId } = job.data;
 
   logger.info('Processing notification job', {
     jobId: job.id,
@@ -143,14 +185,130 @@ async function processNotificationJob(
     userId,
     orgId,
     subject,
+    notificationId,
   });
 
-  // NOTE: Full implementation wired up when NotificationService is built.
-  // When NotificationService is available, import and call it here:
-  //   const service = new NotificationService();
-  //   await service.send(job.data);
+  // -----------------------------------------------------------------------
+  // Compliance email flow: send email based on an existing Notification record
+  // -----------------------------------------------------------------------
+  if (notificationId) {
+    const notification = await prisma.notification.findUnique({
+      where: { id: notificationId },
+    });
 
-  logger.info('Notification job completed', { jobId: job.id, userId });
+    if (!notification) {
+      logger.warn('Notification record not found, skipping email', {
+        jobId: job.id,
+        notificationId,
+      });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: notification.userId },
+      select: { id: true, email: true, firstName: true, lastName: true },
+    });
+
+    if (!user) {
+      logger.warn('User not found for notification, skipping email', {
+        jobId: job.id,
+        notificationId,
+        userId: notification.userId,
+      });
+      return;
+    }
+
+    if (!user.email) {
+      logger.warn('User has no email address, skipping email', {
+        jobId: job.id,
+        notificationId,
+        userId: user.id,
+      });
+      return;
+    }
+
+    const emailSubject = getEmailSubjectForNotificationType(notification.type);
+    const emailHtml = buildNotificationEmailHtml(notification.title, notification.body);
+    const emailText = `${notification.title}\n\n${notification.body}`;
+
+    try {
+      const messageId = await emailService.sendEmail(
+        user.email,
+        emailSubject,
+        emailHtml,
+        emailText
+      );
+
+      logger.info('Compliance notification email sent', {
+        jobId: job.id,
+        notificationId,
+        userId: user.id,
+        email: user.email,
+        notificationType: notification.type,
+        messageId,
+      });
+    } catch (err) {
+      logger.error('Failed to send compliance notification email', {
+        jobId: job.id,
+        notificationId,
+        userId: user.id,
+        email: user.email,
+        notificationType: notification.type,
+        error: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      });
+      throw err; // Re-throw so BullMQ can retry the job
+    }
+
+    return;
+  }
+
+  // -----------------------------------------------------------------------
+  // Template-based email flow (existing publish failure notifications, etc.)
+  // -----------------------------------------------------------------------
+  if (type === 'email' && job.data.templateId) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true },
+    });
+
+    if (!user?.email) {
+      logger.warn('User not found or has no email, skipping template email', {
+        jobId: job.id,
+        userId,
+      });
+      return;
+    }
+
+    try {
+      const messageId = await emailService.sendFromTemplate(
+        job.data.templateId,
+        user.email,
+        job.data.variables
+      );
+
+      logger.info('Template notification email sent', {
+        jobId: job.id,
+        userId,
+        templateId: job.data.templateId,
+        messageId,
+      });
+    } catch (err) {
+      logger.error('Failed to send template notification email', {
+        jobId: job.id,
+        userId,
+        templateId: job.data.templateId,
+        error: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      });
+      throw err;
+    }
+
+    return;
+  }
+
+  // In-app only notifications don't need email processing
+  logger.info('Notification job completed (in-app only)', { jobId: job.id, userId });
 }
 
 // ---------------------------------------------------------------------------

@@ -261,7 +261,7 @@ async function dispatch(
       return {
         success: true,
         data: result,
-        summary: `Found ${data.meta?.totalCount ?? data.items?.length ?? 0} lead(s).`,
+        summary: `Found ${data.pagination?.totalCount ?? data.data?.length ?? 0} lead(s).`,
         bossModePath: '/leads',
       };
     }
