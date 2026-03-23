@@ -408,6 +408,20 @@ function MarkdownMessage({ content, streaming = false }: { content: string; stre
 export default function Easy() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+
+  const navigateToBossMode = useCallback((path: string) => {
+    sessionStorage.setItem('vireos-mode', 'boss');
+    const token = localStorage.getItem('vireos_access_token');
+    if (token) {
+      fetch('/api/v1/auth/me/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ preferredMode: 'boss' }),
+        keepalive: true,
+      }).catch(() => {});
+    }
+    navigate(path);
+  }, [navigate]);
   const conversations = useApiData<ConversationListResponse>('/agent/conversations?page=1&limit=20');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const detail = useApiData<ConversationDetail>(
@@ -675,19 +689,7 @@ export default function Easy() {
             <span>Easy</span>
           </button>
           <button
-            onClick={() => {
-              sessionStorage.setItem('vireos-mode', 'boss');
-              const token = localStorage.getItem('vireos_access_token');
-              if (token) {
-                fetch('/api/v1/auth/me/settings', {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                  body: JSON.stringify({ preferredMode: 'boss' }),
-                  keepalive: true,
-                }).catch(() => {});
-              }
-              navigate('/home');
-            }}
+            onClick={() => navigateToBossMode('/home')}
             className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-colors text-gray-400 hover:text-gray-300"
           >
             <SlidersHorizontal className="w-3 h-3" />
@@ -816,19 +818,7 @@ export default function Easy() {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                sessionStorage.setItem('vireos-mode', 'boss');
-                const token = localStorage.getItem('vireos_access_token');
-                if (token) {
-                  fetch('/api/v1/auth/me/settings', {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                    body: JSON.stringify({ preferredMode: 'boss' }),
-                    keepalive: true,
-                  }).catch(() => {});
-                }
-                navigate('/home');
-              }}
+              onClick={() => navigateToBossMode('/home')}
               className="md:hidden text-sm font-medium text-gray-500 hover:text-[#1E3A5F] transition-colors"
             >
               Boss
@@ -950,7 +940,7 @@ export default function Easy() {
                                     <div className="text-xs text-gray-500 mt-0.5">{action.resultSummary ?? 'Action completed'}</div>
                                   </div>
                                   <button
-                                    onClick={() => navigate(path)}
+                                    onClick={() => navigateToBossMode(path)}
                                     className="flex-shrink-0 text-xs text-[#0EA5E9] hover:text-[#0284C7] whitespace-nowrap font-medium transition-colors"
                                   >
                                     View in Boss Mode →
@@ -979,7 +969,7 @@ export default function Easy() {
                                   <div className="text-xs text-gray-500 mt-0.5">{card.description}</div>
                                 </div>
                                 <button
-                                  onClick={() => navigate('/home')}
+                                  onClick={() => navigateToBossMode('/home')}
                                   className="flex-shrink-0 text-xs text-[#0EA5E9] hover:text-[#0284C7] whitespace-nowrap font-medium transition-colors"
                                 >
                                   View in Boss Mode →
