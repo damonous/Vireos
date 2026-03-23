@@ -325,6 +325,11 @@ export async function getReviewQueue(
   const [drafts, totalCount] = await Promise.all([
     prisma.draft.findMany({
       where,
+      include: {
+        creator: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
       orderBy: { updatedAt: 'asc' }, // oldest first — FIFO review order
       skip,
       take: limit,

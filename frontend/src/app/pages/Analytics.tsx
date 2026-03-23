@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   TrendingUp,
   FileText,
@@ -33,7 +33,7 @@ import { ErrorState } from '../components/ui/error-state';
 import { LoadingState } from '../components/ui/loading-state';
 import { useApiData } from '../hooks/useApiData';
 import { DateRangeSelector } from '../components/DateRangeSelector';
-import type { DatePreset } from '../components/DateRangeSelector';
+import type { DatePreset, CustomDateRange } from '../components/DateRangeSelector';
 
 interface OverviewMetrics {
   contentCreated: number;
@@ -129,11 +129,25 @@ function humanizeKey(value: string): string {
 
 export default function Analytics() {
   const [preset, setPreset] = useState<DatePreset>('30d');
-  const overview = useApiData<OverviewMetrics>(`/analytics/overview?preset=${preset}`, [preset]);
-  const linkedIn = useApiData<LinkedInMetrics>(`/analytics/linkedin?preset=${preset}`, [preset]);
-  const facebook = useApiData<FacebookMetrics>(`/analytics/facebook?preset=${preset}`, [preset]);
-  const email = useApiData<EmailMetrics>(`/analytics/email?preset=${preset}`, [preset]);
-  const leads = useApiData<LeadMetrics>(`/analytics/leads?preset=${preset}`, [preset]);
+  const [customRange, setCustomRange] = useState<CustomDateRange | undefined>();
+
+  const handleDateChange = useCallback((newPreset: DatePreset, range?: CustomDateRange) => {
+    setPreset(newPreset);
+    setCustomRange(newPreset === 'custom' ? range : undefined);
+  }, []);
+
+  const queryString = useMemo(() => {
+    if (preset === 'custom' && customRange) {
+      return `from=${customRange.from.toISOString()}&to=${customRange.to.toISOString()}`;
+    }
+    return `preset=${preset}`;
+  }, [preset, customRange]);
+
+  const overview = useApiData<OverviewMetrics>(`/analytics/overview?${queryString}`, [queryString]);
+  const linkedIn = useApiData<LinkedInMetrics>(`/analytics/linkedin?${queryString}`, [queryString]);
+  const facebook = useApiData<FacebookMetrics>(`/analytics/facebook?${queryString}`, [queryString]);
+  const email = useApiData<EmailMetrics>(`/analytics/email?${queryString}`, [queryString]);
+  const leads = useApiData<LeadMetrics>(`/analytics/leads?${queryString}`, [queryString]);
 
   const isLoading =
     overview.loading ||
@@ -331,7 +345,7 @@ export default function Analytics() {
             <p className="text-sm text-gray-500 mt-1">Live performance data across content, campaigns, and lead flow</p>
           </div>
           <div className="flex items-center gap-2">
-            <DateRangeSelector value={preset} onChange={setPreset} />
+            <DateRangeSelector value={preset} onChange={handleDateChange} customRange={customRange} />
             <Button variant="outline" className="flex items-center gap-2" onClick={exportAnalytics}>
               <Download className="w-4 h-4" />
               Export

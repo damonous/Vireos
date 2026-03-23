@@ -10,15 +10,21 @@ import { apiClient } from '../lib/api-client';
 interface ReviewItem {
   id: string;
   title?: string | null;
+  originalPrompt?: string | null;
   status: string;
-  submittedAt?: string | null;
   createdAt?: string | null;
+  updatedAt?: string | null;
+  linkedinContent?: string | null;
+  facebookContent?: string | null;
+  emailContent?: string | null;
+  adCopyContent?: string | null;
+  flagsJson?: Record<string, unknown> | null;
   creator?: {
+    id?: string | null;
     firstName?: string | null;
     lastName?: string | null;
     email?: string | null;
   } | null;
-  channels?: string[] | null;
 }
 
 interface AuditItem {
@@ -79,7 +85,7 @@ export default function ComplianceOfficerHome() {
     }
 
     const totalHours = pendingItems.reduce((sum, item) => {
-      const submittedAt = item.submittedAt ? new Date(item.submittedAt).getTime() : new Date(item.createdAt ?? Date.now()).getTime();
+      const submittedAt = item.updatedAt ? new Date(item.updatedAt).getTime() : new Date(item.createdAt ?? Date.now()).getTime();
       return sum + Math.max(0, (Date.now() - submittedAt) / 3600000);
     }, 0);
 
@@ -94,13 +100,47 @@ export default function ComplianceOfficerHome() {
   ];
 
   const priorityQueue = useMemo(() => {
-    return queue.slice(0, 5).map((item, index) => ({
-      title: item.title || `Draft ${index + 1}`,
-      advisor: `${item.creator?.firstName ?? ''} ${item.creator?.lastName ?? ''}`.trim() || item.creator?.email || 'Unknown advisor',
-      platform: (item.channels?.[0] ?? 'linkedin').toLowerCase(),
-      submitted: item.submittedAt ? new Date(item.submittedAt).toLocaleString() : 'Waiting for submission',
-      urgency: item.status === 'SUBMITTED' ? 'urgent' : 'normal',
-    }));
+    return queue.slice(0, 5).map((item, index) => {
+      // Derive advisor name from creator relation
+      const advisorName = `${item.creator?.firstName ?? ''} ${item.creator?.lastName ?? ''}`.trim() || item.creator?.email || 'Unknown advisor';
+
+      // Derive platform from content fields
+      const platform = item.linkedinContent ? 'linkedin'
+        : item.facebookContent ? 'facebook'
+        : item.emailContent ? 'email'
+        : 'linkedin';
+
+      // Use updatedAt as submission time (set when status changed to PENDING_REVIEW)
+      const submittedTime = item.updatedAt ?? item.createdAt;
+
+      // Build a clean title
+      let title = item.title || `Draft ${index + 1}`;
+      if (title.startsWith('Topic:')) {
+        const topicMatch = title.match(/^Topic:\s*(.+?)(?:\s*Audience:|$)/m);
+        title = topicMatch?.[1]?.trim() || title.slice(0, 60);
+      }
+
+      // Extract compliance flags from flagsJson
+      const flags: string[] = [];
+      if (item.flagsJson && typeof item.flagsJson === 'object') {
+        const fj = item.flagsJson as Record<string, unknown>;
+        if (Array.isArray(fj['flaggedTerms'])) {
+          flags.push(...(fj['flaggedTerms'] as string[]));
+        }
+        if (typeof fj['complianceScore'] === 'number') {
+          flags.push(`Score: ${fj['complianceScore']}`);
+        }
+      }
+
+      return {
+        title,
+        advisor: advisorName,
+        platform,
+        submitted: submittedTime ? new Date(submittedTime).toLocaleString() : 'Unknown',
+        urgency: item.status === 'PENDING_REVIEW' ? 'urgent' : 'normal',
+        flags,
+      };
+    });
   }, [queue]);
 
   const flaggedTerms = useMemo(() => {
@@ -199,6 +239,15 @@ export default function ComplianceOfficerHome() {
                               <span>•</span>
                               <span>{item.submitted}</span>
                             </div>
+                            {item.flags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {item.flags.map((flag) => (
+                                  <Badge key={flag} className="bg-red-50 text-red-700 border border-red-200 text-xs">
+                                    {flag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <Button onClick={() => navigate('/compliance-officer/review')} className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-sm">

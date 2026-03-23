@@ -19,17 +19,17 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://localhost:13443',
+        target: 'http://localhost:3000',
         changeOrigin: true,
         secure: false,
       },
       '/health': {
-        target: 'https://localhost:13443',
+        target: 'http://localhost:3000',
         changeOrigin: true,
         secure: false,
       },
       '/metrics': {
-        target: 'https://localhost:13443',
+        target: 'http://localhost:3000',
         changeOrigin: true,
         secure: false,
       },

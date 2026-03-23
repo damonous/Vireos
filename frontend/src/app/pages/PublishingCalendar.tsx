@@ -49,7 +49,7 @@ export default function PublishingCalendar() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
 
-  const jobs = useApiData<PublishJob[]>('/publish?page=1&limit=50', [], true, 15_000);
+  const jobs = useApiData<PublishJob[]>('/publish?page=1&limit=100', [], true, 15_000);
   const approvedDrafts = useApiData<Draft[]>('/content/drafts?status=APPROVED&page=1&limit=20');
 
   const jobRows = jobs.data ?? [];
@@ -87,9 +87,8 @@ export default function PublishingCalendar() {
   }, [monthJobs, visibleMonth]);
 
   const upcomingJobs = [...jobRows]
-    .filter((job) => Boolean(job.scheduledAt))
-    .sort((left, right) => new Date(left.scheduledAt ?? left.createdAt).getTime() - new Date(right.scheduledAt ?? right.createdAt).getTime())
-    .slice(0, 5);
+    .filter((job) => job.status === 'QUEUED' && job.scheduledAt)
+    .sort((left, right) => new Date(left.scheduledAt!).getTime() - new Date(right.scheduledAt!).getTime());
 
   const handleSchedule = async () => {
     if (!selectedDraftId) return;
@@ -182,12 +181,27 @@ export default function PublishingCalendar() {
                       <div className="text-sm font-medium text-[#1E3A5F] mb-2">{cell.day}</div>
                       <div className="space-y-1">
                         {cell.jobs.length === 0 ? <div className="text-xs text-gray-400">No scheduled posts</div> : null}
-                        {cell.jobs.map((job) => (
-                          <div key={job.id} className={`rounded border px-2 py-1 text-xs ${statusClasses(job.status)}`}>
-                            <div className="font-medium">{job.channel.replace('_', ' ')}</div>
-                            <div className="truncate">{job.draft?.title ?? 'Untitled draft'}</div>
-                          </div>
-                        ))}
+                        {cell.jobs.map((job) => {
+                          const isEditable = job.status === 'QUEUED';
+                          return (
+                            <button
+                              key={job.id}
+                              type="button"
+                              disabled={!isEditable}
+                              onClick={() => {
+                                if (!isEditable) return;
+                                setEditingJobId(job.id);
+                                setSelectedDraftId(job.draftId);
+                                setSelectedChannel(job.channel);
+                                setScheduledDate(new Date(job.scheduledAt ?? job.createdAt).toISOString().slice(0, 16));
+                              }}
+                              className={`w-full text-left rounded border px-2 py-1 text-xs ${statusClasses(job.status)} ${isEditable ? 'cursor-pointer hover:ring-2 hover:ring-sky-300 transition-shadow' : ''}`}
+                            >
+                              <div className="font-medium">{job.channel.replace('_', ' ')}</div>
+                              <div className="truncate">{job.draft?.title ?? 'Untitled draft'}</div>
+                            </button>
+                          );
+                        })}
                       </div>
                     </>
                   ) : null}
@@ -274,9 +288,14 @@ export default function PublishingCalendar() {
 
         <div className="space-y-6">
           <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex items-center gap-2 mb-4">
-              <Clock3 className="w-4 h-4 text-gray-500" />
-              <h3 className="text-lg font-semibold text-[#1E3A5F]">Upcoming Jobs</h3>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Clock3 className="w-4 h-4 text-gray-500" />
+                <h3 className="text-lg font-semibold text-[#1E3A5F]">Upcoming Posts</h3>
+              </div>
+              {upcomingJobs.length > 0 && (
+                <span className="text-xs text-gray-400">{upcomingJobs.length} scheduled</span>
+              )}
             </div>
 
             {upcomingJobs.length === 0 ? (
@@ -285,35 +304,40 @@ export default function PublishingCalendar() {
                 description="Scheduled publish jobs will appear here as soon as approved content is queued."
               />
             ) : (
-              <div className="space-y-3">
+              <div className="max-h-[420px] overflow-y-auto pr-1 space-y-3">
                 {upcomingJobs.map((job) => (
-                  <div key={job.id} className="rounded-lg border border-gray-200 p-4">
+                  <div
+                    key={job.id}
+                    className={`rounded-lg border p-4 transition-colors ${
+                      editingJobId === job.id
+                        ? 'border-sky-400 bg-sky-50'
+                        : 'border-gray-200 hover:border-sky-200'
+                    }`}
+                  >
                     <p className="text-sm font-semibold text-[#1E3A5F]">{job.draft?.title ?? 'Untitled draft'}</p>
                     <p className="text-xs text-gray-500 mt-1">{job.channel.replace('_', ' ')}</p>
-                    <p className="text-xs text-gray-500 mt-2">{new Date(job.scheduledAt ?? job.createdAt).toLocaleString()}</p>
-                    {job.status === 'QUEUED' ? (
-                      <div className="mt-3 flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setEditingJobId(job.id);
-                            setSelectedDraftId(job.draftId);
-                            setSelectedChannel(job.channel);
-                            setScheduledDate(new Date(job.scheduledAt ?? job.createdAt).toISOString().slice(0, 16));
-                          }}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => void apiClient.del(`/publish/${job.id}`).then(() => jobs.reload())}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    ) : null}
+                    <p className="text-xs text-gray-500 mt-2">{new Date(job.scheduledAt!).toLocaleString()}</p>
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingJobId(job.id);
+                          setSelectedDraftId(job.draftId);
+                          setSelectedChannel(job.channel);
+                          setScheduledDate(new Date(job.scheduledAt!).toISOString().slice(0, 16));
+                        }}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void apiClient.del(`/publish/${job.id}`).then(() => jobs.reload())}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>

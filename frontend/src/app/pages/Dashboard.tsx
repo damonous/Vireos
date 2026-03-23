@@ -3,11 +3,11 @@ import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useNavigate } from 'react-router';
-import { useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useApiData } from '../hooks/useApiData';
 import { useAuth } from '../hooks/useAuth';
 import { DateRangeSelector, getPresetLabel } from '../components/DateRangeSelector';
-import type { DatePreset } from '../components/DateRangeSelector';
+import type { DatePreset, CustomDateRange } from '../components/DateRangeSelector';
 
 interface OverviewMetrics {
   contentCreated: number;
@@ -45,7 +45,21 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [preset, setPreset] = useState<DatePreset>('7d');
-  const overview = useApiData<OverviewMetrics>(`/analytics/overview?preset=${preset}`, [preset]);
+  const [customRange, setCustomRange] = useState<CustomDateRange | undefined>();
+
+  const handleDateChange = useCallback((newPreset: DatePreset, range?: CustomDateRange) => {
+    setPreset(newPreset);
+    setCustomRange(newPreset === 'custom' ? range : undefined);
+  }, []);
+
+  const queryString = useMemo(() => {
+    if (preset === 'custom' && customRange) {
+      return `from=${customRange.from.toISOString()}&to=${customRange.to.toISOString()}`;
+    }
+    return `preset=${preset}`;
+  }, [preset, customRange]);
+
+  const overview = useApiData<OverviewMetrics>(`/analytics/overview?${queryString}`, [queryString]);
   const drafts = useApiData<DraftRow[]>('/content/drafts?limit=5');
   const leads = useApiData<{ items: LeadRow[] }>('/leads?limit=5&sortBy=createdAt&sortOrder=desc');
   const [showSubscriptionSuccess, setShowSubscriptionSuccess] = useState(false);
@@ -178,7 +192,7 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">{user?.organization?.name ?? 'Organization'}</span>
-            <DateRangeSelector value={preset} onChange={setPreset} />
+            <DateRangeSelector value={preset} onChange={handleDateChange} customRange={customRange} />
           </div>
         </div>
       </div>
@@ -255,7 +269,7 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-[#1E3A5F] mb-4">Content Performance ({getPresetLabel(preset)})</h3>
+            <h3 className="text-lg font-semibold text-[#1E3A5F] mb-4">Content Performance ({getPresetLabel(preset, customRange)})</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
