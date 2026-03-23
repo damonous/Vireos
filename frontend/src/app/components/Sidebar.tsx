@@ -31,14 +31,22 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import type { FrontendRole } from '../types/api';
 
-const easyNavItems = [
+interface NavItem {
+  path: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  /** When set, this prefix is used for active-state matching instead of path */
+  matchPrefix?: string;
+}
+
+const easyNavItems: NavItem[] = [
   { path: '/home', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/billing', label: 'Billing', icon: CreditCard },
 ];
 
-const advisorNavItems = [
+const advisorNavItems: NavItem[] = [
   { path: '/home', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/content/generate', label: 'Create Content', icon: PenTool },
+  { path: '/content/generate', label: 'Create Content', icon: PenTool, matchPrefix: '/content' },
   { path: '/compliance', label: 'Compliance Queue', icon: CheckCircle2 },
   { path: '/calendar', label: 'Publishing Calendar', icon: Calendar },
   { path: '/linkedin', label: 'LinkedIn Outreach', icon: Linkedin },
@@ -51,9 +59,9 @@ const advisorNavItems = [
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
-const adminNavItems = [
+const adminNavItems: NavItem[] = [
   { path: '/admin/home', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/content/generate', label: 'Create Content', icon: PenTool },
+  { path: '/content/generate', label: 'Create Content', icon: PenTool, matchPrefix: '/content' },
   { path: '/compliance', label: 'Compliance Queue', icon: CheckCircle2 },
   { path: '/calendar', label: 'Publishing Calendar', icon: Calendar },
   { path: '/linkedin', label: 'LinkedIn Outreach', icon: Linkedin },
@@ -64,7 +72,7 @@ const adminNavItems = [
   { path: '/analytics', label: 'Analytics', icon: BarChart3 },
 ];
 
-const adminSectionItems = [
+const adminSectionItems: NavItem[] = [
   { path: '/admin/users', label: 'User Management', icon: UserCog },
   { path: '/admin/reports', label: 'Team Reports', icon: FileText },
   { path: '/admin/org-settings', label: 'Org Settings', icon: Building2 },
@@ -72,7 +80,7 @@ const adminSectionItems = [
   { path: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
-const complianceOfficerNavItems = [
+const complianceOfficerNavItems: NavItem[] = [
   { path: '/compliance-officer/home', label: 'Compliance Queue', icon: CheckCircle2 },
   { path: '/compliance-officer/review', label: 'Content Review', icon: ClipboardList },
   { path: '/compliance-officer/audit', label: 'Audit Trail', icon: FileText },
@@ -80,7 +88,7 @@ const complianceOfficerNavItems = [
   { path: '/compliance-officer/settings', label: 'Settings', icon: Settings },
 ];
 
-const superAdminNavItems = [
+const superAdminNavItems: NavItem[] = [
   { path: '/super-admin/home', label: 'Platform Overview', icon: LayoutDashboard },
   { path: '/super-admin/orgs', label: 'Organizations', icon: Building2 },
   { path: '/super-admin/users', label: 'Users', icon: Users },
@@ -239,14 +247,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       <nav className="flex-1 px-3 py-2 overflow-y-auto">
         {navConfig.items.map((item) => {
           const Icon = item.icon;
+          const isHome = item.path === '/home' || item.path === '/admin/home' || item.path === '/compliance-officer/home' || item.path === '/super-admin/home';
+          const prefixActive = item.matchPrefix ? location.pathname.startsWith(item.matchPrefix) : false;
           return (
             <NavLink
               key={item.path}
               to={item.path}
-              end={item.path === '/home' || item.path === '/admin/home' || item.path === '/compliance-officer/home' || item.path === '/super-admin/home'}
+              end={isHome}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
-                  isActive
+                  isActive || prefixActive
                     ? 'bg-[#0EA5E9] text-white'
                     : 'text-gray-300 hover:bg-[#2B4A6F] hover:text-white'
                 }`
@@ -267,13 +277,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
             {adminSectionItems.map((item) => {
               const Icon = item.icon;
+              const prefixActive = item.matchPrefix ? location.pathname.startsWith(item.matchPrefix) : false;
               return (
                 <NavLink
                   key={item.path}
                   to={item.path}
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
-                      isActive
+                      isActive || prefixActive
                         ? 'bg-[#0EA5E9] text-white'
                         : 'text-gray-300 hover:bg-[#2B4A6F] hover:text-white'
                     }`
