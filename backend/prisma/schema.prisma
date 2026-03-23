@@ -849,6 +849,7 @@ model AgentAction {
   errorMessage   String?
   entityType     String?
   entityId       String?
+  bossModePath   String?
   durationMs     Int?
   createdAt      DateTime          @default(now())
 

@@ -310,6 +310,58 @@ router.patch('/me', auth, validateBody(updateProfileSchema), async (
 });
 
 // ---------------------------------------------------------------------------
+// PATCH /me/settings  (requires authenticate) — update user settings (e.g. preferredMode)
+// ---------------------------------------------------------------------------
+
+router.patch('/me/settings', auth, async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const authReq = req as unknown as AuthenticatedRequest;
+    const { prisma } = await import('../db/client');
+
+    const body = req.body as Record<string, unknown>;
+    const { preferredMode } = body;
+
+    // Validate preferredMode if provided
+    if (preferredMode !== undefined && preferredMode !== 'easy' && preferredMode !== 'boss') {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'preferredMode must be "easy" or "boss".',
+        },
+      });
+      return;
+    }
+
+    // Merge incoming keys into existing settings
+    const existingUser = await prisma.user.findUnique({
+      where: { id: authReq.user.id },
+      select: { settings: true },
+    });
+    const existingSettings =
+      existingUser?.settings && typeof existingUser.settings === 'object'
+        ? (existingUser.settings as Record<string, unknown>)
+        : {};
+
+    const newSettings = { ...existingSettings, ...body } as Record<string, unknown>;
+
+    const user = await prisma.user.update({
+      where: { id: authReq.user.id },
+      data: { settings: newSettings as any },
+      select: { settings: true },
+    });
+
+    res.status(200).json({ success: true, data: { settings: user.settings } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // GET /me  (requires authenticate)
 // ---------------------------------------------------------------------------
 

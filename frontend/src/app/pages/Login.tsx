@@ -69,8 +69,27 @@ export default function Login() {
     setBusy(true);
     try {
       await login(emailValue.trim(), passwordValue);
+
+      // Role-specific routes: admin, compliance, super-admin always go to their dashboards
       const matchedRole = roles.find((role) => role.email === emailValue.trim().toLowerCase());
-      navigate(defaultRoute ?? matchedRole?.route ?? '/home');
+      if (matchedRole && matchedRole.id !== 'advisor') {
+        navigate(defaultRoute ?? matchedRole.route);
+        return;
+      }
+
+      // For advisors (and regular users), check their stored preference
+      // The user object is now populated after login() completes
+      const cachedUser = localStorage.getItem('vireos_user');
+      let preferredMode: string | undefined;
+      if (cachedUser) {
+        try {
+          const parsed = JSON.parse(cachedUser);
+          preferredMode = parsed?.settings?.preferredMode;
+        } catch { /* ignore */ }
+      }
+
+      // Default to easy mode for new/unset users
+      navigate(preferredMode === 'boss' ? '/home' : '/easy');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign in failed');
     } finally {

@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { ApiError, apiClient, clearAuthStorage } from '../lib/api-client';
-import type { AuthTokens, User, FrontendRole } from '../types/api';
+import type { AuthTokens, User, UserSettings, FrontendRole } from '../types/api';
 
 interface AuthContextValue {
   user: User | null;
@@ -17,6 +17,7 @@ interface AuthContextValue {
   establishSession: (tokens: AuthTokens) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
+  updateSettings: (settings: Partial<UserSettings>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -46,6 +47,9 @@ function mapUser(raw: Record<string, unknown>): User {
           slug: String((raw.organization as Record<string, unknown>).slug ?? ''),
           subscriptionStatus: String((raw.organization as Record<string, unknown>).subscriptionStatus ?? ''),
         }
+      : undefined,
+    settings: raw.settings && typeof raw.settings === 'object'
+      ? (raw.settings as UserSettings)
       : undefined,
   };
 }
@@ -101,6 +105,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSessionExpiresAt(Date.now() + tokens.expiresIn * 1000);
     setLastActivityAt(Date.now());
     await refresh();
+  };
+
+  const updateSettings = async (settings: Partial<UserSettings>) => {
+    await apiClient.patch('/auth/me/settings', settings);
+    // Optimistically update the local user object
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, settings: { ...prev.settings, ...settings } };
+      persistUser(updated);
+      return updated;
+    });
   };
 
   const logout = async () => {
@@ -215,6 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       establishSession,
       logout,
       refresh,
+      updateSettings,
     }),
     [user, isLoading]
   );

@@ -124,7 +124,23 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, logout } = useAuth();
 
   // Persist Easy/Boss mode across navigation within Easy mode pages
-  const [isEasy, setIsEasy] = useState(() => sessionStorage.getItem('vireos-mode') === 'easy');
+  // Default to "easy" when neither sessionStorage nor user settings have a value (new users)
+  const [isEasy, setIsEasy] = useState(() => {
+    const stored = sessionStorage.getItem('vireos-mode');
+    if (stored) return stored === 'easy';
+    const preferred = user?.settings?.preferredMode;
+    return preferred !== 'boss'; // default to easy
+  });
+
+  // On mount, sync from user settings if sessionStorage has no mode set
+  useEffect(() => {
+    const stored = sessionStorage.getItem('vireos-mode');
+    if (!stored && user?.settings?.preferredMode) {
+      const mode = user.settings.preferredMode;
+      sessionStorage.setItem('vireos-mode', mode);
+      setIsEasy(mode === 'easy');
+    }
+  }, [user?.settings?.preferredMode]);
 
   useEffect(() => {
     if (location.pathname === '/easy') {
@@ -136,12 +152,32 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const activateEasy = useCallback(() => {
     sessionStorage.setItem('vireos-mode', 'easy');
     setIsEasy(true);
+    // Persist before navigate — component unmounts on route change
+    const token = localStorage.getItem('vireos_access_token');
+    if (token) {
+      fetch('/api/v1/auth/me/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ preferredMode: 'easy' }),
+        keepalive: true,
+      }).catch(() => {});
+    }
     navigate('/easy');
   }, [navigate]);
 
   const activateBoss = useCallback(() => {
     sessionStorage.setItem('vireos-mode', 'boss');
     setIsEasy(false);
+    // Persist before navigate — component unmounts on route change
+    const token = localStorage.getItem('vireos_access_token');
+    if (token) {
+      fetch('/api/v1/auth/me/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ preferredMode: 'boss' }),
+        keepalive: true,
+      }).catch(() => {});
+    }
     navigate('/home');
   }, [navigate]);
 
