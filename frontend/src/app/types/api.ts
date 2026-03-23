@@ -7,6 +7,11 @@ export interface OrganizationSummary {
   subscriptionStatus?: string;
 }
 
+export interface UserSettings {
+  preferredMode?: 'easy' | 'boss';
+  [key: string]: unknown;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -15,6 +20,7 @@ export interface User {
   role: FrontendRole;
   orgId: string;
   organization?: OrganizationSummary;
+  settings?: UserSettings;
 }
 
 export interface AuthTokens {

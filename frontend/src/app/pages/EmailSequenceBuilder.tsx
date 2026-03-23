@@ -192,7 +192,6 @@ export default function EmailSequenceBuilder() {
             </button>
             <div>
               <h1 className="text-2xl font-semibold text-[#1E3A5F]">{isEditing ? 'Edit Email Sequence' : 'Create Email Sequence'}</h1>
-              <p className="mt-1 text-sm text-gray-500">Create a sequence with email templates and automated follow-up steps.</p>
             </div>
             <EmailNav />
           </div>

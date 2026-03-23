@@ -609,6 +609,7 @@ async function executeTrackedToolCall(params: {
       errorMessage: result.error ?? null,
       entityType: result.entityType ?? null,
       entityId: result.entityId ?? null,
+      bossModePath: result.bossModePath ?? null,
       durationMs,
     },
   });

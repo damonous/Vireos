@@ -339,18 +339,12 @@ export default function Analytics() {
   return (
     <div className="flex-1 overflow-auto bg-gray-50">
       <div className="bg-white border-b border-gray-200 px-8 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-[#1E3A5F]">Analytics Dashboard</h1>
-            <p className="text-sm text-gray-500 mt-1">Live performance data across content, campaigns, and lead flow</p>
-          </div>
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2">
             <DateRangeSelector value={preset} onChange={handleDateChange} customRange={customRange} />
             <Button variant="outline" className="flex items-center gap-2" onClick={exportAnalytics}>
               <Download className="w-4 h-4" />
               Export
             </Button>
-          </div>
         </div>
       </div>
 

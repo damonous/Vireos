@@ -110,15 +110,6 @@ export default function SuperAdminHome() {
   
   return (
     <div className="flex-1 overflow-auto bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-8 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-[#1E3A5F]">Platform Overview</h1>
-            <p className="text-sm text-gray-500 mt-1">Monitor all organizations and system health</p>
-          </div>
-        </div>
-      </div>
-
       <div className="p-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-[#1E3A5F]">Key Metrics</h2>

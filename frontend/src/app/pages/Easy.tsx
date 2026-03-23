@@ -42,11 +42,23 @@ interface Message {
   createdAt: string;
 }
 
+interface AgentAction {
+  id: string;
+  functionName: string;
+  status: string;
+  resultSummary: string | null;
+  entityType: string | null;
+  entityId: string | null;
+  bossModePath: string | null;
+  createdAt: string;
+}
+
 interface ConversationDetail {
   id: string;
   title: string;
   status: string;
   messages: Message[];
+  actions: AgentAction[];
 }
 
 interface AgentCommandResult {
@@ -144,6 +156,52 @@ function getAssistantCard(title: string, content: string, status: string): {
     title: title || 'Draft Updated',
     description: summarizeConversation(status, title || 'Easy Mode conversation', 1),
   };
+}
+
+function deriveBossModePath(action: AgentAction): string {
+  if (action.bossModePath) return action.bossModePath;
+  const { entityType, entityId } = action;
+  if (!entityType) return '/home';
+  const map: Record<string, string> = {
+    Draft: `/content/drafts/${entityId}`,
+    Lead: `/leads/${entityId}`,
+    PublishJob: `/publish/jobs/${entityId}`,
+    LinkedInCampaign: `/linkedin/campaigns/${entityId}`,
+    FacebookAdCampaign: `/facebook/ads/${entityId}`,
+    EmailSequence: `/email/sequences/${entityId}`,
+    ProspectListRequest: `/prospects/requests/${entityId}`,
+  };
+  return map[entityType] ?? '/home';
+}
+
+function actionIconForEntity(entityType: string | null): typeof FileText {
+  if (!entityType) return Sparkles;
+  const map: Record<string, typeof FileText> = {
+    Draft: FileText,
+    Lead: BarChart3,
+    PublishJob: ArrowUp,
+    LinkedInCampaign: Sparkles,
+    FacebookAdCampaign: Sparkles,
+    EmailSequence: MessageSquare,
+    ProspectListRequest: Search,
+    ComplianceReview: Shield,
+  };
+  return map[entityType] ?? Wrench;
+}
+
+function actionToneForEntity(entityType: string | null): ActionCardTone {
+  if (!entityType) return 'teal';
+  const map: Record<string, ActionCardTone> = {
+    Draft: 'teal',
+    Lead: 'blue',
+    PublishJob: 'green',
+    LinkedInCampaign: 'green',
+    FacebookAdCampaign: 'green',
+    EmailSequence: 'purple',
+    ProspectListRequest: 'blue',
+    ComplianceReview: 'purple',
+  };
+  return map[entityType] ?? 'teal';
 }
 
 function actionCardToneClasses(tone: ActionCardTone): string {
@@ -350,6 +408,20 @@ function MarkdownMessage({ content, streaming = false }: { content: string; stre
 export default function Easy() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+
+  const navigateToBossMode = useCallback((path: string) => {
+    sessionStorage.setItem('vireos-mode', 'boss');
+    const token = localStorage.getItem('vireos_access_token');
+    if (token) {
+      fetch('/api/v1/auth/me/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ preferredMode: 'boss' }),
+        keepalive: true,
+      }).catch(() => {});
+    }
+    navigate(path);
+  }, [navigate]);
   const conversations = useApiData<ConversationListResponse>('/agent/conversations?page=1&limit=20');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const detail = useApiData<ConversationDetail>(
@@ -383,6 +455,37 @@ export default function Easy() {
   );
 
   const activeConversation = rows.find((conversation) => conversation.id === selectedId) ?? null;
+
+  // Build a map of message ID -> actions that were produced alongside that assistant message.
+  // Actions are matched to the closest preceding assistant message by createdAt timestamp.
+  const messageActionsMap = useMemo(() => {
+    const map = new Map<string, AgentAction[]>();
+    const messages = detail.data?.messages ?? [];
+    const actions = (detail.data?.actions ?? []).filter(
+      (a) => a.status === 'COMPLETED' && (a.bossModePath || a.entityType)
+    );
+    if (actions.length === 0) return map;
+
+    const assistantMessages = messages.filter((m) => m.role === 'assistant');
+    for (const action of actions) {
+      const actionTime = new Date(action.createdAt).getTime();
+      // Find the closest assistant message that was created at or after the action
+      let bestMsg = assistantMessages[assistantMessages.length - 1];
+      for (const msg of assistantMessages) {
+        const msgTime = new Date(msg.createdAt).getTime();
+        if (msgTime >= actionTime) {
+          bestMsg = msg;
+          break;
+        }
+      }
+      if (bestMsg) {
+        const existing = map.get(bestMsg.id) ?? [];
+        existing.push(action);
+        map.set(bestMsg.id, existing);
+      }
+    }
+    return map;
+  }, [detail.data?.messages, detail.data?.actions]);
 
   useEffect(() => {
     if (!selectedId && rows.length > 0 && !showEmptyState) {
@@ -586,7 +689,7 @@ export default function Easy() {
             <span>Easy</span>
           </button>
           <button
-            onClick={() => navigate('/home')}
+            onClick={() => navigateToBossMode('/home')}
             className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-colors text-gray-400 hover:text-gray-300"
           >
             <SlidersHorizontal className="w-3 h-3" />
@@ -715,7 +818,7 @@ export default function Easy() {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate('/home')}
+              onClick={() => navigateToBossMode('/home')}
               className="md:hidden text-sm font-medium text-gray-500 hover:text-[#1E3A5F] transition-colors"
             >
               Boss
@@ -818,15 +921,42 @@ export default function Easy() {
                       <div className="bg-white rounded-2xl rounded-bl-sm border border-gray-200 px-4 py-3">
                         <MarkdownMessage content={message.content} />
 
-                        {activeConversation ? (
-                          (() => {
+                        {(() => {
+                          const actions = messageActionsMap.get(message.id);
+                          if (actions && actions.length > 0) {
+                            return actions.map((action) => {
+                              const ActionIcon = actionIconForEntity(action.entityType);
+                              const tone = actionToneForEntity(action.entityType);
+                              const path = deriveBossModePath(action);
+                              return (
+                                <div key={action.id} className="mt-3 rounded-xl bg-gray-50 border border-gray-200 p-3 flex items-center gap-3">
+                                  <div
+                                    className={`flex-shrink-0 w-9 h-9 rounded-full ${actionCardToneClasses(tone)} flex items-center justify-center`}
+                                  >
+                                    <ActionIcon className="w-4 h-4 text-white" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-semibold text-sm text-gray-900">{humanizeToolName(action.functionName)}</div>
+                                    <div className="text-xs text-gray-500 mt-0.5">{action.resultSummary ?? 'Action completed'}</div>
+                                  </div>
+                                  <button
+                                    onClick={() => navigateToBossMode(path)}
+                                    className="flex-shrink-0 text-xs text-[#0EA5E9] hover:text-[#0284C7] whitespace-nowrap font-medium transition-colors"
+                                  >
+                                    View in Boss Mode →
+                                  </button>
+                                </div>
+                              );
+                            });
+                          }
+                          // Fallback for conversations with no linked actions: show generic card
+                          if (activeConversation) {
                             const card = getAssistantCard(
                               activeConversation.title,
                               message.content,
                               activeConversation.status
                             );
                             const CardIcon = card.icon;
-
                             return (
                               <div className="mt-3 rounded-xl bg-gray-50 border border-gray-200 p-3 flex items-center gap-3">
                                 <div
@@ -834,22 +964,21 @@ export default function Easy() {
                                 >
                                   <CardIcon className="w-4 h-4 text-white" />
                                 </div>
-
                                 <div className="flex-1 min-w-0">
                                   <div className="font-semibold text-sm text-gray-900">{card.title}</div>
                                   <div className="text-xs text-gray-500 mt-0.5">{card.description}</div>
                                 </div>
-
                                 <button
-                                  onClick={() => navigate('/home')}
+                                  onClick={() => navigateToBossMode('/home')}
                                   className="flex-shrink-0 text-xs text-[#0EA5E9] hover:text-[#0284C7] whitespace-nowrap font-medium transition-colors"
                                 >
                                   View in Boss Mode →
                                 </button>
                               </div>
                             );
-                          })()
-                        ) : null}
+                          }
+                          return null;
+                        })()}
                       </div>
                       <div className="text-xs text-gray-400 mt-1">{formatClockTime(message.createdAt)}</div>
                     </div>
