@@ -108,13 +108,6 @@ export default function PlatformProspects() {
 
   return (
     <div className="flex-1 overflow-auto bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-8 py-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-[#1E3A5F]">Prospect Fulfillment</h1>
-          <p className="mt-1 text-sm text-gray-500">Receive requests, upload CSV fulfillments, and review imports before confirmation.</p>
-        </div>
-      </div>
-
       <div className="p-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.2fr)_420px]">
         <Card className="overflow-hidden rounded-lg border border-gray-200 shadow-sm">
           <div className="border-b border-gray-200 px-6 py-4">

@@ -349,13 +349,6 @@ export default function Settings() {
 
   return (
     <div className="flex-1 overflow-auto bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-4 md:px-8 py-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-[#1E3A5F]">Settings</h1>
-          <p className="text-sm text-gray-500 mt-1">Live account, organization, and connection settings</p>
-        </div>
-      </div>
-
       <div className="p-4 md:p-8">
         <div className="flex gap-1 mb-8 border-b border-gray-200 overflow-x-auto">
           {tabs.map((tab) => {

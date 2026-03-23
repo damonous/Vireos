@@ -104,13 +104,6 @@ export default function OrgSettings() {
 
   return (
     <div className="flex-1 overflow-auto bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-8 py-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-[#1E3A5F]">Organization Settings</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage your organization profile, compliance rules, and team preferences</p>
-        </div>
-      </div>
-
       <div className="p-8 max-w-4xl">
         <Card className="p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
           <h2 className="text-lg font-semibold text-[#1E3A5F] mb-6">Organization Profile</h2>

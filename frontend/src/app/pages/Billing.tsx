@@ -160,13 +160,6 @@ export default function Billing() {
 
   return (
     <div className="flex-1 overflow-auto bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-8 py-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-[#1E3A5F]">Billing & Subscription</h1>
-          <p className="text-sm text-gray-500 mt-1">Live billing state, credits, and Stripe invoice history</p>
-        </div>
-      </div>
-
       <div className="p-8 space-y-8">
         {statusMessage ? (
           <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">

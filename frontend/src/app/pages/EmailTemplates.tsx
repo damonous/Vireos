@@ -62,10 +62,6 @@ export default function EmailTemplates() {
       <div className="border-b border-gray-200 bg-white px-8 py-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-3">
-            <div>
-              <h1 className="text-2xl font-semibold text-[#1E3A5F]">Email Templates</h1>
-              <p className="mt-1 text-sm text-gray-500">Create, preview, and edit reusable Mailgun template content.</p>
-            </div>
             <EmailNav />
           </div>
           <Button className="bg-[#0EA5E9] text-white hover:bg-[#0284C7]" onClick={() => navigate('/email/templates/new')}>

@@ -186,7 +186,6 @@ export default function EmailTemplateEditor() {
             </button>
             <div>
               <h1 className="text-2xl font-semibold text-[#1E3A5F]">{isEditing ? 'Edit Email Template' : 'Create Email Template'}</h1>
-              <p className="mt-1 text-sm text-gray-500">Define reusable subject and body copy with extracted variable chips.</p>
             </div>
             <EmailNav />
           </div>

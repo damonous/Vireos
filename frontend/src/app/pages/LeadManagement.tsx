@@ -295,11 +295,7 @@ export default function LeadManagement() {
           </div>
         </div>
       ) : null}
-      <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-[#1E3A5F]">Lead Management</h1>
-          <p className="text-sm text-gray-500 mt-1">Live lead pipeline. Drag cards between stages or use the arrow controls.</p>
-        </div>
+      <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-end">
         <div className="flex items-center gap-3">
           <Input
             id="leadSearch"

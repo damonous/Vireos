@@ -14,6 +14,60 @@ interface NotificationItem {
   createdAt: string;
 }
 
+interface PageMeta { title: string; subtitle: string }
+
+const PAGE_META: Array<{ match: (p: string) => boolean } & PageMeta> = [
+  // Advisor
+  { match: (p) => p === '/home',                                      title: 'Dashboard',                subtitle: "Here's what's happening with your marketing today" },
+  { match: (p) => p.startsWith('/content/drafts') || p === '/content-drafts', title: 'Content Drafts', subtitle: 'Review saved drafts, status changes, and flagged compliance output.' },
+  { match: (p) => p.startsWith('/content'),                           title: 'AI Content Generator',    subtitle: 'Generate drafts and review the latest saved content.' },
+  { match: (p) => p === '/compliance',                                title: 'Compliance Queue',         subtitle: 'Review and approve marketing content' },
+  { match: (p) => p.startsWith('/calendar'),                          title: 'Publishing Calendar',      subtitle: 'Schedule and manage your published content' },
+  { match: (p) => p.includes('/campaigns/new') && p.startsWith('/linkedin'), title: 'Create LinkedIn Campaign', subtitle: 'Define your outreach sequence and save it as a campaign draft.' },
+  { match: (p) => p.startsWith('/linkedin'),                          title: 'LinkedIn Outreach',        subtitle: 'Live LinkedIn campaign performance from the backend' },
+  { match: (p) => p.includes('/wizard') && p.startsWith('/facebook'), title: 'Create Facebook Ad Campaign', subtitle: 'Set up a new Facebook ad campaign.' },
+  { match: (p) => p.startsWith('/facebook'),                          title: 'Facebook Ads',             subtitle: 'Live Facebook campaign metrics and lead acquisition' },
+  { match: (p) => p.startsWith('/prospects'),                         title: 'Prospect Finder',          subtitle: 'Discover and add new prospects' },
+  { match: (p) => p.startsWith('/leads'),                             title: 'Lead Management',          subtitle: 'Live lead pipeline. Drag cards between stages or use the arrow controls.' },
+  { match: (p) => p.startsWith('/email/templates/') && p.length > '/email/templates/'.length, title: 'Edit Email Template', subtitle: 'Define reusable subject and body copy with extracted variable chips.' },
+  { match: (p) => p === '/email/templates/new',                       title: 'Create Email Template',   subtitle: 'Define reusable subject and body copy with extracted variable chips.' },
+  { match: (p) => p === '/email/templates',                           title: 'Email Templates',          subtitle: 'Create, preview, and edit reusable Mailgun template content.' },
+  { match: (p) => p.startsWith('/email/sequences/') && p.endsWith('/enroll'), title: 'Enroll Leads',   subtitle: 'Select leads to add to this sequence.' },
+  { match: (p) => p.startsWith('/email/sequences/') && p.endsWith('/edit'),   title: 'Edit Email Sequence',   subtitle: 'Create a sequence with email templates and automated follow-up steps.' },
+  { match: (p) => p === '/email/sequences/new',                       title: 'Create Email Sequence',   subtitle: 'Create a sequence with email templates and automated follow-up steps.' },
+  { match: (p) => p.startsWith('/email'),                             title: 'Email Marketing',          subtitle: 'Sequence list, Mailgun delivery analytics, and enrollment performance.' },
+  { match: (p) => p.startsWith('/analytics'),                         title: 'Analytics Dashboard',      subtitle: 'Live performance data across content, campaigns, and lead flow' },
+  { match: (p) => p.startsWith('/billing'),                           title: 'Billing & Subscription',   subtitle: 'Live billing state, credits, and Stripe invoice history' },
+  { match: (p) => p.startsWith('/settings'),                          title: 'Settings',                 subtitle: 'Live account, organization, and connection settings' },
+  // Admin
+  { match: (p) => p === '/admin/home',                                title: 'Admin Dashboard',          subtitle: 'Manage your team and monitor performance' },
+  { match: (p) => p.startsWith('/admin/users'),                       title: 'User Management',          subtitle: 'Live organization members and invitation workflow' },
+  { match: (p) => p.startsWith('/admin/reports'),                     title: 'Team Reports',             subtitle: 'Live team performance across members in your organization' },
+  { match: (p) => p.startsWith('/admin/org-settings'),                title: 'Organization Settings',    subtitle: 'Manage your organization profile, compliance rules, and team preferences' },
+  { match: (p) => p.startsWith('/admin/billing'),                     title: 'Billing & Subscription',   subtitle: 'Live billing state, credits, and Stripe invoice history' },
+  { match: (p) => p.startsWith('/admin/settings'),                    title: 'Settings',                 subtitle: 'Live account, organization, and connection settings' },
+  // Compliance Officer
+  { match: (p) => p === '/compliance-officer/home',                   title: 'Compliance Dashboard',     subtitle: 'Review pending advisor submissions' },
+  { match: (p) => p.startsWith('/compliance-officer/review'),         title: 'Content Review',           subtitle: 'Review and approve marketing content' },
+  { match: (p) => p.startsWith('/compliance-officer/audit'),          title: 'Audit Trail',              subtitle: 'Live organization audit events' },
+  { match: (p) => p.startsWith('/compliance-officer/reports'),        title: 'Compliance Reports',       subtitle: 'Live review and audit analytics for your organization' },
+  { match: (p) => p.startsWith('/compliance-officer/settings'),       title: 'Settings',                 subtitle: 'Configure compliance settings' },
+  // Super Admin
+  { match: (p) => p === '/super-admin/home',                          title: 'Platform Overview',        subtitle: 'Monitor all organizations and system health' },
+  { match: (p) => p.startsWith('/super-admin/orgs'),                  title: 'Organizations',            subtitle: 'Live platform organizations from the backend' },
+  { match: (p) => p.startsWith('/super-admin/users'),                 title: 'Platform Users',           subtitle: 'Live user directory across all organizations' },
+  { match: (p) => p.startsWith('/super-admin/prospects'),             title: 'Prospect Fulfillment',     subtitle: 'Receive requests, upload CSV fulfillments, and review imports before confirmation.' },
+  { match: (p) => p.startsWith('/super-admin/tokens'),                title: 'Token Usage',              subtitle: 'View token usage by content generation request, user, and organization.' },
+  { match: (p) => p.startsWith('/super-admin/health'),                title: 'System Health',            subtitle: 'Live readiness checks and billing KPIs from the backend' },
+  { match: (p) => p.startsWith('/super-admin/billing'),               title: 'Platform Billing',         subtitle: 'Live billing and subscription visibility across organizations' },
+  { match: (p) => p.startsWith('/super-admin/flags'),                 title: 'Feature Flags',            subtitle: 'Live feature availability for the current organization' },
+  { match: (p) => p.startsWith('/super-admin/settings'),              title: 'Platform Settings',        subtitle: 'Platform-wide configuration and feature management' },
+];
+
+function getPageMeta(pathname: string): PageMeta | null {
+  return PAGE_META.find((entry) => entry.match(pathname)) ?? null;
+}
+
 export function ProtectedLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -121,10 +175,21 @@ export function ProtectedLayout() {
       {!isEasyModeRoute ? <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} /> : null}
 
       <div className={`flex-1 flex flex-col overflow-hidden ${isEasyModeRoute ? '' : 'md:ml-64'}`}>
-        {/* Top bar with notification bell */}
+        {/* Top bar with page header + notification bell */}
         {!isEasyModeRoute && (
-          <div className="flex items-center justify-end px-6 py-2 bg-white border-b border-gray-200 shrink-0">
-            <div ref={bellRef} className="relative">
+          <div className="flex items-center justify-between px-8 py-4 bg-white border-b border-slate-100 shrink-0">
+            {/* Page title + subtitle */}
+          {(() => {
+            const meta = getPageMeta(location.pathname);
+            return meta ? (
+              <div>
+                <h1 className="text-xl font-bold text-slate-900 leading-tight">{meta.title}</h1>
+                <p className="mt-0.5 text-sm text-slate-500">{meta.subtitle}</p>
+              </div>
+            ) : <div />;
+          })()}
+
+          <div ref={bellRef} className="relative">
               <button
                 onClick={() => setShowNotifications((prev) => !prev)}
                 className="relative p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-[#1E3A5F] transition-colors"

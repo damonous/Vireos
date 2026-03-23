@@ -166,11 +166,7 @@ export default function AIContent() {
 
   return (
     <div className="flex-1 overflow-auto bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-[#1E3A5F]">AI Content Generator</h1>
-          <p className="text-sm text-gray-500 mt-1">Generate drafts and review the latest saved content.</p>
-        </div>
+      <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-end">
         <div className="text-right">
           <p className="text-sm text-[#1E3A5F] font-medium">{draftRows.length}</p>
           <p className="text-xs text-gray-500">drafts in your workspace</p>

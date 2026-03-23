@@ -67,13 +67,6 @@ export default function TokenUsage() {
 
   return (
     <div className="flex-1 overflow-auto bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-8 py-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-[#1E3A5F]">Token Usage</h1>
-          <p className="mt-1 text-sm text-gray-500">View token usage by content generation request, user, and organization.</p>
-        </div>
-      </div>
-
       <div className="p-8 space-y-6">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
           <Card className="p-6 rounded-lg border border-gray-200 shadow-sm">
