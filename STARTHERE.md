@@ -59,8 +59,12 @@ cd infra/aws-mvp && ./deploy.sh status
 # View logs
 cd infra/aws-mvp && ./deploy.sh logs
 
-# Redeploy after code changes
+# Redeploy after code changes (syncs, builds, migrates, restarts)
 cd infra/aws-mvp && ./deploy.sh
+
+# Run database migrations manually (if needed outside a full deploy)
+ssh -i infra/aws-mvp/vireos-mvp-key.pem ec2-user@54.241.49.208 \
+  "cd /opt/vireos/backend && docker compose exec -T app npx prisma migrate deploy"
 
 # Restart containers (no rebuild)
 cd infra/aws-mvp && ./deploy.sh restart

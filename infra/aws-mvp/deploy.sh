@@ -122,13 +122,17 @@ cmd_deploy() {
   run_remote "cd /opt/vireos/backend && docker compose -f docker-compose.yml up -d --build"
 
   echo ""
+  echo "=== Running database migrations ==="
+  run_remote "cd /opt/vireos/backend && docker compose exec -T app npx prisma migrate deploy"
+
+  echo ""
   echo "=== Starting Caddy reverse proxy ==="
   run_remote "sudo systemctl restart caddy"
 
   echo ""
   echo "=== Waiting for application to become healthy ==="
   for i in $(seq 1 20); do
-    if run_remote "curl -ksfm5 https://localhost/health" &>/dev/null; then
+    if run_remote "curl -ksfm5 https://localhost:13443/health" &>/dev/null; then
       echo ""
       echo "=== Deployment successful! ==="
       echo "  App URL:  https://$IP"
@@ -167,7 +171,7 @@ cmd_status() {
   run_remote "sudo systemctl status caddy --no-pager" || true
   echo ""
   echo "=== Health check ==="
-  run_remote "curl -ksf https://localhost/health" && echo " — OK" || echo " — FAILED"
+  run_remote "curl -ksf https://localhost:13443/health" && echo " — OK" || echo " — FAILED"
 }
 
 # ---------------------------------------------------------------------------
